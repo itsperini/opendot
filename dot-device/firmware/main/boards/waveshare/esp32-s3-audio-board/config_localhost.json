@@ -1,0 +1,32 @@
+{
+    "manufacturer": "waveshare",
+    "target": "esp32s3",
+    "builds": [
+        {
+            "name": "esp32-s3-audio-board-dot-localhost",
+            "sdkconfig_append": [
+                "CONFIG_OTA_URL=\"http://192.168.1.77:8787/ota/\"",
+                "CONFIG_LANGUAGE_ZH_CN=n",
+                "CONFIG_LANGUAGE_EN_US=y",
+                "CONFIG_USE_WECHAT_MESSAGE_STYLE=y",
+                "CONFIG_CAMERA_OV2640=y",
+                "CONFIG_CAMERA_OV2640_AUTO_DETECT_DVP_INTERFACE_SENSOR=y",
+                "CONFIG_CAMERA_OV2640_DVP_YUV422_640X480_6FPS=y",
+                "CONFIG_CAMERA_OV2640_DVP_IF_FORMAT_INDEX_DEFAULT=1",
+                "CONFIG_CAMERA_OV5640=y",
+                "CONFIG_CAMERA_OV5640_AUTO_DETECT_DVP_INTERFACE_SENSOR=y",
+                "CONFIG_CAMERA_OV5640_DVP_YUV422_800X600_10FPS=y",
+                "CONFIG_CAMERA_OV5640_DVP_IF_FORMAT_INDEX_DEFAULT=0",
+                "CONFIG_USE_AFE_WAKE_WORD=n",
+                "CONFIG_USE_CUSTOM_WAKE_WORD=y",
+                "CONFIG_CUSTOM_WAKE_WORD=\"HEY DOT\"",
+                "CONFIG_CUSTOM_WAKE_WORD_DISPLAY=\"Hey, DOT\"",
+                "CONFIG_CUSTOM_WAKE_WORD_THRESHOLD=20",
+                "CONFIG_SR_WN_WN9_NIHAOXIAOZHI_TTS=n",
+                "CONFIG_SR_MN_CN_NONE=n",
+                "CONFIG_SR_MN_EN_NONE=n",
+                "CONFIG_SR_MN_EN_MULTINET6_QUANT=y"
+            ]
+        }
+    ]
+}

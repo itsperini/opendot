@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <title>OpenDot Acoustic Wi-Fi Setup</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #fbf9ff;
+      --surface: #ffffff;
+      --surface-soft: #f7f5fb;
+      --ink: #171321;
+      --muted: #625c6f;
+      --line: #e8ddf8;
+      --line-strong: #d8c3f7;
+      --violet-950: #14091f;
+      --violet-800: #5b21b6;
+      --violet-700: #6d28d9;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 18% 8%, rgba(167, 139, 250, 0.16), transparent 28rem),
+        linear-gradient(180deg, #ffffff 0, var(--bg) 22rem);
+      color: var(--ink);
+      margin: 0;
+      padding: 20px 14px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid var(--line);
+      padding: 24px;
+      border-radius: 8px;
+      box-shadow: 0 18px 48px rgba(76, 29, 149, 0.09);
+      max-width: 420px;
+      width: 100%;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 22px;
+      color: var(--violet-950);
+      font-size: 16px;
+      font-weight: 800;
+    }
+    .brand-logo {
+      width: 30px;
+      height: 30px;
+      color: #2e1065;
+    }
+    h1 {
+      margin: 0 0 18px;
+      font-size: 26px;
+      line-height: 1.15;
+    }
+    label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 750;
+      display: block;
+      margin: 1rem 0 0.3rem;
+    }
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      padding: 0.75rem;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      color: var(--ink);
+      outline: none;
+    }
+    input[type="text"]:focus,
+    input[type="password"]:focus {
+      border-color: var(--line-strong);
+      box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.12);
+    }
+    input[type="checkbox"] {
+      margin-right: 0.5rem;
+      accent-color: var(--violet-700);
+    }
+    .checkbox-container {
+      margin-top: 1rem;
+      font-size: 0.95rem;
+    }
+    button {
+      width: 100%;
+      margin-top: 1rem;
+      padding: 0.8rem;
+      font-size: 1rem;
+      border: 1px solid var(--violet-700);
+      border-radius: 8px;
+      background-color: var(--violet-800);
+      color: #fff;
+      cursor: pointer;
+      font-weight: 850;
+      transition: background-color 160ms ease;
+    }
+    button:hover {
+      background-color: var(--violet-700);
+    }
+    button:active {
+      background-color: var(--violet-950);
+    }
+    audio {
+      margin-top: 1.5rem;
+      width: 100%;
+      outline: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">
+      <svg class="brand-logo" aria-hidden="true" fill="none" viewBox="0 0 504 504" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0 252C0 112.824 112.82 0 252 0 391.18 0 504 112.824 504 252 504 391.18 391.18 504 252 504 112.82 504 0 391.18 0 252ZM159.22 147.937C159.22 246.009 206.94 412.23 252 429.57 297.06 446.92 429.57 350.07 429.57 252 429.57 153.928 297.06 91.769 252 74.425 206.94 57.082 159.22 49.865 159.22 147.937Z" fill="currentColor" fill-rule="evenodd"/>
+      </svg>
+      <span>OpenDot</span>
+    </div>
+    <h1>Acoustic Wi-Fi setup</h1>
+    <label for="ssid">Wi-Fi name</label>
+    <input id="ssid" type="text" value="" placeholder="Enter Wi-Fi name" />
+
+    <label for="pwd">Wi-Fi password</label>
+    <input id="pwd" type="password" value="" placeholder="Enter Wi-Fi password" />
+
+    <div class="checkbox-container">
+      <label><input type="checkbox" id="loopCheck" checked /> Loop acoustic playback</label>
+    </div>
+
+    <button onclick="generate()">Generate and play tone</button>
+    <button onclick="stopPlay()">Stop playback</button>
+    <audio id="player" controls></audio>
+  </div>
+
+  <script>
+    const MARK = 1800;
+    const SPACE = 1500;
+    const SAMPLE_RATE = 44100;
+    const BIT_RATE = 100;
+    const START_BYTES = [0x01, 0x02];
+    const END_BYTES = [0x03, 0x04];
+    let loopTimer = null;
+
+    function checksum(data) {
+      return data.reduce((sum, b) => (sum + b) & 0xff, 0);
+    }
+
+    function toBits(byte) {
+      const bits = [];
+      for (let i = 7; i >= 0; i--) bits.push((byte >> i) & 1);
+      return bits;
+    }
+
+    function afskModulate(bits) {
+      const samplesPerBit = SAMPLE_RATE / BIT_RATE;
+      const totalSamples = Math.floor(bits.length * samplesPerBit);
+      const buffer = new Float32Array(totalSamples);
+      for (let i = 0; i < bits.length; i++) {
+        const freq = bits[i] ? MARK : SPACE;
+        for (let j = 0; j < samplesPerBit; j++) {
+          const t = (i * samplesPerBit + j) / SAMPLE_RATE;
+          buffer[i * samplesPerBit + j] = Math.sin(2 * Math.PI * freq * t);
+        }
+      }
+      return buffer;
+    }
+
+    function floatTo16BitPCM(floatSamples) {
+      const buffer = new Uint8Array(floatSamples.length * 2);
+      for (let i = 0; i < floatSamples.length; i++) {
+        const s = Math.max(-1, Math.min(1, floatSamples[i]));
+        const val = s < 0 ? s * 0x8000 : s * 0x7fff;
+        buffer[i * 2] = val & 0xff;
+        buffer[i * 2 + 1] = (val >> 8) & 0xff;
+      }
+      return buffer;
+    }
+
+    function buildWav(pcm) {
+      const wavHeader = new Uint8Array(44);
+      const dataLen = pcm.length;
+      const fileLen = 36 + dataLen;
+
+      const writeStr = (offset, str) => {
+        for (let i = 0; i < str.length; i++) wavHeader[offset + i] = str.charCodeAt(i);
+      };
+      const write32 = (offset, value) => {
+        wavHeader[offset] = value & 0xff;
+        wavHeader[offset + 1] = (value >> 8) & 0xff;
+        wavHeader[offset + 2] = (value >> 16) & 0xff;
+        wavHeader[offset + 3] = (value >> 24) & 0xff;
+      };
+      const write16 = (offset, value) => {
+        wavHeader[offset] = value & 0xff;
+        wavHeader[offset + 1] = (value >> 8) & 0xff;
+      };
+
+      writeStr(0, 'RIFF');
+      write32(4, fileLen);
+      writeStr(8, 'WAVE');
+      writeStr(12, 'fmt ');
+      write32(16, 16);
+      write16(20, 1);
+      write16(22, 1);
+      write32(24, SAMPLE_RATE);
+      write32(28, SAMPLE_RATE * 2);
+      write16(32, 2);
+      write16(34, 16);
+      writeStr(36, 'data');
+      write32(40, dataLen);
+
+      return new Blob([wavHeader, pcm], { type: 'audio/wav' });
+    }
+
+    function generate() {
+      stopPlay();
+      const ssid = document.getElementById('ssid').value.trim();
+      const pwd = document.getElementById('pwd').value.trim();
+      const dataStr = ssid + '\n' + pwd;
+      const textBytes = Array.from(new TextEncoder().encode(dataStr));
+      const fullBytes = [...START_BYTES, ...textBytes, checksum(textBytes), ...END_BYTES];
+
+      let bits = [];
+      fullBytes.forEach((b) => (bits = bits.concat(toBits(b))));
+
+      const floatBuf = afskModulate(bits);
+      const pcmBuf = floatTo16BitPCM(floatBuf);
+      const wavBlob = buildWav(pcmBuf);
+
+      const audio = document.getElementById('player');
+      audio.src = URL.createObjectURL(wavBlob);
+      audio.load();
+      audio.play();
+
+      // 修改了这里：使用 'ended' 事件来实现循环播放
+      if (document.getElementById('loopCheck').checked) {
+        audio.onended = function() {
+          audio.currentTime = 0;  // 从头开始
+          audio.play();           // 重新播放
+        };
+      }
+    }
+
+    function stopPlay() {
+      const audio = document.getElementById('player');
+      audio.pause();
+      audio.onended = null;  // 清除事件监听
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+# macOS / OS metadata
+.DS_Store
+._*
+Thumbs.db
+
+# Editor / IDE state
+.idea/
+.vscode/
+.devcontainer/
+*.swp
+*.swo
+*.swn
+*~
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Node / Vite / TypeScript
+node_modules/
+dist/
+build/
+.vite/
+.vite-temp/
+coverage/
+*.tsbuildinfo
+
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+
+# ESP-IDF / firmware generated files
+components/
+managed_components/
+tmp/
+releases/
+sdkconfig
+sdkconfig.old
+dependencies.lock
+**/main/assets/lang_config.h
+**/main/mmap_generate_emoji.h
+mmap_generate_*.h
+*.bin
+.clangd
+
+# C/C++ generated outputs
+compile_commands.json
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+*.elf
+*.map
+*.o
+*.a
+*.dSYM/
+.ninja_deps
+.ninja_log
