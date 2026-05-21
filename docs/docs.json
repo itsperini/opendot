@@ -1,0 +1,109 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "OpenDot",
+  "description": "Docs for creating, configuring, testing, and binding OpenDot voice agents.",
+  "colors": {
+    "primary": "#5B21B6",
+    "light": "#7C3AED",
+    "dark": "#2E1065"
+  },
+  "favicon": "/favicon.ico",
+  "icons": {
+    "library": "lucide"
+  },
+  "styling": {
+    "eyebrows": "breadcrumbs"
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "assistant"
+    ]
+  },
+  "navigation": {
+    "global": {
+      "anchors": [
+        {
+          "anchor": "Discord",
+          "icon": {
+            "name": "discord",
+            "library": "fontawesome"
+          },
+          "href": "https://discord.gg/opendot"
+        },
+        {
+          "anchor": "GitHub",
+          "icon": {
+            "name": "github",
+            "library": "fontawesome"
+          },
+          "href": "https://github.com/itsperini/opendot"
+        },
+        {
+          "anchor": "X profile",
+          "icon": {
+            "name": "x-twitter",
+            "library": "fontawesome"
+          },
+          "href": "https://x.com/opendot"
+        },
+        {
+          "anchor": "Blog",
+          "icon": "newspaper",
+          "href": "https://perini.dev/"
+        }
+      ]
+    },
+    "directory": "card",
+    "groups": [
+      {
+        "group": "Getting started",
+        "icon": "rocket",
+        "expanded": true,
+        "pages": [
+          "index",
+          "quickstart"
+        ]
+      },
+      {
+        "group": "Build agents",
+        "icon": "bot",
+        "expanded": true,
+        "pages": [
+          "agent-studio",
+          "voice-pipeline",
+          "browser-test"
+        ]
+      },
+      {
+        "group": "Devices and runtime",
+        "icon": "cpu",
+        "expanded": true,
+        "pages": [
+          "dot-device",
+          "runtime-configuration",
+          "settings-api-keys"
+        ]
+      }
+    ]
+  },
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "navbar": {
+    "links": [
+      {
+        "type": "github",
+        "href": "https://github.com/itsperini/opendot"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Website",
+      "href": "https://opendot.ai"
+    }
+  }
+}

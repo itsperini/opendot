@@ -1,0 +1,33 @@
+---
+title: Settings and API keys
+description: Manage workspace preferences and prototype SDK keys.
+---
+
+Settings holds user-level preferences and local SDK keys for the platform prototype.
+
+## Workspace preferences
+
+The profile panel stores:
+
+- **Name**
+- **Email**
+- **Workspace**
+- **Timezone**
+- **Compact density**
+
+Compact density tightens page spacing and panel padding across the platform console.
+
+## API keys
+
+Use **API keys** to create and revoke local prototype keys. Active keys expose a prefix in the `OPENDOT_API_KEY` row.
+
+The current prototype stores keys in browser local storage. Treat them as local development data, not production credentials.
+
+## Copy and revoke
+
+Each key row supports:
+
+- **Copy**: copies the full token to the clipboard.
+- **Revoke**: marks the key as revoked and disables copy.
+
+Revoked keys remain visible so you can see when they were created and confirm they are no longer active.

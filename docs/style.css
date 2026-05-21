@@ -1,0 +1,8 @@
+/* Keep custom styling intentionally light: OpenDot logo sizing only. */
+#navbar a[href="/"] img,
+#navbar a[href="/"] svg,
+#sidebar a[href="/"] img,
+#sidebar a[href="/"] svg {
+  max-width: 8.75rem;
+  height: auto;
+}

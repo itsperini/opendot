@@ -1,0 +1,56 @@
+---
+title: Browser Test
+description: Stream microphone audio to the local runtime and inspect live voice turns.
+---
+
+Browser Test is the local loop for validating a voice agent before binding it to hardware.
+
+## Before you connect
+
+Make sure both processes are running:
+
+```bash
+# terminal 1
+cd platform
+npm run dev
+
+# terminal 2
+cd platform
+npm run runtime
+```
+
+The runtime also needs provider keys in `platform/.env`.
+
+## Run a test turn
+
+1. Select an agent.
+2. Open **Browser Test**.
+3. Click **Connect** to open the runtime WebSocket.
+4. Click **Start mic**.
+5. Speak naturally.
+6. Stop speaking and wait for the VAD/STT turn close.
+
+The panel shows interim transcript text, final transcript text, assistant text, generated TTS chunks, runtime logs, and a timeline for the latest turn.
+
+## What gets sent to the runtime
+
+When the socket opens, the browser sends the selected agent config. If you edit the selected agent while connected, the browser sends an updated config message.
+
+The runtime WebSocket defaults to:
+
+```text
+ws://localhost:8787/voice
+```
+
+Override it with:
+
+```bash
+VITE_RUNTIME_WS_URL=ws://localhost:8787/voice
+```
+
+## Common checks
+
+- If **Connect** fails, confirm `npm run runtime` is still running.
+- If the mic does not start, check browser microphone permissions.
+- If text appears but audio does not play, review the TTS encoding and browser delivery settings.
+- If turns close too quickly, tune VAD endpointing in **Configuration**.

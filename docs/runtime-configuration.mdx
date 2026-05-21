@@ -1,0 +1,72 @@
+---
+title: Runtime configuration
+description: Environment variables and local runtime behavior for voice sessions and devices.
+---
+
+The runtime process handles live voice sessions for the browser and Dot devices.
+
+## Required provider keys
+
+Create `platform/.env` from the example file:
+
+```bash
+cd platform
+cp .env.example .env
+```
+
+Set the provider keys:
+
+```bash
+DEEPGRAM_API_KEY=...
+OPENAI_API_KEY=...
+```
+
+## Frontend runtime URL
+
+The browser test uses this WebSocket by default:
+
+```text
+ws://localhost:8787/voice
+```
+
+Override it for the frontend with:
+
+```bash
+VITE_RUNTIME_WS_URL=ws://localhost:8787/voice
+```
+
+The Dot Device page can use an explicit HTTP base URL:
+
+```bash
+VITE_RUNTIME_HTTP_URL=http://localhost:8787
+```
+
+If `VITE_RUNTIME_HTTP_URL` is not set, the frontend derives the HTTP base from `VITE_RUNTIME_WS_URL`.
+
+## Turn-close defaults
+
+These local defaults make device turns less twitchy:
+
+```bash
+DEEPGRAM_ENDPOINTING_MS=900
+MIN_TRANSCRIPT_CHARS=2
+CLOSE_DEVICE_AFTER_TURN=true
+CLOSE_DEVICE_AFTER_TURN_DELAY_MS=300
+```
+
+When `CLOSE_DEVICE_AFTER_TURN` is enabled, the runtime closes the device audio socket shortly after a completed turn so firmware can return to idle or wake-word mode.
+
+## TTS defaults
+
+The runtime TTS sample rate defaults to:
+
+```bash
+DEEPGRAM_TTS_SAMPLE_RATE=24000
+```
+
+For browser playback experiments, tune the TTS stage in **Configuration**:
+
+- **Encoding**
+- **Sample rate**
+- **Browser delivery**
+- **Chunk style**

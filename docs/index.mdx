@@ -1,0 +1,46 @@
+---
+title: Overview
+description: OpenDot is an open source, full-stack platform for building, tuning, and managing voice agents.
+---
+
+OpenDot is an open source, full-stack platform for building, tuning, and managing voice agents.
+
+It brings the control plane, voice runtime, and device layer into one local-first workflow, so you can shape the full voice loop without treating the pipeline as a black box.
+
+The goal is to make the entire voice pipeline runnable on your own hardware, from development on a laptop to bare-metal deployment in production. Start with a browser console, tune each stage, test live turns against the local runtime, then bind the selected voice configuration to a Dot device.
+
+## Core flow
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Start the web console, run the local voice runtime, and test your first agent.
+  </Card>
+  <Card title="Tune the pipeline" icon="workflow" href="/voice-pipeline">
+    Configure VAD, STT, LLM, and TTS stages for a selected draft agent.
+  </Card>
+  <Card title="Inspect live turns" icon="audio-lines" href="/browser-test">
+    Stream microphone audio, inspect transcripts, and replay spoken responses.
+  </Card>
+  <Card title="Deploy to devices" icon="cpu" href="/dot-device">
+    Pair Dot devices, check runtime availability, and bind voice configs.
+  </Card>
+</CardGroup>
+
+## Starter pipeline
+
+```text
+Deepgram VAD -> Deepgram STT -> OpenAI LLM -> Deepgram TTS
+```
+
+The current starter pipeline uses hosted Deepgram and OpenAI-compatible stages while keeping the runtime organized around replaceable components. That shape is intentional: the same workflow should be able to move toward local models, self-hosted inference, and bare-metal deployment without changing how agents are managed.
+
+## Local services
+
+OpenDot currently runs as two local processes:
+
+| Process | Command | Default URL |
+| --- | --- | --- |
+| Web console | `npm run dev` | `http://localhost:5173` |
+| Voice runtime | `npm run runtime` | `ws://localhost:8787/voice` |
+
+Start with the [Quickstart](/quickstart) when setting up a fresh checkout.

@@ -1,0 +1,66 @@
+---
+title: Quickstart
+description: Run the platform locally, create a voice agent, and test a turn.
+---
+
+This guide gets the current platform prototype running locally.
+
+## Run the web console
+
+From the platform app:
+
+```bash
+cd platform
+npm install
+npm run dev
+```
+
+Open the Vite URL printed in the terminal. It is usually:
+
+```text
+http://localhost:5173
+```
+
+## Start the voice runtime
+
+The browser test needs a second process for live voice sessions:
+
+```bash
+cd platform
+cp .env.example .env
+npm run runtime
+```
+
+Add real provider keys to `.env` before using the runtime:
+
+```bash
+DEEPGRAM_API_KEY=...
+OPENAI_API_KEY=...
+```
+
+## Create and test an agent
+
+1. Open **Agent Studio**.
+2. Create a draft agent with a name and description.
+3. Open **Configuration** and review the default pipeline.
+4. Open **Browser Test**.
+5. Click **Connect**.
+6. Click **Start mic** and speak.
+7. Stop speaking and wait for the assistant text and audio chunks.
+
+The default pipeline is:
+
+```text
+Deepgram VAD -> Deepgram STT -> OpenAI LLM -> Deepgram TTS
+```
+
+## Optional device check
+
+Open **Dot Device** to pair a device, refresh runtime availability, and bind the selected agent config to the device.
+
+The default runtime endpoints are:
+
+```text
+WebSocket: ws://localhost:8787/voice
+HTTP:      http://localhost:8787
+```

@@ -1,0 +1,51 @@
+---
+title: Dot Device
+description: Pair devices, check runtime availability, and bind voice configs.
+---
+
+Dot Device manages the hardware side of the prototype. It keeps an inventory of paired devices, syncs devices seen by the runtime, and binds the selected voice agent config.
+
+## Runtime availability
+
+The page polls the runtime HTTP endpoint for devices. By default it uses:
+
+```text
+http://localhost:8787
+```
+
+The page derives that URL from `VITE_RUNTIME_HTTP_URL` or `VITE_RUNTIME_WS_URL`.
+
+## Pair a device
+
+Add a device with:
+
+- **Name**
+- **Serial**
+- **Model**
+- **Device endpoint**
+
+For local demos, `demo://custom-dot` is enough. For a real local runtime device, use the runtime-discovered device row when it appears.
+
+## Check devices
+
+Use **Refresh** to sync runtime devices and check manually paired devices. Runtime devices are sorted above demo devices.
+
+Availability values:
+
+- **Available**: runtime or endpoint responded.
+- **Offline**: runtime or endpoint did not respond.
+- **Unknown**: device has not been checked yet.
+
+## Bind a voice config
+
+1. Select a device.
+2. Select an agent in **Voice Config**.
+3. Click **Bind config**.
+
+For runtime devices, OpenDot sends the agent config to:
+
+```text
+PUT /devices/:serial/config
+```
+
+If the device push fails, the prototype still stores the binding locally so the UI can keep moving.
