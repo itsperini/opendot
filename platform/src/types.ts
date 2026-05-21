@@ -13,7 +13,7 @@ export type StageSetting = {
   label: string;
   value: StageSettingValue;
   unit?: string;
-  control: "select" | "multi-select" | "switch";
+  control: "select" | "multi-select" | "switch" | "textarea";
   options?: StageOption[];
 };
 

@@ -28,6 +28,19 @@ const OPENAI_MODEL_OPTIONS: StageOption[] = [
   { label: "GPT-5.4 nano", value: "gpt-5.4-nano" },
 ];
 
+const DEFAULT_SYSTEM_PROMPT =
+  "You are a concise voice assistant. Answer naturally in one or two short spoken paragraphs.";
+
+const DEFAULT_CHUNK_PROMPT = [
+  "For voice output, format every assistant reply as XML-like TTS chunks.",
+  "Use only this format: <chunk>first spoken chunk</chunk><chunk>next spoken chunk</chunk>.",
+  "Do not write any text outside <chunk> tags.",
+  "Close each chunk as soon as a natural phrase or short sentence is complete so TTS can start immediately.",
+  "Use plain spoken language. Avoid markdown, bullets, code fences, tables, emojis, and XML special characters.",
+].join("\n");
+
+const DEFAULT_SYSTEM_AND_CHUNK_PROMPT = `${DEFAULT_SYSTEM_PROMPT}\n\n${DEFAULT_CHUNK_PROMPT}`;
+
 const TTS_MODEL_OPTIONS: StageOption[] = [
   { label: "Aura-2 Thalia", value: "aura-2-thalia-en" },
   { label: "Aura-2 Asteria", value: "aura-2-asteria-en" },
@@ -44,6 +57,7 @@ const ENDPOINTING_OPTIONS: StageOption[] = [
   { label: "Balanced conversation - 300 ms", value: 300 },
   { label: "Thoughtful pause - 500 ms", value: 500 },
   { label: "Long pause - 750 ms", value: 750 },
+  { label: "Safer device pause - 900 ms", value: 900 },
   { label: "Disable endpointing", value: "false" },
 ];
 
@@ -52,6 +66,20 @@ const UTTERANCE_END_OPTIONS: StageOption[] = [
   { label: "1000 ms", value: 1000 },
   { label: "1500 ms", value: 1500 },
   { label: "2000 ms", value: 2000 },
+];
+
+const MIN_TRANSCRIPT_CHAR_OPTIONS: StageOption[] = [
+  { label: "Very sensitive - 1 char", value: 1 },
+  { label: "Balanced guard - 2 chars", value: 2 },
+  { label: "Ignore tiny noises - 4 chars", value: 4 },
+  { label: "Strict wake turn - 8 chars", value: 8 },
+];
+
+const DEVICE_CLOSE_DELAY_OPTIONS: StageOption[] = [
+  { label: "150 ms", value: 150 },
+  { label: "300 ms", value: 300 },
+  { label: "600 ms", value: 600 },
+  { label: "1000 ms", value: 1000 },
 ];
 
 const VAD_EVENT_OPTIONS: StageOption[] = [
@@ -121,11 +149,20 @@ const LLM_FEATURE_OPTIONS: StageOption[] = [
 const TTS_ENCODING_OPTIONS: StageOption[] = [
   { label: "MP3", value: "mp3" },
   { label: "Linear16 PCM", value: "linear16" },
-  { label: "Mu-law", value: "mulaw" },
-  { label: "A-law", value: "alaw" },
-  { label: "Opus", value: "opus" },
+  { label: "Opus (Ogg)", value: "opus" },
   { label: "FLAC", value: "flac" },
   { label: "AAC", value: "aac" },
+];
+
+const TTS_DELIVERY_OPTIONS: StageOption[] = [
+  { label: "Chunked audio files", value: "chunked_file" },
+  { label: "Direct PCM stream (Linear16 only)", value: "pcm_stream" },
+];
+
+const TTS_CHUNK_STYLE_OPTIONS: StageOption[] = [
+  { label: "Fast phrases", value: "fast" },
+  { label: "Balanced sentences", value: "balanced" },
+  { label: "Relaxed paragraphs", value: "relaxed" },
 ];
 
 function optionValueSet(options: StageOption[] = []) {
@@ -151,6 +188,10 @@ function normalizeScalarValue(setting: StageSetting, value: StageSettingValue | 
   if (setting.control === "select" && includesOption(setting.options, value)) {
     const match = setting.options?.find((option) => String(option.value) === String(value));
     return match?.value ?? setting.value;
+  }
+
+  if (setting.control === "textarea") {
+    return typeof value === "string" ? value : setting.value;
   }
 
   return setting.value;
@@ -185,6 +226,20 @@ function deriveFeatureList(
 }
 
 function normalizeSetting(defaultSetting: StageSetting, existingSettings: StageSetting[] = []) {
+  if (defaultSetting.key === "system_prompt") {
+    const existing = existingSettings.find((setting) => setting.key === defaultSetting.key);
+    const value = typeof existing?.value === "string" ? existing.value.trim() : "";
+    const upgradedValue =
+      value && !value.toLowerCase().includes("<chunk")
+        ? `${value}\n\n${DEFAULT_CHUNK_PROMPT}`
+        : value;
+
+    return {
+      ...defaultSetting,
+      value: upgradedValue || defaultSetting.value,
+    };
+  }
+
   if (defaultSetting.control === "multi-select") {
     if (defaultSetting.key === "features") {
       return {
@@ -232,12 +287,12 @@ export function createDefaultPipeline(): PipelineStage[] {
       model: "endpointing-vad",
       modelOptions: VAD_MODEL_OPTIONS,
       purpose: "Detect speech boundaries before a turn is committed.",
-      latencyTargetMs: 300,
+      latencyTargetMs: 900,
       settings: [
         {
           key: "endpointing",
           label: "Endpointing",
-          value: 300,
+          value: 900,
           unit: "ms",
           control: "select",
           options: ENDPOINTING_OPTIONS,
@@ -256,6 +311,27 @@ export function createDefaultPipeline(): PipelineStage[] {
           value: ["vad_events", "interim_results", "speech_final"],
           control: "multi-select",
           options: VAD_EVENT_OPTIONS,
+        },
+        {
+          key: "min_transcript_chars",
+          label: "Noise floor",
+          value: 2,
+          control: "select",
+          options: MIN_TRANSCRIPT_CHAR_OPTIONS,
+        },
+        {
+          key: "close_device_after_turn",
+          label: "Return device to wake word",
+          value: true,
+          control: "switch",
+        },
+        {
+          key: "close_device_after_turn_delay_ms",
+          label: "Device close delay",
+          value: 300,
+          unit: "ms",
+          control: "select",
+          options: DEVICE_CLOSE_DELAY_OPTIONS,
         },
       ],
       emits: ["SpeechStarted", "UtteranceEnd", "speech_final"],
@@ -311,6 +387,12 @@ export function createDefaultPipeline(): PipelineStage[] {
       latencyTargetMs: 1200,
       settings: [
         {
+          key: "system_prompt",
+          label: "System prompt and chunk rules",
+          value: DEFAULT_SYSTEM_AND_CHUNK_PROMPT,
+          control: "textarea",
+        },
+        {
           key: "api",
           label: "API",
           value: "Responses",
@@ -356,6 +438,28 @@ export function createDefaultPipeline(): PipelineStage[] {
           value: "mp3",
           control: "select",
           options: TTS_ENCODING_OPTIONS,
+        },
+        {
+          key: "sample_rate",
+          label: "Sample rate",
+          value: 24000,
+          unit: "Hz",
+          control: "select",
+          options: SAMPLE_RATE_OPTIONS,
+        },
+        {
+          key: "delivery",
+          label: "Browser delivery",
+          value: "chunked_file",
+          control: "select",
+          options: TTS_DELIVERY_OPTIONS,
+        },
+        {
+          key: "chunk_style",
+          label: "Chunk style",
+          value: "fast",
+          control: "select",
+          options: TTS_CHUNK_STYLE_OPTIONS,
         },
       ],
       emits: ["tts_started", "tts_done"],
@@ -439,7 +543,7 @@ export function deepgramListenParams(pipeline: PipelineStage[]) {
     smart_format: String(selectedFeature(stt, "smart_format", true, "stt_features")),
     interim_results: String(selectedFeature(vad, "interim_results", true)),
     vad_events: String(selectedFeature(vad, "vad_events", true)),
-    endpointing: settingString(vad, "endpointing", 300),
+    endpointing: settingString(vad, "endpointing", 900),
     utterance_end_ms: settingString(vad, "utterance_end_ms", 1000),
     encoding: settingString(stt, "encoding", "linear16"),
     sample_rate: settingString(stt, "sample_rate", 16000),

@@ -424,6 +424,7 @@ p {
 .model-select,
 .setting-row input,
 .setting-row select,
+.setting-row textarea,
 .multi-select-dropdown summary {
   background: #ffffff;
   border: 1px solid var(--line-strong);
@@ -453,6 +454,7 @@ p {
 .model-select:focus,
 .setting-row input:focus,
 .setting-row select:focus,
+.setting-row textarea:focus,
 .multi-select-dropdown summary:focus {
   border-color: var(--violet-700);
   box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.13);
@@ -1205,11 +1207,19 @@ p {
 .setting-row input[type="text"],
 .setting-row input[type="number"],
 .setting-row select,
+.setting-row textarea,
 .multi-select-dropdown summary {
   min-height: 34px;
   min-width: 0;
   padding: 0 9px;
   width: 100%;
+}
+
+.setting-row textarea {
+  line-height: 1.45;
+  min-height: 104px;
+  padding: 8px 9px;
+  resize: vertical;
 }
 
 .multi-select-dropdown {
@@ -1492,6 +1502,86 @@ p {
   text-transform: uppercase;
 }
 
+.assistant-output-header {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.assistant-output-header > span {
+  color: var(--violet-700);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.chunk-toggle {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  cursor: pointer;
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 8px;
+  min-height: 32px;
+  padding: 4px 10px 4px 5px;
+  position: relative;
+}
+
+.chunk-toggle:has(input:focus-visible) {
+  border-color: var(--violet-700);
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.13);
+}
+
+.chunk-toggle input {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.chunk-toggle-track {
+  background: #d7dee8;
+  border-radius: 999px;
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 20px;
+  position: relative;
+  transition: background-color 160ms ease;
+  width: 36px;
+}
+
+.chunk-toggle-track::after {
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 2px 5px rgba(15, 23, 42, 0.18);
+  content: "";
+  height: 16px;
+  left: 2px;
+  position: absolute;
+  top: 2px;
+  transition: transform 160ms ease;
+  width: 16px;
+}
+
+.chunk-toggle input:checked + .chunk-toggle-track {
+  background: var(--violet-700);
+}
+
+.chunk-toggle input:checked + .chunk-toggle-track::after {
+  transform: translateX(16px);
+}
+
+.chunk-toggle-text {
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+}
+
 .interim-text {
   color: var(--muted);
   font-size: 14px;
@@ -1500,7 +1590,7 @@ p {
 }
 
 .final-text,
-.assistant-card p {
+.assistant-response-text {
   color: var(--ink);
   font-size: 18px;
   font-weight: 700;
@@ -1510,6 +1600,109 @@ p {
 
 .assistant-card audio {
   width: 100%;
+}
+
+.assistant-chunked-output {
+  align-content: start;
+  display: grid;
+  gap: 8px;
+  line-height: 1.45;
+  min-height: 70px;
+  min-width: 0;
+}
+
+.assistant-response-chunk,
+.assistant-chunk-placeholder {
+  border: 1px solid rgba(124, 58, 237, 0.22);
+  border-radius: 8px;
+  background: #f5f3ff;
+  gap: 7px;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  padding: 8px 9px;
+}
+
+.assistant-response-chunk {
+  color: #5b21b6;
+  display: grid;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.assistant-response-chunk-copy {
+  align-items: baseline;
+  display: flex;
+  gap: 7px;
+  min-width: 0;
+}
+
+.assistant-response-chunk-copy > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.assistant-response-chunk-copy small {
+  align-items: center;
+  background: rgba(124, 58, 237, 0.13);
+  border-radius: 999px;
+  color: #5b21b6;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 950;
+  height: 18px;
+  justify-content: center;
+  min-width: 18px;
+  padding: 0 5px;
+}
+
+.assistant-response-chunk.partial {
+  border-style: dashed;
+  opacity: 0.82;
+}
+
+.assistant-chunk-placeholder {
+  color: #6d28d9;
+  display: inline-flex;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.assistant-response-chunk-audio {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(124, 58, 237, 0.14);
+  border-radius: 8px;
+  display: grid;
+  gap: 7px;
+  grid-template-columns: 30px minmax(0, 1fr);
+  margin-top: 8px;
+  min-width: 0;
+  padding: 7px;
+}
+
+.assistant-response-chunk-audio button {
+  align-items: center;
+  aspect-ratio: 1;
+  border-radius: 7px;
+  display: inline-flex;
+  justify-content: center;
+  min-height: 30px;
+  min-width: 30px;
+  padding: 0;
+}
+
+.assistant-response-chunk-audio > span {
+  color: #6d28d9;
+  font-size: 11px;
+  font-weight: 850;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.assistant-response-chunk-audio audio {
+  grid-column: 1 / -1;
 }
 
 .audio-placeholder {

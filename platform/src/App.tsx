@@ -115,6 +115,10 @@ export default function App() {
   const [apiKeys, setApiKeys] = useState<UserApiKey[]>(() => loadUserApiKeys());
 
   useEffect(() => {
+    setAgents((current) => current.map(normalizeVoiceAgent));
+  }, []);
+
+  useEffect(() => {
     saveAgents(agents);
   }, [agents]);
 
@@ -135,9 +139,11 @@ export default function App() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
+  const normalizedAgents = useMemo(() => agents.map(normalizeVoiceAgent), [agents]);
+
   const selectedAgent = useMemo(
-    () => agents.find((agent) => agent.id === selectedAgentId) ?? null,
-    [agents, selectedAgentId],
+    () => normalizedAgents.find((agent) => agent.id === selectedAgentId) ?? null,
+    [normalizedAgents, selectedAgentId],
   );
 
   function navigateToPage(pageId: PageId) {
@@ -168,7 +174,12 @@ export default function App() {
           ? {
               ...agent,
               updatedAt: new Date().toISOString(),
-              pipeline: updateStageSetting(agent.pipeline, stageId, key, value),
+              pipeline: updateStageSetting(
+                normalizeVoiceAgent(agent).pipeline,
+                stageId,
+                key,
+                value,
+              ),
             }
           : agent,
       ),
@@ -186,7 +197,7 @@ export default function App() {
           ? {
               ...agent,
               updatedAt: new Date().toISOString(),
-              pipeline: updateStageModel(agent.pipeline, stageId, model),
+              pipeline: updateStageModel(normalizeVoiceAgent(agent).pipeline, stageId, model),
             }
           : agent,
       ),
@@ -270,7 +281,7 @@ export default function App() {
       <div className="app-main">
         {activePage === "agent-studio" ? (
           <AgentStudioPage
-            agents={agents}
+            agents={normalizedAgents}
             selectedAgentId={selectedAgentId}
             onCreateAgent={handleCreateAgent}
             onSelectAgent={setSelectedAgentId}
@@ -288,7 +299,7 @@ export default function App() {
         {activePage === "browser-test" ? <BrowserTestPage agent={selectedAgent} /> : null}
 
         {activePage === "dot-device" ? (
-          <DotDevicePage agents={agents} selectedAgent={selectedAgent} />
+          <DotDevicePage agents={normalizedAgents} selectedAgent={selectedAgent} />
         ) : null}
 
         {activePage === "settings" ? (

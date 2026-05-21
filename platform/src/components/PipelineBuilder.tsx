@@ -174,6 +174,17 @@ export function PipelineBuilder({
                           }
                         />
                       ) : null}
+
+                      {setting.control === "textarea" ? (
+                        <textarea
+                          id={controlId}
+                          rows={5}
+                          value={String(setting.value)}
+                          onChange={(event) =>
+                            onSettingChange(stage.id, setting.key, event.target.value)
+                          }
+                        />
+                      ) : null}
                       {setting.unit && setting.value !== "false" ? <em>{setting.unit}</em> : null}
                     </div>
                   );
