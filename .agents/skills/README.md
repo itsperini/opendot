@@ -35,13 +35,20 @@ Open: [firmware-build/SKILL.md](firmware-build/SKILL.md)
 
 ### grill-me
 
-Use for:
+Use by default for:
 
+- non-trivial plans, specs, architecture decisions, product decisions,
+  implementation approaches, refactors, rollout strategies, recommendations,
+  or other tradeoff-heavy work
 - stress-testing a plan, design, architecture, product idea, or implementation
   approach
 - interviewing the user until decision branches, dependencies, tradeoffs, and
   risks are resolved
-- requests that mention "grill me" or ask to be challenged on a plan
+- requests that mention "grill me" or ask to be challenged, reviewed,
+  interrogated, or stress-tested
+
+Do not force it for tiny mechanical tasks where no meaningful decision tree
+exists.
 
 Open: [grill-me/SKILL.md](grill-me/SKILL.md)
 

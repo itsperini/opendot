@@ -26,7 +26,7 @@ hardware, and operate sessions in the cloud, local network, or on-device.
   `.agents/skills/brand-guidelines/SKILL.md`
 - Shared agent setup and MCP configuration:
   `.agents/README.md`
-- Stress-testing plans, designs, or decision trees:
+- Stress-testing plans, designs, architecture, or decision trees:
   `.agents/skills/grill-me/SKILL.md`
 - Creating or refining shared skills:
   `.agents/skills/skill-creator/SKILL.md`
@@ -42,6 +42,14 @@ hardware, and operate sessions in the cloud, local network, or on-device.
 
 Read the smallest set of files needed for the task. More-specific guidance in a
 subdirectory takes precedence over this root guide for that scoped area.
+
+## Default Planning Behavior
+
+Use `.agents/skills/grill-me/SKILL.md` by default before finalizing any
+non-trivial plan, spec, design, architecture decision, product decision,
+implementation approach, refactor strategy, rollout plan, or recommendation.
+The user does not need to explicitly say "grill me". Skip it only for tiny
+mechanical tasks where no meaningful decision tree exists.
 
 ## Project Structure
 

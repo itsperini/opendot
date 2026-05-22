@@ -1,12 +1,24 @@
 ---
 name: grill-me
-description: Interview the user relentlessly about a plan or design until reaching shared understanding, resolving each branch of the decision tree. Use when user wants to stress-test a plan, get grilled on their design, or mentions "grill me".
+description: Interview the user relentlessly about plans, designs, architecture, product decisions, implementation approaches, feature proposals, refactors, rollout strategies, or tradeoff-heavy changes until decision branches are resolved. Use by default before finalizing any non-trivial plan/spec/design/recommendation in OpenDot, even if the user does not say "grill me"; also use when the user asks to be challenged, stress-tested, reviewed, interrogated, or mentions "grill me".
 ---
 
 # Grill Me
 
-Use this skill to stress-test a plan, design, architecture, product idea, or
-implementation approach through a rigorous interview.
+Use this skill to stress-test a plan, design, architecture, product idea,
+implementation approach, or tradeoff-heavy recommendation through a rigorous
+interview.
+
+## Default Trigger Policy
+
+In OpenDot, default to this skill before finalizing any non-trivial plan, spec,
+design, architecture decision, product decision, implementation approach,
+refactor strategy, rollout plan, or recommendation. The user does not need to
+explicitly say "grill me".
+
+Do not force this workflow for tiny mechanical tasks where no meaningful
+decision tree exists, such as running a named command, fixing an obvious typo,
+or answering a narrow factual question.
 
 ## Workflow
 
