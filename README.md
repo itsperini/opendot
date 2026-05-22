@@ -10,8 +10,13 @@
   Build and tune the voice pipeline, configure agents with knowledge and models, bind them to hardware, and operate sessions in the cloud, local network, or on-device.
 </p>
 
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/status-early%20prototype-purple.svg)](#project-status)
+<p align="center">
+  <a href="https://discord.gg/M2Y8VC2H"><img alt="Discord" src="https://img.shields.io/badge/Discord-5865F2.svg?logo=discord&logoColor=white" /></a>
+  <a href="https://x.com/itsperini"><img alt="@itsperini on X" src="https://img.shields.io/badge/@itsperini-000000.svg?logo=x&logoColor=white" /></a>
+  <a href="https://docs.opendot.ai"><img alt="Docs" src="https://img.shields.io/badge/Docs-5B21B6.svg?logo=readthedocs&logoColor=white" /></a>
+  <a href="#project-status"><img alt="Status: early prototype" src="https://img.shields.io/badge/status-early%20prototype-purple.svg" /></a>
+  <a href="LICENSE"><img alt="License: AGPL v3" src="https://img.shields.io/badge/License-AGPL%20v3-blue.svg" /></a>
+</p>
 
 ## Why OpenDot
 
