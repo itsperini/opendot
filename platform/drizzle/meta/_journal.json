@@ -15,6 +15,13 @@
       "when": 1779488724049,
       "tag": "0001_supabase_compatible_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779492033965,
+      "tag": "0002_local_auth_credentials",
+      "breakpoints": true
     }
   ]
 }

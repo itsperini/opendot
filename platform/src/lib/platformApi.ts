@@ -1,4 +1,7 @@
 import type {
+  AuthCredentials,
+  AuthSession,
+  AuthSessionUser,
   CreateAgentInput,
   CreateDotDeviceInput,
   DotDevice,
@@ -55,6 +58,35 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
 export async function loadPlatformState() {
   return requestJson<PlatformState>("/platform-state", {
     cache: "no-store",
+  });
+}
+
+export async function signupWithPassword(input: AuthCredentials) {
+  return requestJson<AuthSession>("/auth/signup", {
+    body: JSON.stringify(input),
+    method: "POST",
+  });
+}
+
+export async function loginWithPassword(input: AuthCredentials) {
+  return requestJson<AuthSession>("/auth/login", {
+    body: JSON.stringify(input),
+    method: "POST",
+  });
+}
+
+export async function loadAuthSession(accessToken: string) {
+  return requestJson<{ user: AuthSessionUser }>("/auth/session", {
+    cache: "no-store",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+export async function logoutFromApi() {
+  return requestJson<{ ok: true }>("/auth/logout", {
+    method: "POST",
   });
 }
 

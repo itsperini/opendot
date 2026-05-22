@@ -1,5 +1,6 @@
 import {
   createRemoteJWKSet,
+  SignJWT,
   jwtVerify,
   type JWTPayload,
 } from "jose";
@@ -7,7 +8,7 @@ import { createSecretKey } from "node:crypto";
 
 export type AuthIdentity = {
   id: string;
-  authProvider: "dev" | "supabase";
+  authProvider: "dev" | "local" | "supabase";
   authSubject: string;
   email: string;
   displayName: string;
@@ -22,12 +23,24 @@ const DEV_USER_ID =
   process.env.OPENDOT_DEV_USER_ID || "00000000-0000-4000-8000-000000000001";
 const DEV_USER_EMAIL = process.env.OPENDOT_DEV_USER_EMAIL || "";
 const DEV_USER_NAME = process.env.OPENDOT_DEV_USER_NAME || "Marco";
+const DEFAULT_SESSION_SECRET = "opendot-local-dev-session-secret-change-me";
+const SESSION_ISSUER = process.env.OPENDOT_SESSION_ISSUER || "opendot-platform";
+const SESSION_AUDIENCE = process.env.OPENDOT_SESSION_AUDIENCE || "opendot-platform";
+const SESSION_TTL = process.env.OPENDOT_SESSION_TTL || "30d";
 
 let cachedRemoteJwks: ReturnType<typeof createRemoteJWKSet> | null = null;
 let cachedRemoteJwksUrl: string | null = null;
 
 function isEnabled(value: string | undefined) {
   return ["1", "true", "yes", "required"].includes(String(value || "").toLowerCase());
+}
+
+function isDisabled(value: string | undefined) {
+  return ["1", "true", "yes", "disabled"].includes(String(value || "").toLowerCase());
+}
+
+export function isLocalAuthEnabled() {
+  return !isDisabled(process.env.OPENDOT_LOCAL_AUTH_DISABLED);
 }
 
 function getBearerToken(authorization: string | string[] | undefined) {
@@ -53,6 +66,14 @@ function getRemoteJwks(supabaseUrl: string) {
   }
 
   return cachedRemoteJwks;
+}
+
+function localSessionSecret() {
+  return process.env.OPENDOT_SESSION_SECRET || DEFAULT_SESSION_SECRET;
+}
+
+function localSessionKey() {
+  return createSecretKey(Buffer.from(localSessionSecret(), "utf8"));
 }
 
 function assertUuid(value: string | undefined, context: string) {
@@ -119,6 +140,23 @@ async function verifyWithSupabase(token: string) {
   );
 }
 
+async function verifyWithLocalSession(token: string) {
+  if (!isLocalAuthEnabled()) {
+    throw new AuthError("Local email/password auth is disabled.");
+  }
+
+  const result = await jwtVerify(token, localSessionKey(), {
+    audience: SESSION_AUDIENCE,
+    issuer: SESSION_ISSUER,
+  });
+
+  if (result.payload.auth_provider !== "local") {
+    throw new AuthError("Bearer token is not an OpenDot local session.");
+  }
+
+  return result.payload;
+}
+
 function identityFromClaims(payload: JWTPayload): AuthIdentity {
   const id = assertUuid(payload.sub, "Supabase JWT subject");
   const email = stringClaim(payload.email);
@@ -139,13 +177,66 @@ function identityFromClaims(payload: JWTPayload): AuthIdentity {
   };
 }
 
+function identityFromLocalClaims(payload: JWTPayload): AuthIdentity {
+  const id = assertUuid(payload.sub, "OpenDot session subject");
+  const email = stringClaim(payload.email);
+  const displayName = stringClaim(payload.name) || email || "OpenDot user";
+
+  return {
+    id,
+    authProvider: "local",
+    authSubject: email.toLowerCase() || id,
+    email,
+    displayName,
+    avatarUrl: stringClaim(payload.picture) || null,
+  };
+}
+
+export async function createLocalSessionToken(identity: AuthIdentity) {
+  if (!isLocalAuthEnabled()) {
+    throw new AuthError("Local email/password auth is disabled.");
+  }
+
+  return new SignJWT({
+    auth_provider: "local",
+    email: identity.email,
+    name: identity.displayName,
+    picture: identity.avatarUrl ?? undefined,
+  })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setIssuer(SESSION_ISSUER)
+    .setAudience(SESSION_AUDIENCE)
+    .setSubject(identity.id)
+    .setExpirationTime(SESSION_TTL)
+    .sign(localSessionKey());
+}
+
 export async function resolveAuthIdentity(
   authorization: string | string[] | undefined,
 ): Promise<AuthIdentity> {
   const token = getBearerToken(authorization);
 
   if (token) {
-    return identityFromClaims(await verifyWithSupabase(token));
+    const errors: unknown[] = [];
+
+    if (isLocalAuthEnabled()) {
+      try {
+        return identityFromLocalClaims(await verifyWithLocalSession(token));
+      } catch (error) {
+        errors.push(error);
+      }
+    }
+
+    try {
+      return identityFromClaims(await verifyWithSupabase(token));
+    } catch (error) {
+      errors.push(error);
+    }
+
+    throw new AuthError(
+      `Bearer token verification failed.${errors.length ? " Check local session or Supabase settings." : ""}`,
+    );
   }
 
   if (isEnabled(process.env.PLATFORM_AUTH_REQUIRED)) {

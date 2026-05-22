@@ -1,0 +1,93 @@
+services:
+  - type: web
+    name: opendot-web
+    runtime: static
+    rootDir: platform
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: "/*"
+        destination: "/index.html"
+    envVars:
+      - key: VITE_PLATFORM_API_URL
+        sync: false
+      - key: VITE_RUNTIME_HTTP_URL
+        sync: false
+      - key: VITE_RUNTIME_WS_URL
+        sync: false
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+
+  - type: web
+    name: opendot-api
+    runtime: docker
+    plan: starter
+    dockerfilePath: containers/platform-node.Dockerfile
+    dockerContext: .
+    dockerCommand: node dist-server/server/api.js
+    preDeployCommand: node dist-server/server/db/migrate.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PLATFORM_API_HOST
+        value: 0.0.0.0
+      - key: POSTGRES_URI
+        sync: false
+      - key: POSTGRES_SSL
+        value: "true"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: OPENDOT_SESSION_SECRET
+        generateValue: true
+      - key: OPENDOT_LOCAL_AUTH_DISABLED
+        value: "true"
+      - key: PLATFORM_AUTH_REQUIRED
+        value: "true"
+
+  - type: web
+    name: opendot-runtime
+    runtime: docker
+    plan: starter
+    dockerfilePath: containers/platform-node.Dockerfile
+    dockerContext: .
+    dockerCommand: node src/server/runtime.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: RUNTIME_HOST
+        value: 0.0.0.0
+      - key: DEEPGRAM_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-5.4-mini
+      - key: OPENDOT_SYSTEM_PROMPT
+        value: "You are a concise voice assistant. Answer naturally in one or two short spoken paragraphs."
+      - key: DEEPGRAM_STT_MODEL
+        value: nova-3
+      - key: DEEPGRAM_STT_LANGUAGE
+        value: en-US
+      - key: DEEPGRAM_ENDPOINTING_MS
+        value: "900"
+      - key: DEEPGRAM_UTTERANCE_END_MS
+        value: "1000"
+      - key: DEEPGRAM_TTS_MODEL
+        value: aura-2-thalia-en
+      - key: DEEPGRAM_TTS_ENCODING
+        value: mp3
+      - key: DEEPGRAM_TTS_SAMPLE_RATE
+        value: "24000"
+      - key: MIN_TRANSCRIPT_CHARS
+        value: "2"
+      - key: CLOSE_DEVICE_AFTER_TURN
+        value: "true"
+      - key: CLOSE_DEVICE_AFTER_TURN_DELAY_MS
+        value: "300"

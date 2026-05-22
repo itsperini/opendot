@@ -65,7 +65,9 @@
         "pages": [
           "index",
           "quickstart",
-          "database-inspection"
+          "database-inspection",
+          "authentication",
+          "render-deployment"
         ]
       },
       {

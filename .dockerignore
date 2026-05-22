@@ -3,8 +3,7 @@
 
 **/.env
 **/.env.*
-!.env.docker.example
-!platform/.env.example
+!.env.example
 
 **/node_modules
 platform/dist

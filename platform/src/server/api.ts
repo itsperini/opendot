@@ -1,10 +1,21 @@
-import "dotenv/config";
+import "./env.js";
 
 import cors from "@fastify/cors";
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import Fastify from "fastify";
-import { createHash, randomBytes, randomUUID } from "node:crypto";
-import { resolveAuthIdentity, type AuthIdentity } from "./auth.js";
+import {
+  createHash,
+  randomBytes,
+  randomUUID,
+  scryptSync,
+  timingSafeEqual,
+} from "node:crypto";
+import {
+  createLocalSessionToken,
+  isLocalAuthEnabled,
+  resolveAuthIdentity,
+  type AuthIdentity,
+} from "./auth.js";
 import { db, pool } from "./db/client.js";
 import {
   agentVersions,
@@ -17,6 +28,7 @@ import {
   deviceState,
   devices,
   environments,
+  localAuthCredentials,
   organizationMemberships,
   organizations,
   pipelineVersions,
@@ -31,6 +43,7 @@ import {
   type DeploymentRow,
   type DeviceRow,
   type DeviceStateRow,
+  type LocalAuthCredentialRow,
   type OrganizationRow,
   type PipelineVersionRow,
   type UserPreferenceRow,
@@ -65,7 +78,7 @@ const defaultUserSettings: UserSettings = {
 
 const config = {
   host: process.env.PLATFORM_API_HOST || "0.0.0.0",
-  port: Number(process.env.PLATFORM_API_PORT || 8788),
+  port: Number(process.env.PORT || process.env.PLATFORM_API_PORT || 8788),
 };
 
 type WorkspaceContext = {
@@ -75,6 +88,14 @@ type WorkspaceContext = {
   project: typeof projects.$inferSelect;
   environment: typeof environments.$inferSelect;
   preferences: UserPreferenceRow;
+};
+
+type AuthSessionUser = {
+  id: string;
+  authProvider: AuthIdentity["authProvider"];
+  email: string;
+  displayName: string;
+  avatarUrl: string | null;
 };
 
 type DeviceBinding = {
@@ -129,12 +150,46 @@ function stringValue(value: unknown, fallback = "") {
   return typeof value === "string" ? value : fallback;
 }
 
+function httpError(message: string, statusCode: number) {
+  const error = new Error(message) as Error & { statusCode: number };
+  error.statusCode = statusCode;
+  return error;
+}
+
 function trimRequired(value: unknown, field: string) {
   const trimmed = stringValue(value).trim();
   if (!trimmed) {
     throw new Error(`${field} is required.`);
   }
   return trimmed;
+}
+
+function optionalTrimmed(value: unknown) {
+  return stringValue(value).trim();
+}
+
+function normalizeEmail(value: unknown) {
+  const email = optionalTrimmed(value).toLowerCase();
+
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw httpError("A valid email is required.", 400);
+  }
+
+  return email;
+}
+
+function normalizePassword(value: unknown) {
+  const password = stringValue(value);
+
+  if (password.length < 8) {
+    throw httpError("Password must be at least 8 characters.", 400);
+  }
+
+  return password;
+}
+
+function displayNameFromInput(value: unknown, email: string) {
+  return optionalTrimmed(value) || email.split("@")[0] || "OpenDot user";
 }
 
 function availability(value: unknown): DotDeviceAvailability {
@@ -169,6 +224,25 @@ function createApiToken() {
 
 function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
+}
+
+function hashPassword(password: string) {
+  const salt = randomBytes(16).toString("base64url");
+  const hash = scryptSync(password, salt, 64).toString("base64url");
+  return `scrypt:${salt}:${hash}`;
+}
+
+function verifyPassword(password: string, storedHash: string) {
+  const [algorithm, salt, hash] = storedHash.split(":");
+
+  if (algorithm !== "scrypt" || !salt || !hash) {
+    return false;
+  }
+
+  const expected = Buffer.from(hash, "base64url");
+  const actual = scryptSync(password, salt, expected.length);
+
+  return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
 
 function pipelineLatencyBudget(pipeline: PipelineStage[]) {
@@ -211,6 +285,40 @@ function settingsFromRows(
     workspaceName: organization.name || defaultUserSettings.workspaceName,
     timezone: preferences.timezone || defaultUserSettings.timezone,
     compactMode: preferences.compactMode,
+  };
+}
+
+function authUserFromWorkspace(workspace: WorkspaceContext): AuthSessionUser {
+  return {
+    id: workspace.user.id,
+    authProvider: workspace.identity.authProvider,
+    email: workspace.user.email,
+    displayName: workspace.user.displayName,
+    avatarUrl: workspace.user.avatarUrl,
+  };
+}
+
+function localIdentityFromRows(
+  user: AppUserRow,
+  credential: LocalAuthCredentialRow,
+): AuthIdentity {
+  return {
+    id: user.id,
+    authProvider: "local",
+    authSubject: credential.emailNormalized,
+    email: user.email || credential.email,
+    displayName: user.displayName || displayNameFromInput("", credential.email),
+    avatarUrl: user.avatarUrl,
+  };
+}
+
+async function createAuthSession(identity: AuthIdentity) {
+  const accessToken = await createLocalSessionToken(identity);
+  const workspace = await ensureWorkspace(identity);
+
+  return {
+    accessToken,
+    user: authUserFromWorkspace(workspace),
   };
 }
 
@@ -259,6 +367,107 @@ function deviceFromRows(
     updateMode: updateMode(state?.updateMode),
     updatedAt: requiredDateIso(state?.updatedAt ?? device.updatedAt),
   };
+}
+
+async function signupWithLocalPassword(body: unknown) {
+  if (!isLocalAuthEnabled()) {
+    throw httpError("Local email/password auth is disabled.", 403);
+  }
+
+  const input = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+  const email = normalizeEmail(input.email);
+  const password = normalizePassword(input.password);
+  const displayName = displayNameFromInput(input.displayName, email);
+  const timestamp = nowDate();
+
+  const [existingCredential] = await db
+    .select()
+    .from(localAuthCredentials)
+    .where(eq(localAuthCredentials.emailNormalized, email))
+    .limit(1);
+
+  if (existingCredential) {
+    throw httpError("An account already exists for this email.", 409);
+  }
+
+  const identity: AuthIdentity = {
+    id: randomUUID(),
+    authProvider: "local",
+    authSubject: email,
+    email,
+    displayName,
+    avatarUrl: null,
+  };
+
+  await db.transaction(async (tx) => {
+    await tx.insert(appUsers).values({
+      id: identity.id,
+      authProvider: identity.authProvider,
+      authSubject: identity.authSubject,
+      email,
+      displayName,
+      avatarUrl: null,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await tx.insert(localAuthCredentials).values({
+      id: randomUUID(),
+      userId: identity.id,
+      email,
+      emailNormalized: email,
+      passwordHash: hashPassword(password),
+      status: "active",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      lastUsedAt: timestamp,
+    });
+  });
+
+  return createAuthSession(identity);
+}
+
+async function loginWithLocalPassword(body: unknown) {
+  if (!isLocalAuthEnabled()) {
+    throw httpError("Local email/password auth is disabled.", 403);
+  }
+
+  const input = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+  const email = normalizeEmail(input.email);
+  const password = stringValue(input.password);
+  const invalidError = () => httpError("Invalid email or password.", 401);
+
+  const [credential] = await db
+    .select()
+    .from(localAuthCredentials)
+    .where(
+      and(
+        eq(localAuthCredentials.emailNormalized, email),
+        eq(localAuthCredentials.status, "active"),
+      ),
+    )
+    .limit(1);
+
+  if (!credential || !verifyPassword(password, credential.passwordHash)) {
+    throw invalidError();
+  }
+
+  const [user] = await db
+    .select()
+    .from(appUsers)
+    .where(eq(appUsers.id, credential.userId))
+    .limit(1);
+
+  if (!user) {
+    throw invalidError();
+  }
+
+  await db
+    .update(localAuthCredentials)
+    .set({ lastUsedAt: nowDate(), updatedAt: nowDate() })
+    .where(eq(localAuthCredentials.id, credential.id));
+
+  return createAuthSession(localIdentityFromRows(user, credential));
 }
 
 async function ensureWorkspace(identity: AuthIdentity): Promise<WorkspaceContext> {
@@ -449,6 +658,22 @@ async function workspaceFromRequest(
   authorization: string | string[] | undefined,
 ) {
   return ensureWorkspace(await resolveAuthIdentity(authorization));
+}
+
+function hasBearerToken(authorization: string | string[] | undefined) {
+  const header = Array.isArray(authorization) ? authorization[0] : authorization;
+  return Boolean(header?.match(/^Bearer\s+.+$/i));
+}
+
+async function authSessionFromRequest(
+  authorization: string | string[] | undefined,
+) {
+  if (!hasBearerToken(authorization)) {
+    throw httpError("An active session is required.", 401);
+  }
+
+  const workspace = await workspaceFromRequest(authorization);
+  return { user: authUserFromWorkspace(workspace) };
 }
 
 async function latestAgentVersions(agentIds: string[]) {
@@ -1167,6 +1392,26 @@ server.get("/api/health", async () => {
   await pool.query("select 1");
   return { ok: true };
 });
+
+server.get("/api/auth/config", async () => ({
+  localAuthEnabled: isLocalAuthEnabled(),
+  supabaseConfigured: Boolean(process.env.SUPABASE_URL),
+}));
+
+server.post("/api/auth/signup", async (request, reply) => {
+  const session = await signupWithLocalPassword(request.body);
+  return reply.code(201).send(session);
+});
+
+server.post("/api/auth/login", async (request) => {
+  return loginWithLocalPassword(request.body);
+});
+
+server.get("/api/auth/session", async (request) => {
+  return authSessionFromRequest(request.headers.authorization);
+});
+
+server.post("/api/auth/logout", async () => ({ ok: true }));
 
 server.get("/api/platform-state", async (request) => {
   const workspace = await workspaceFromRequest(request.headers.authorization);

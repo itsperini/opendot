@@ -90,3 +90,24 @@ export type UserApiKey = {
   lastUsedAt: string | null;
   status: "active" | "revoked";
 };
+
+export type AuthProvider = "local" | "supabase";
+
+export type AuthSessionUser = {
+  id: string;
+  authProvider: AuthProvider;
+  email: string;
+  displayName: string;
+  avatarUrl: string | null;
+};
+
+export type AuthSession = {
+  accessToken: string;
+  user: AuthSessionUser;
+};
+
+export type AuthCredentials = {
+  email: string;
+  password: string;
+  displayName?: string;
+};

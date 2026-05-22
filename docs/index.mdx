@@ -19,6 +19,9 @@ OpenDot brings the control plane, voice runtime, and device layer into one workf
   <Card title="Quickstart" icon="rocket" href="/quickstart">
     Start the web console, run the local voice runtime, and test your first agent.
   </Card>
+  <Card title="Authentication" icon="shield-check" href="/authentication">
+    Use local email/password auth or connect the platform to Supabase Auth.
+  </Card>
   <Card title="Tune the pipeline" icon="workflow" href="/voice-pipeline">
     Configure VAD, STT, LLM, and TTS stages for a selected draft agent.
   </Card>
@@ -47,7 +50,7 @@ OpenDot can run as one Docker Compose stack or as separate local npm processes:
 
 | Process | Command | Default URL |
 | --- | --- | --- |
-| Compose stack | `docker compose --env-file .env.docker up --build` | `http://localhost:5173` |
+| Compose stack | `docker compose up --build` | `http://localhost:5173` |
 | Platform API | `npm run api` | `http://localhost:8788/api` |
 | Web console | `npm run dev` | `http://localhost:5173` |
 | Voice runtime | `npm run runtime` | `ws://localhost:8787/voice` |

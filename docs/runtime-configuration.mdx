@@ -5,23 +5,31 @@ description: Environment variables and local runtime behavior for voice sessions
 
 The runtime process handles live voice sessions for the browser and Dot devices.
 
-The platform API stores the OpenDot control plane in PostgreSQL: app users, organizations, memberships, projects, environments, scoped API keys, versioned agents and pipelines, device state, deployments, sessions, events, and audit logs. For local npm runs, set:
+The platform API stores the OpenDot control plane in PostgreSQL: app users, organizations, memberships, projects, environments, scoped API keys, versioned agents and pipelines, device state, deployments, sessions, events, and audit logs.
+
+Create the root environment file once:
 
 ```bash
-POSTGRES_URI=postgres://opendot:opendot@localhost:5432/opendot
-POSTGRES_SSL=false
+cp .env.example .env
 ```
+
+For local npm runs, leave `POSTGRES_URI` empty and the API/Drizzle commands use
+`localhost:${POSTGRES_PORT:-5432}` with the configured `POSTGRES_DB`,
+`POSTGRES_USER`, and `POSTGRES_PASSWORD`.
 
 For Supabase, set `POSTGRES_URI` to the Supabase Postgres connection string and use `POSTGRES_SSL=true`. To verify Supabase Auth tokens at the OpenDot API boundary, set:
 
 ```bash
 SUPABASE_URL=https://your-project-ref.supabase.co
-PLATFORM_AUTH_REQUIRED=false
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+PLATFORM_AUTH_REQUIRED=true
+OPENDOT_LOCAL_AUTH_DISABLED=true
 ```
 
 `SUPABASE_URL` enables JWKS verification for current Supabase signing keys. Set `SUPABASE_JWT_SECRET` only if the project still uses legacy HS256 JWT signing.
 
-Leave `PLATFORM_AUTH_REQUIRED=false` while using the current local workbench without a login screen. When a Bearer token is provided, the API maps the Supabase JWT `sub` to `app_users.id`; product permissions still come from OpenDot membership tables, not Supabase `user_metadata`.
+When a Bearer token is provided, the API maps the Supabase JWT `sub` to `app_users.id`; product permissions still come from OpenDot membership tables, not Supabase `user_metadata`. For local Compose without Supabase, leave `OPENDOT_LOCAL_AUTH_DISABLED=false` and use the OpenDot auth page.
 
 ## Database inspection
 
@@ -35,26 +43,19 @@ npm run db:studio
 Open `https://local.drizzle.studio`. The local Compose database uses:
 
 ```bash
-POSTGRES_URI=postgres://opendot:opendot@localhost:5432/opendot
+POSTGRES_PORT=5432
 POSTGRES_SSL=false
 ```
 
 If only the database is needed, start it with:
 
 ```bash
-docker compose --env-file .env.docker up -d postgres migrate
+docker compose up -d postgres migrate
 ```
 
 ## Required provider keys
 
-Create `platform/.env` from the example file:
-
-```bash
-cd platform
-cp .env.example .env
-```
-
-Set the provider keys:
+Set provider keys in the root `.env`:
 
 ```bash
 DEEPGRAM_API_KEY=...

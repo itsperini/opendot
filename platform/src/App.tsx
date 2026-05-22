@@ -3,6 +3,12 @@ import { AlertCircle, AudioLines, Bot, Cpu, Loader2, Settings2 } from "lucide-re
 import { OpenDotLogo } from "./components/OpenDotLogo";
 import { SidebarUserSettings } from "./components/SidebarUserSettings";
 import {
+  getCurrentAuthSession,
+  signIn as signInToAuth,
+  signOut as signOutFromAuth,
+  signUp as signUpToAuth,
+} from "./lib/authClient";
+import {
   normalizeVoiceAgent,
   updateStageModel,
   updateStageSetting,
@@ -14,16 +20,20 @@ import {
   deleteDotDevice as deletePlatformDotDevice,
   loadPlatformState,
   revokeUserApiKey as revokePlatformApiKey,
+  setPlatformAccessTokenProvider,
   updateAgent as updatePlatformAgent,
   updateDotDevice as updatePlatformDotDevice,
   updateUserSettings as updatePlatformUserSettings,
 } from "./lib/platformApi";
 import { AgentStudioPage } from "./pages/AgentStudioPage";
+import { AuthPage } from "./pages/AuthPage";
 import { BrowserTestPage } from "./pages/BrowserTestPage";
 import { ConfigurationPage } from "./pages/ConfigurationPage";
 import { DotDevicePage } from "./pages/DotDevicePage";
 import { SettingsPage } from "./pages/SettingsPage";
 import type {
+  AuthCredentials,
+  AuthSession,
   CreateAgentInput,
   CreateDotDeviceInput,
   DotDevice,
@@ -98,18 +108,55 @@ export default function App() {
   const [activePage, setActivePage] = useState<PageId>(() =>
     pageFromPathname(window.location.pathname),
   );
+  const [authSession, setAuthSession] = useState<AuthSession | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authSubmitting, setAuthSubmitting] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [agents, setAgents] = useState<VoiceAgent[]>([]);
   const [devices, setDevices] = useState<DotDevice[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [userSettings, setUserSettings] =
     useState<UserSettings>(defaultUserSettings);
   const [apiKeys, setApiKeys] = useState<UserApiKey[]>([]);
-  const [platformLoading, setPlatformLoading] = useState(true);
+  const [platformLoading, setPlatformLoading] = useState(false);
   const [platformError, setPlatformError] = useState<string | null>(null);
 
   function reportPlatformError(error: unknown) {
     setPlatformError(error instanceof Error ? error.message : String(error));
   }
+
+  useEffect(() => {
+    let active = true;
+
+    getCurrentAuthSession()
+      .then((session) => {
+        if (active) {
+          setAuthSession(session);
+        }
+      })
+      .catch((error) => {
+        if (active) {
+          setAuthError(error instanceof Error ? error.message : String(error));
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setAuthLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    setPlatformAccessTokenProvider(
+      authSession ? () => authSession.accessToken : null,
+    );
+
+    return () => setPlatformAccessTokenProvider(null);
+  }, [authSession]);
 
   useEffect(() => {
     function handlePopState() {
@@ -121,7 +168,13 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (authLoading || !authSession) {
+      setPlatformLoading(false);
+      return;
+    }
+
     let active = true;
+    setPlatformLoading(true);
 
     loadPlatformState()
       .then((state) => {
@@ -151,7 +204,7 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [authLoading, authSession]);
 
   const normalizedAgents = useMemo(() => agents.map(normalizeVoiceAgent), [agents]);
 
@@ -173,6 +226,41 @@ export default function App() {
     window.history.pushState({ pageId }, "", nextPage.path);
     setActivePage(nextPage.id);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function handleAuthSubmit(
+    mode: "login" | "signup",
+    credentials: AuthCredentials,
+  ) {
+    setAuthSubmitting(true);
+    setAuthError(null);
+
+    try {
+      const session =
+        mode === "signup"
+          ? await signUpToAuth(credentials)
+          : await signInToAuth(credentials);
+      setAuthSession(session);
+      setActivePage("agent-studio");
+      window.history.replaceState({ pageId: "agent-studio" }, "", "/agent-studio");
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setAuthSubmitting(false);
+    }
+  }
+
+  async function handleSignOut() {
+    await signOutFromAuth();
+    setAuthSession(null);
+    setAgents([]);
+    setDevices([]);
+    setSelectedAgentId(null);
+    setUserSettings(defaultUserSettings);
+    setApiKeys([]);
+    setPlatformError(null);
+    setPlatformLoading(false);
+    window.history.replaceState({}, "", "/login");
   }
 
   async function handleCreateAgent(input: CreateAgentInput) {
@@ -340,6 +428,27 @@ export default function App() {
     }
   }
 
+  if (authLoading) {
+    return (
+      <main className="auth-shell auth-loading-shell">
+        <section className="platform-status-panel" role="status">
+          <Loader2 size={18} />
+          <span>Checking session</span>
+        </section>
+      </main>
+    );
+  }
+
+  if (!authSession) {
+    return (
+      <AuthPage
+        error={authError}
+        loading={authSubmitting}
+        onSubmit={handleAuthSubmit}
+      />
+    );
+  }
+
   return (
     <main className={`app-frame ${userSettings.compactMode ? "compact-density" : ""}`}>
       <aside className="left-sidebar" aria-label="Platform navigation">
@@ -441,6 +550,7 @@ export default function App() {
             onCreateApiKey={handleCreateApiKey}
             onRevokeApiKey={handleRevokeApiKey}
             onSettingChange={handleUserSettingChange}
+            onSignOut={handleSignOut}
           />
         ) : null}
       </div>

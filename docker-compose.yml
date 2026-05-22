@@ -24,7 +24,12 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      POSTGRES_URI: ${POSTGRES_URI:-postgres://opendot:opendot@postgres:5432/opendot}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-opendot}
+      POSTGRES_USER: ${POSTGRES_USER:-opendot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opendot}
+      POSTGRES_URI: ${POSTGRES_URI:-}
       POSTGRES_SSL: ${POSTGRES_SSL:-false}
     restart: "no"
 
@@ -40,11 +45,19 @@ services:
       NODE_ENV: production
       PLATFORM_API_HOST: 0.0.0.0
       PLATFORM_API_PORT: 8788
-      POSTGRES_URI: ${POSTGRES_URI:-postgres://opendot:opendot@postgres:5432/opendot}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-opendot}
+      POSTGRES_USER: ${POSTGRES_USER:-opendot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opendot}
+      POSTGRES_URI: ${POSTGRES_URI:-}
       POSTGRES_SSL: ${POSTGRES_SSL:-false}
       SUPABASE_URL: ${SUPABASE_URL:-}
       SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-}
-      PLATFORM_AUTH_REQUIRED: ${PLATFORM_AUTH_REQUIRED:-false}
+      OPENDOT_SESSION_SECRET: ${OPENDOT_SESSION_SECRET:-opendot-local-dev-session-secret-change-me}
+      OPENDOT_SESSION_TTL: ${OPENDOT_SESSION_TTL:-30d}
+      OPENDOT_LOCAL_AUTH_DISABLED: ${OPENDOT_LOCAL_AUTH_DISABLED:-false}
+      PLATFORM_AUTH_REQUIRED: ${PLATFORM_AUTH_REQUIRED:-true}
     healthcheck:
       test:
         [
@@ -94,6 +107,8 @@ services:
         VITE_PLATFORM_API_URL: ${VITE_PLATFORM_API_URL:-/api}
         VITE_RUNTIME_WS_URL: ${VITE_RUNTIME_WS_URL:-ws://localhost:8787/voice}
         VITE_RUNTIME_HTTP_URL: ${VITE_RUNTIME_HTTP_URL:-http://localhost:8787}
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-}
     depends_on:
       platform-api:
         condition: service_healthy

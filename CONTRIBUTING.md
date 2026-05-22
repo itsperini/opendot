@@ -25,7 +25,9 @@ Clone the repository and install the platform dependencies:
 
 ```bash
 git clone git@github.com:itsperini/opendot.git
-cd opendot/platform
+cd opendot
+cp .env.example .env
+cd platform
 npm install
 ```
 
@@ -38,11 +40,10 @@ npm run dev
 Start the local voice runtime in a second terminal:
 
 ```bash
-cp .env.example .env
 npm run runtime
 ```
 
-Add provider keys to `platform/.env` when testing live audio:
+Add provider keys to the root `.env` when testing live audio:
 
 ```bash
 DEEPGRAM_API_KEY=...

@@ -10,11 +10,11 @@ This guide gets the current OpenDot platform, database, API, and local voice run
 From the repository root:
 
 ```bash
-cp .env.docker.example .env.docker
-docker compose --env-file .env.docker up --build
+cp .env.example .env
+docker compose up --build
 ```
 
-Add provider keys to `.env.docker` before testing live voice sessions.
+Add provider keys to the root `.env` before testing live voice sessions.
 
 Open:
 
@@ -22,14 +22,16 @@ Open:
 http://localhost:5173
 ```
 
-The Compose stack starts PostgreSQL, applies migrations, serves the web console, and exposes the voice runtime at `http://localhost:8787`. The default local run uses OpenDot's deterministic dev user; Supabase Auth can be enabled later with `SUPABASE_URL`, `SUPABASE_JWT_SECRET`, and a Supabase `POSTGRES_URI`.
+Create a local account on the auth page, then open **Agent Studio**.
+
+The Compose stack starts PostgreSQL, applies migrations, serves the web console, and exposes the voice runtime at `http://localhost:8787`. The default local run uses OpenDot email/password auth; Supabase Auth can be enabled later with `SUPABASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and a Supabase `POSTGRES_URI`.
 
 ## Inspect the database
 
 Start the local database and migration job if the full stack is not already running:
 
 ```bash
-docker compose --env-file .env.docker up -d postgres migrate
+docker compose up -d postgres migrate
 ```
 
 Then open Drizzle Studio:
@@ -39,7 +41,7 @@ cd platform
 npm run db:studio
 ```
 
-Open `https://local.drizzle.studio` to inspect the PostgreSQL schema and rows, including `app_users`, organizations, versioned agents/pipelines, devices, deployments, sessions, events, and API keys.
+Open `https://local.drizzle.studio` to inspect the PostgreSQL schema and rows, including `app_users`, `local_auth_credentials`, organizations, versioned agents/pipelines, devices, deployments, sessions, events, and API keys.
 
 ## Run with npm
 
@@ -73,11 +75,10 @@ The browser test needs the voice runtime in another terminal:
 
 ```bash
 cd platform
-cp .env.example .env
 npm run runtime
 ```
 
-Add real provider keys to `.env` before using the runtime:
+Add real provider keys to the root `.env` before using the runtime:
 
 ```bash
 DEEPGRAM_API_KEY=...
@@ -110,3 +111,11 @@ The default runtime endpoints are:
 WebSocket: ws://localhost:8787/voice
 HTTP:      http://localhost:8787
 ```
+
+## Deploy on Render
+
+The root `render.yaml` Blueprint deploys the same platform shape to Render:
+static web, platform API, voice runtime, and API pre-deploy migrations. Use
+Supabase Postgres for `POSTGRES_URI`, keep `POSTGRES_SSL=true`, and provide the
+public API/runtime URLs for the `VITE_*` build variables in Render. See
+[Render deployment](/render-deployment) for the full variable list.

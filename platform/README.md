@@ -32,7 +32,16 @@ This keeps the product model clear while still matching how Deepgram exposes end
 
 ## Run Locally
 
+Create the root environment file from the repository root:
+
 ```bash
+cp .env.example .env
+```
+
+Then install dependencies and apply migrations from `platform/`:
+
+```bash
+cd platform
 npm install
 npm run db:migrate
 ```
@@ -54,21 +63,23 @@ Then open the Vite URL printed in the terminal.
 From the repository root:
 
 ```bash
-cp .env.docker.example .env.docker
-docker compose --env-file .env.docker up --build
+cp .env.example .env
+docker compose up --build
 ```
 
-Add provider keys to `.env.docker` before testing live voice sessions.
+Add provider keys to the root `.env` before testing live voice sessions.
 
 The Compose stack runs PostgreSQL, the migration job, the platform API, the
 voice runtime, and an Nginx-served production build of the web console. The web
 console is available at `http://localhost:5173`, and the runtime remains exposed
 at `http://localhost:8787` for browser WebSocket sessions and local devices.
+Create a local email/password account on the auth page to enter the workspace.
 
 The database schema is portable PostgreSQL with a Supabase Auth bridge. Supabase
 owns authentication when configured, while OpenDot owns `app_users`,
-organizations, memberships, projects, environments, API keys, agents, pipeline
-versions, devices, deployments, sessions, events, and audit logs.
+organizations, memberships, projects, environments, local auth credentials, API
+keys, agents, pipeline versions, devices, deployments, sessions, events, and
+audit logs.
 
 ## Inspect The Database
 
@@ -78,7 +89,7 @@ migrations live in `drizzle/`.
 Start the local Compose database and apply migrations:
 
 ```bash
-docker compose --env-file ../.env.docker up -d postgres migrate
+docker compose up -d postgres migrate
 ```
 
 Then launch Drizzle Studio from `platform/`:
@@ -89,11 +100,12 @@ npm run db:studio
 
 Open `https://local.drizzle.studio` to inspect tables, columns, and stored data.
 The local connector listens on `127.0.0.1` while the Studio UI opens in the
-browser. For Supabase, set `POSTGRES_URI` and `POSTGRES_SSL=true` in
-`platform/.env` before launching Studio. If the API should verify Supabase
+browser. For Supabase, set `POSTGRES_URI` and `POSTGRES_SSL=true` in the root
+`.env` before launching Studio. If the API should verify Supabase
 access tokens, also set `SUPABASE_URL`; add `SUPABASE_JWT_SECRET` only for
-legacy HS256 projects. Leave `PLATFORM_AUTH_REQUIRED=false` for the local
-no-login workbench.
+legacy HS256 projects. Local Compose uses `PLATFORM_AUTH_REQUIRED=true` with
+OpenDot local email/password auth unless `VITE_SUPABASE_URL` and
+`VITE_SUPABASE_ANON_KEY` are configured for Supabase Auth.
 
 ## Test An Agent In The Browser
 
@@ -107,11 +119,10 @@ npm run api
 npm run dev
 
 # Terminal 3: voice runtime
-cp .env.example .env
 npm run runtime
 ```
 
-Add real keys to `.env` before starting the runtime:
+Add real keys to the root `.env` before starting the runtime:
 
 ```bash
 DEEPGRAM_API_KEY=...
@@ -180,6 +191,32 @@ Override it for the frontend with:
 ```bash
 VITE_RUNTIME_WS_URL=ws://localhost:8787/voice
 ```
+
+## Deploy On Render
+
+The root `render.yaml` defines `opendot-web`, `opendot-api`, and
+`opendot-runtime`. The API runs migrations as a Render pre-deploy command.
+
+For the first Render preview, provide these `sync: false` values in Render:
+
+```text
+POSTGRES_URI=<supabase postgres connection string>
+POSTGRES_SSL=true
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_JWT_SECRET=
+VITE_SUPABASE_URL=https://<project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=<supabase anon key>
+VITE_PLATFORM_API_URL=https://<opendot-api>.onrender.com/api
+VITE_RUNTIME_HTTP_URL=https://<opendot-runtime>.onrender.com
+VITE_RUNTIME_WS_URL=wss://<opendot-runtime>.onrender.com/voice
+DEEPGRAM_API_KEY=...
+OPENAI_API_KEY=...
+```
+
+`PLATFORM_AUTH_REQUIRED` is `true` in the Blueprint, and local password auth is
+disabled there so Supabase owns Render authentication. Disable email
+confirmations in Supabase Auth for this preview if signup should create an
+active session immediately.
 
 ## Notes
 

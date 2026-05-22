@@ -79,11 +79,11 @@ The runtime is structured around replaceable stages so future work can move more
 Run the full local platform with Docker Compose:
 
 ```bash
-cp .env.docker.example .env.docker
-docker compose --env-file .env.docker up --build
+cp .env.example .env
+docker compose up --build
 ```
 
-Add provider keys to `.env.docker` before testing live voice sessions.
+Add provider keys to the root `.env` before testing live voice sessions.
 
 Open:
 
@@ -92,13 +92,15 @@ http://localhost:5173
 ```
 
 The Compose stack starts PostgreSQL, applies migrations, serves the web console,
-and exposes the voice runtime on `http://localhost:8787`.
+and exposes the voice runtime on `http://localhost:8787`. The web console now
+opens on the auth page; create a local email/password account to enter the
+workspace.
 
 The platform database is Supabase-compatible without requiring Supabase locally:
 OpenDot keeps product identity and authorization in `app_users`,
-`organizations`, memberships, projects, environments, and scoped platform
-tables. When Supabase Auth is configured, `auth.users.id` maps to
-`app_users.id`; otherwise Compose uses the deterministic local dev user.
+`organizations`, memberships, projects, environments, local auth credentials,
+and scoped platform tables. When Supabase Auth is configured, `auth.users.id`
+maps to `app_users.id`; otherwise Compose uses OpenDot's local password auth.
 
 Inspect the local database with Drizzle Studio:
 
@@ -108,8 +110,7 @@ npm run db:studio
 ```
 
 Then open `https://local.drizzle.studio`. For the Compose database, make sure
-`postgres` is running first with `docker compose --env-file .env.docker up -d
-postgres migrate`.
+`postgres` is running first with `docker compose up -d postgres migrate`.
 
 For fast frontend/runtime development against a local or hosted Postgres:
 
@@ -122,7 +123,7 @@ npm run db:migrate
 For Supabase Postgres, set `POSTGRES_URI` to the Supabase connection string and
 `POSTGRES_SSL=true`. Set `SUPABASE_URL` so the API can verify Supabase Bearer
 tokens through JWKS; add `SUPABASE_JWT_SECRET` only for legacy HS256 projects.
-Leave `PLATFORM_AUTH_REQUIRED=false` for local/dev mode without a login screen.
+Leave `OPENDOT_LOCAL_AUTH_DISABLED=false` for local email/password auth.
 
 Then start the API and web console in separate terminals:
 
@@ -144,11 +145,10 @@ Start the realtime voice runtime in another terminal:
 
 ```bash
 cd platform
-cp .env.example .env
 npm run runtime
 ```
 
-Add provider keys to `platform/.env` before testing live voice sessions:
+Add provider keys to the root `.env` before testing live voice sessions:
 
 ```bash
 DEEPGRAM_API_KEY=...
@@ -156,6 +156,38 @@ OPENAI_API_KEY=...
 ```
 
 Then open the platform, create an agent, review the pipeline settings, connect from **Browser Test**, and speak into the microphone.
+
+## Render Deployment
+
+The repository includes a root `render.yaml` Blueprint for a Render deployment
+backed by Supabase Postgres:
+
+- `opendot-web`: static Vite build.
+- `opendot-api`: Docker web service with pre-deploy migrations.
+- `opendot-runtime`: Docker web service for realtime voice sessions.
+
+Create a Render Blueprint from the repository root and fill the `sync: false`
+values in the Render dashboard. Use the Supabase connection string for
+`POSTGRES_URI`, set `POSTGRES_SSL=true`, and set the public frontend build
+values to the deployed service URLs:
+
+```text
+POSTGRES_URI=<supabase postgres connection string>
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_JWT_SECRET=
+VITE_SUPABASE_URL=https://<project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=<supabase anon key>
+DEEPGRAM_API_KEY=...
+OPENAI_API_KEY=...
+VITE_PLATFORM_API_URL=https://<opendot-api>.onrender.com/api
+VITE_RUNTIME_HTTP_URL=https://<opendot-runtime>.onrender.com
+VITE_RUNTIME_WS_URL=wss://<opendot-runtime>.onrender.com/voice
+```
+
+The Render Blueprint is auth-gated: `PLATFORM_AUTH_REQUIRED=true` and
+`OPENDOT_LOCAL_AUTH_DISABLED=true`. For password signup without email
+verification, disable email confirmations in the Supabase Auth settings for the
+preview project.
 
 ## Platform Commands
 

@@ -54,6 +54,6 @@ Out of scope:
 
 ## Handling Secrets
 
-Never commit real provider keys, access tokens, Wi-Fi credentials, private certificates, or production configuration. Use local `.env` files and keep `platform/.env.example` limited to safe examples.
+Never commit real provider keys, access tokens, Wi-Fi credentials, private certificates, or production configuration. Use the local root `.env` file and keep `.env.example` limited to safe examples.
 
 If a secret is accidentally committed, rotate it immediately. Removing it from Git history is not enough.

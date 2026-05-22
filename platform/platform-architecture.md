@@ -95,7 +95,7 @@ Current platform schema choice:
 
 - Use Drizzle with PostgreSQL for the durable control plane: app users, organizations, memberships, projects, environments, scoped API keys, versioned agents and pipelines, devices, deployments, sessions, events, artifacts, and audit logs.
 - Keep the schema Supabase-compatible without making Supabase mandatory. Supabase Auth can own authentication, while OpenDot keeps `app_users` and product authorization tables in the public app schema.
-- Map Supabase `auth.users.id` to `app_users.id` when Supabase Auth is configured; in local Compose runs, use a deterministic dev user so plain PostgreSQL remains self-hostable.
+- Map Supabase `auth.users.id` to `app_users.id` when Supabase Auth is configured; in local Compose runs, use OpenDot local email/password auth backed by hashed credentials so plain PostgreSQL remains self-hostable.
 - Keep the Drizzle schema in `platform/src/server/db/schema.ts` and migrations in `platform/drizzle/`.
 - Use Drizzle Studio via `cd platform && npm run db:studio` for local schema and data inspection at `https://local.drizzle.studio`.
 

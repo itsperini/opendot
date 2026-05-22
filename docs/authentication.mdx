@@ -1,0 +1,54 @@
+---
+title: Authentication
+description: Local email/password auth, Supabase Auth, and the OpenDot app-user boundary.
+---
+
+OpenDot has one auth page with two backend modes:
+
+- Local Compose/self-hosted mode uses OpenDot email/password auth.
+- Supabase mode uses Supabase Auth in the browser and sends the Supabase access
+  token to the OpenDot API.
+
+## Local auth
+
+For local runs, copy the root env template:
+
+```bash
+cp .env.example .env
+```
+
+Leave these defaults:
+
+```bash
+OPENDOT_LOCAL_AUTH_DISABLED=false
+PLATFORM_AUTH_REQUIRED=true
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+```
+
+Signup creates an `app_users` row, a hashed password row in
+`local_auth_credentials`, and the default workspace/project/environment through
+the platform API. Passwords are never stored as plaintext.
+
+Change `OPENDOT_SESSION_SECRET` before using local auth on any shared or public
+deployment.
+
+## Supabase auth
+
+For Supabase-backed deployments, use Supabase Auth for email/password:
+
+```bash
+SUPABASE_URL=https://<project-ref>.supabase.co
+VITE_SUPABASE_URL=https://<project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=<supabase anon key>
+PLATFORM_AUTH_REQUIRED=true
+OPENDOT_LOCAL_AUTH_DISABLED=true
+```
+
+The browser signs in with Supabase and sends the Supabase JWT to the OpenDot
+API. The API validates the token, maps `auth.users.id` to `app_users.id`, and
+keeps product permissions in OpenDot membership tables.
+
+For the current preview flow without email verification, disable email
+confirmations in Supabase Auth settings. The forgot-password, Google, and GitHub
+controls are visible in the UI but are not wired yet.

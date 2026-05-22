@@ -42,6 +42,27 @@ export const appUsers = pgTable(
   ],
 );
 
+export const localAuthCredentials = pgTable(
+  "local_auth_credentials",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => appUsers.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    emailNormalized: text("email_normalized").notNull(),
+    passwordHash: text("password_hash").notNull(),
+    status: text("status").notNull(),
+    createdAt: timestamp("created_at", timestampConfig).notNull(),
+    updatedAt: timestamp("updated_at", timestampConfig).notNull(),
+    lastUsedAt: timestamp("last_used_at", timestampConfig),
+  },
+  (table) => [
+    uniqueIndex("local_auth_credentials_email_idx").on(table.emailNormalized),
+    index("local_auth_credentials_user_idx").on(table.userId),
+  ],
+);
+
 export const organizations = pgTable(
   "organizations",
   {
@@ -669,6 +690,7 @@ export const outboxEvents = pgTable(
 );
 
 export type AppUserRow = typeof appUsers.$inferSelect;
+export type LocalAuthCredentialRow = typeof localAuthCredentials.$inferSelect;
 export type OrganizationRow = typeof organizations.$inferSelect;
 export type UserPreferenceRow = typeof userPreferences.$inferSelect;
 export type AgentRow = typeof agents.$inferSelect;

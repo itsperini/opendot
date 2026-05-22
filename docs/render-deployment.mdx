@@ -1,0 +1,61 @@
+---
+title: Render deployment
+description: Deploy the OpenDot web console, platform API, and voice runtime with render.yaml.
+---
+
+OpenDot includes a root `render.yaml` Blueprint for a Render preview deployment.
+It creates:
+
+- `opendot-web`: static Vite console.
+- `opendot-api`: Docker web service for the platform API.
+- `opendot-runtime`: Docker web service for realtime voice sessions.
+
+The API service runs database migrations as its Render pre-deploy command.
+
+## Database
+
+Use Supabase Postgres for the first Render deployment:
+
+```text
+POSTGRES_URI=<supabase postgres connection string>
+POSTGRES_SSL=true
+```
+
+OpenDot still owns product data in `app_users`, organizations, memberships,
+projects, devices, agents, deployments, sessions, and API keys. Supabase Auth
+owns sign-in without making `auth.users` the product permissions table.
+
+## Required Render values
+
+The Blueprint marks secrets and deployment-specific URLs as `sync: false`. Fill
+them in the Render dashboard during Blueprint creation:
+
+```text
+POSTGRES_URI=<supabase postgres connection string>
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_JWT_SECRET=
+DEEPGRAM_API_KEY=...
+OPENAI_API_KEY=...
+VITE_SUPABASE_URL=https://<project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=<supabase anon key>
+VITE_PLATFORM_API_URL=https://<opendot-api>.onrender.com/api
+VITE_RUNTIME_HTTP_URL=https://<opendot-runtime>.onrender.com
+VITE_RUNTIME_WS_URL=wss://<opendot-runtime>.onrender.com/voice
+```
+
+Leave `SUPABASE_JWT_SECRET` empty unless the Supabase project still uses legacy
+HS256 JWT signing.
+
+## Auth posture
+
+The Render Blueprint uses:
+
+```text
+PLATFORM_AUTH_REQUIRED=true
+OPENDOT_LOCAL_AUTH_DISABLED=true
+```
+
+That makes Supabase the Render identity provider. For email/password signup
+without email verification, disable email confirmations in the Supabase Auth
+settings for the preview project. The forgot-password, Google, and GitHub
+controls are present in the UI but are not wired yet.

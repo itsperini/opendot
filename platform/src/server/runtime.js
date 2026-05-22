@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "./env.js";
 
 import http from "node:http";
 import { randomUUID } from "node:crypto";
@@ -7,7 +7,7 @@ import OpusScript from "opusscript";
 
 const config = {
   host: process.env.RUNTIME_HOST || "0.0.0.0",
-  port: Number(process.env.RUNTIME_PORT || 8787),
+  port: Number(process.env.PORT || process.env.RUNTIME_PORT || 8787),
   deepgramApiKey: process.env.DEEPGRAM_API_KEY,
   openaiApiKey: process.env.OPENAI_API_KEY,
   openaiModel: process.env.OPENAI_MODEL || "gpt-5.4-mini",
@@ -1592,7 +1592,7 @@ function configureSession(session, agent) {
   if (!config.deepgramApiKey || !config.openaiApiKey) {
     sendJson(session.client, {
       type: "error",
-      message: "Missing DEEPGRAM_API_KEY or OPENAI_API_KEY. Create .env from .env.example.",
+      message: "Missing DEEPGRAM_API_KEY or OPENAI_API_KEY. Create root .env from .env.example.",
     });
     return;
   }

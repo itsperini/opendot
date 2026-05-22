@@ -18,6 +18,7 @@ WORKDIR /app/platform
 COPY --from=build /app/platform/package*.json ./
 COPY --from=build /app/platform/node_modules ./node_modules
 COPY --from=build /app/platform/dist-server ./dist-server
+COPY --from=build /app/platform/src/server/env.js ./src/server/env.js
 COPY --from=build /app/platform/src/server/runtime.js ./src/server/runtime.js
 COPY --from=build /app/platform/drizzle ./drizzle
 

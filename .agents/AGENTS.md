@@ -76,7 +76,7 @@ Platform:
 - Run the platform API: `cd platform && npm run api`
 - Run the web console: `cd platform && npm run dev`
 - Run the local voice runtime: `cd platform && npm run runtime`
-- Run the Compose stack: `docker compose --env-file .env.docker up --build`
+- Run the Compose stack: `docker compose up --build`
 - Build check: `cd platform && npm run build`
 - Preview production build: `cd platform && npm run preview`
 
@@ -115,6 +115,10 @@ answer.
   concepts even when an implementation provider combines details internally.
 - Treat hardware as a first-class target. Device binding, local runtime behavior,
   and firmware constraints should stay visible in design decisions.
+- When a change touches persisted platform data, update the database contract in
+  the same change: Drizzle schema, SQL migrations, relevant API types, env
+  examples, and docs. Run the migration/build checks that match the touched
+  surface, and explain the migration impact in the final response.
 - Do not hand-edit generated or installed artifacts unless the task is
   specifically about those artifacts:
   - `platform/node_modules/**`

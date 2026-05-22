@@ -8,11 +8,12 @@
     "strict": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
+    "allowJs": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "outDir": "dist-server",
     "rootDir": "src"
   },
-  "include": ["src/server/**/*.ts", "src/lib/pipeline.ts", "src/types.ts"]
+  "include": ["src/server/**/*.ts", "src/server/env.js", "src/lib/pipeline.ts", "src/types.ts"]
 }

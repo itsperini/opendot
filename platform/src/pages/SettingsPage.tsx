@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { CheckCircle2, Copy, KeyRound, Settings2, Trash2 } from "lucide-react";
+import { CheckCircle2, Copy, KeyRound, LogOut, Settings2, Trash2 } from "lucide-react";
 import type { UserApiKey, UserSettings } from "../types";
 
 type SettingsPageProps = {
@@ -7,6 +7,7 @@ type SettingsPageProps = {
   settings: UserSettings;
   onCreateApiKey: (name: string) => void;
   onRevokeApiKey: (keyId: string) => void;
+  onSignOut: () => void;
   onSettingChange: <Key extends keyof UserSettings>(
     key: Key,
     value: UserSettings[Key],
@@ -43,6 +44,7 @@ export function SettingsPage({
   settings,
   onCreateApiKey,
   onRevokeApiKey,
+  onSignOut,
   onSettingChange,
 }: SettingsPageProps) {
   const [keyName, setKeyName] = useState("");
@@ -139,6 +141,14 @@ export function SettingsPage({
               />
               <span>Compact density</span>
             </label>
+            <button
+              className="secondary-action settings-signout-button"
+              type="button"
+              onClick={onSignOut}
+            >
+              <LogOut size={16} />
+              Sign out
+            </button>
           </div>
         </section>
 
