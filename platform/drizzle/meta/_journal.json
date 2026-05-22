@@ -8,6 +8,13 @@
       "when": 1779485697904,
       "tag": "0000_square_deadpool",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779488724049,
+      "tag": "0001_supabase_compatible_schema",
+      "breakpoints": true
     }
   ]
 }

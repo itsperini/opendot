@@ -15,18 +15,33 @@ export type PlatformState = {
 };
 
 const apiBase = (import.meta.env.VITE_PLATFORM_API_URL || "/api").replace(/\/+$/, "");
+let accessTokenProvider: (() => string | null | Promise<string | null>) | null = null;
+
+export function setPlatformAccessTokenProvider(
+  provider: (() => string | null | Promise<string | null>) | null,
+) {
+  accessTokenProvider = provider;
+}
 
 function apiPath(path: string) {
   return `${apiBase}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const accessToken = accessTokenProvider ? await accessTokenProvider() : null;
+  const headers = new Headers(init?.headers);
+
+  if (init?.body !== undefined && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  if (accessToken && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${accessToken}`);
+  }
+
   const response = await fetch(apiPath(path), {
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...init?.headers,
-    },
+    headers,
   });
 
   if (!response.ok) {

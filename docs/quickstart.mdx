@@ -22,14 +22,14 @@ Open:
 http://localhost:5173
 ```
 
-The Compose stack starts PostgreSQL, applies migrations, serves the web console, and exposes the voice runtime at `http://localhost:8787`.
+The Compose stack starts PostgreSQL, applies migrations, serves the web console, and exposes the voice runtime at `http://localhost:8787`. The default local run uses OpenDot's deterministic dev user; Supabase Auth can be enabled later with `SUPABASE_URL`, `SUPABASE_JWT_SECRET`, and a Supabase `POSTGRES_URI`.
 
 ## Inspect the database
 
 Start the local database and migration job if the full stack is not already running:
 
 ```bash
-docker compose --env-file .env.docker.example up -d postgres migrate
+docker compose --env-file .env.docker up -d postgres migrate
 ```
 
 Then open Drizzle Studio:
@@ -39,7 +39,7 @@ cd platform
 npm run db:studio
 ```
 
-Open `https://local.drizzle.studio` to inspect the PostgreSQL schema and rows.
+Open `https://local.drizzle.studio` to inspect the PostgreSQL schema and rows, including `app_users`, organizations, versioned agents/pipelines, devices, deployments, sessions, events, and API keys.
 
 ## Run with npm
 

@@ -94,6 +94,12 @@ http://localhost:5173
 The Compose stack starts PostgreSQL, applies migrations, serves the web console,
 and exposes the voice runtime on `http://localhost:8787`.
 
+The platform database is Supabase-compatible without requiring Supabase locally:
+OpenDot keeps product identity and authorization in `app_users`,
+`organizations`, memberships, projects, environments, and scoped platform
+tables. When Supabase Auth is configured, `auth.users.id` maps to
+`app_users.id`; otherwise Compose uses the deterministic local dev user.
+
 Inspect the local database with Drizzle Studio:
 
 ```bash
@@ -112,6 +118,11 @@ cd platform
 npm install
 npm run db:migrate
 ```
+
+For Supabase Postgres, set `POSTGRES_URI` to the Supabase connection string and
+`POSTGRES_SSL=true`. Set `SUPABASE_URL` so the API can verify Supabase Bearer
+tokens through JWKS; add `SUPABASE_JWT_SECRET` only for legacy HS256 projects.
+Leave `PLATFORM_AUTH_REQUIRED=false` for local/dev mode without a login screen.
 
 Then start the API and web console in separate terminals:
 

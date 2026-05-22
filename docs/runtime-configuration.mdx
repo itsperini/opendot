@@ -5,14 +5,23 @@ description: Environment variables and local runtime behavior for voice sessions
 
 The runtime process handles live voice sessions for the browser and Dot devices.
 
-The platform API stores agents, devices, user settings, and SDK key metadata in PostgreSQL. For local npm runs, set:
+The platform API stores the OpenDot control plane in PostgreSQL: app users, organizations, memberships, projects, environments, scoped API keys, versioned agents and pipelines, device state, deployments, sessions, events, and audit logs. For local npm runs, set:
 
 ```bash
 POSTGRES_URI=postgres://opendot:opendot@localhost:5432/opendot
 POSTGRES_SSL=false
 ```
 
-For Supabase, set `POSTGRES_URI` to the Supabase Postgres connection string and use `POSTGRES_SSL=true`.
+For Supabase, set `POSTGRES_URI` to the Supabase Postgres connection string and use `POSTGRES_SSL=true`. To verify Supabase Auth tokens at the OpenDot API boundary, set:
+
+```bash
+SUPABASE_URL=https://your-project-ref.supabase.co
+PLATFORM_AUTH_REQUIRED=false
+```
+
+`SUPABASE_URL` enables JWKS verification for current Supabase signing keys. Set `SUPABASE_JWT_SECRET` only if the project still uses legacy HS256 JWT signing.
+
+Leave `PLATFORM_AUTH_REQUIRED=false` while using the current local workbench without a login screen. When a Bearer token is provided, the API maps the Supabase JWT `sub` to `app_users.id`; product permissions still come from OpenDot membership tables, not Supabase `user_metadata`.
 
 ## Database inspection
 
@@ -33,7 +42,7 @@ POSTGRES_SSL=false
 If only the database is needed, start it with:
 
 ```bash
-docker compose --env-file .env.docker.example up -d postgres migrate
+docker compose --env-file .env.docker up -d postgres migrate
 ```
 
 ## Required provider keys

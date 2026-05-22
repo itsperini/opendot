@@ -21,6 +21,7 @@
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "fastify": "^5.8.5",
+    "jose": "^6.2.3",
     "lucide-react": "^0.453.0",
     "opusscript": "^0.1.1",
     "pg": "^8.21.0",

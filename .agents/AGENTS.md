@@ -76,7 +76,7 @@ Platform:
 - Run the platform API: `cd platform && npm run api`
 - Run the web console: `cd platform && npm run dev`
 - Run the local voice runtime: `cd platform && npm run runtime`
-- Run the Compose stack: `docker compose --env-file .env.docker.example up --build`
+- Run the Compose stack: `docker compose --env-file .env.docker up --build`
 - Build check: `cd platform && npm run build`
 - Preview production build: `cd platform && npm run preview`
 

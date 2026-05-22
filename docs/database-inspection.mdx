@@ -10,7 +10,7 @@ OpenDot uses PostgreSQL for durable platform data and Drizzle for schema and mig
 From the repository root:
 
 ```bash
-docker compose --env-file .env.docker.example up -d postgres migrate
+docker compose --env-file .env.docker up -d postgres migrate
 ```
 
 This starts the local PostgreSQL container on `127.0.0.1:5432` and applies the Drizzle migrations.
@@ -30,7 +30,7 @@ Open:
 https://local.drizzle.studio
 ```
 
-Drizzle Studio reads `platform/drizzle.config.ts`, connects through `POSTGRES_URI`, and lets you inspect tables, columns, and rows for agents, devices, settings, and API key metadata.
+Drizzle Studio reads `platform/drizzle.config.ts`, connects through `POSTGRES_URI`, and lets you inspect the platform control schema: `app_users`, organizations, memberships, projects, environments, scoped API keys, versioned agents and pipelines, devices, deployments, sessions, events, and audit logs.
 
 ## Connection defaults
 
@@ -47,6 +47,8 @@ For Supabase, set `POSTGRES_URI` to the Supabase Postgres connection string and 
 POSTGRES_SSL=true
 ```
 
+OpenDot keeps product authorization in its own tables even when Supabase Auth is used. In Supabase-backed deployments, `auth.users.id` maps to `app_users.id`; memberships, roles, devices, agents, and deployments remain OpenDot-owned data.
+
 ## Stop inspection services
 
 Stop Drizzle Studio with `Ctrl+C` in the terminal where it is running.
@@ -54,5 +56,5 @@ Stop Drizzle Studio with `Ctrl+C` in the terminal where it is running.
 Stop the local database:
 
 ```bash
-docker compose --env-file .env.docker.example down
+docker compose --env-file .env.docker down
 ```

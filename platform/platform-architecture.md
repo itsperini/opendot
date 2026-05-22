@@ -91,9 +91,11 @@ Drizzle vs Prisma:
 - Choose Prisma if you want a faster product development loop, rich generated client types, and a stronger admin/data-inspection workflow early.
 - Either is fine for the MVP. I would lean Drizzle if device manifests, event tables, and hand-tuned queries become central quickly. I would lean Prisma if the first milestone is mostly product CRUD and speed of iteration.
 
-Current prototype choice:
+Current platform schema choice:
 
-- Use Drizzle with PostgreSQL for agents, devices, user settings, and API key metadata.
+- Use Drizzle with PostgreSQL for the durable control plane: app users, organizations, memberships, projects, environments, scoped API keys, versioned agents and pipelines, devices, deployments, sessions, events, artifacts, and audit logs.
+- Keep the schema Supabase-compatible without making Supabase mandatory. Supabase Auth can own authentication, while OpenDot keeps `app_users` and product authorization tables in the public app schema.
+- Map Supabase `auth.users.id` to `app_users.id` when Supabase Auth is configured; in local Compose runs, use a deterministic dev user so plain PostgreSQL remains self-hostable.
 - Keep the Drizzle schema in `platform/src/server/db/schema.ts` and migrations in `platform/drizzle/`.
 - Use Drizzle Studio via `cd platform && npm run db:studio` for local schema and data inspection at `https://local.drizzle.studio`.
 
@@ -471,9 +473,9 @@ OpenAPI covers HTTP. AsyncAPI covers messaging and event-driven behavior. OpenDo
 
 Recommended:
 
-- OIDC/OAuth-ready auth model.
-- Start with Clerk, Auth0, WorkOS, or a simple self-hosted auth module depending on launch constraints.
-- Keep internal authorization in your own database regardless of auth provider.
+- Supabase-compatible auth bridge for the near-term platform.
+- Keep the OpenDot API as the authorization boundary: browsers send a Supabase Bearer token when signed in, the API verifies it, resolves `app_users`, and checks memberships/roles.
+- Keep internal authorization in OpenDot tables regardless of auth provider. Do not put security-sensitive roles or org permissions in Supabase `user_metadata`.
 
 Core authorization model:
 

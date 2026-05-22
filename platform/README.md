@@ -65,6 +65,11 @@ voice runtime, and an Nginx-served production build of the web console. The web
 console is available at `http://localhost:5173`, and the runtime remains exposed
 at `http://localhost:8787` for browser WebSocket sessions and local devices.
 
+The database schema is portable PostgreSQL with a Supabase Auth bridge. Supabase
+owns authentication when configured, while OpenDot owns `app_users`,
+organizations, memberships, projects, environments, API keys, agents, pipeline
+versions, devices, deployments, sessions, events, and audit logs.
+
 ## Inspect The Database
 
 The platform schema is defined with Drizzle in `src/server/db/schema.ts`, and
@@ -73,7 +78,7 @@ migrations live in `drizzle/`.
 Start the local Compose database and apply migrations:
 
 ```bash
-docker compose --env-file ../.env.docker.example up -d postgres migrate
+docker compose --env-file ../.env.docker up -d postgres migrate
 ```
 
 Then launch Drizzle Studio from `platform/`:
@@ -85,7 +90,10 @@ npm run db:studio
 Open `https://local.drizzle.studio` to inspect tables, columns, and stored data.
 The local connector listens on `127.0.0.1` while the Studio UI opens in the
 browser. For Supabase, set `POSTGRES_URI` and `POSTGRES_SSL=true` in
-`platform/.env` before launching Studio.
+`platform/.env` before launching Studio. If the API should verify Supabase
+access tokens, also set `SUPABASE_URL`; add `SUPABASE_JWT_SECRET` only for
+legacy HS256 projects. Leave `PLATFORM_AUTH_REQUIRED=false` for the local
+no-login workbench.
 
 ## Test An Agent In The Browser
 

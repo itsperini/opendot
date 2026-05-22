@@ -42,6 +42,9 @@ services:
       PLATFORM_API_PORT: 8788
       POSTGRES_URI: ${POSTGRES_URI:-postgres://opendot:opendot@postgres:5432/opendot}
       POSTGRES_SSL: ${POSTGRES_SSL:-false}
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-}
+      PLATFORM_AUTH_REQUIRED: ${PLATFORM_AUTH_REQUIRED:-false}
     healthcheck:
       test:
         [
