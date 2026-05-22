@@ -106,6 +106,45 @@ p {
   padding: 22px 24px 48px;
 }
 
+.platform-status-panel {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 850;
+  gap: 9px;
+  min-height: 44px;
+  padding: 0 14px;
+  width: fit-content;
+}
+
+.platform-status-panel svg {
+  color: var(--violet-700);
+}
+
+.platform-status-panel .lucide-loader-2 {
+  animation: spin 850ms linear infinite;
+}
+
+.platform-status-panel.error {
+  background: var(--rose-soft);
+  border-color: #fecdd3;
+  color: var(--rose);
+}
+
+.platform-status-panel.error svg {
+  color: var(--rose);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .left-sidebar {
   align-content: stretch;
   background: rgba(255, 255, 255, 0.86);

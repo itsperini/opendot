@@ -5,7 +5,7 @@ import type {
   StageSetting,
   StageSettingValue,
   VoiceAgent,
-} from "../types";
+} from "../types.js";
 
 const VAD_MODEL_OPTIONS: StageOption[] = [
   { label: "Deepgram Endpointing", value: "endpointing-vad" },

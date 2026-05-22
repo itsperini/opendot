@@ -3,15 +3,61 @@ title: Quickstart
 description: Run the platform locally, create a voice agent, and test a turn.
 ---
 
-This guide gets the current OpenDot platform and local voice runtime running.
+This guide gets the current OpenDot platform, database, API, and local voice runtime running.
 
-## Run the web console
+## Run with Docker Compose
+
+From the repository root:
+
+```bash
+cp .env.docker.example .env.docker
+docker compose --env-file .env.docker up --build
+```
+
+Add provider keys to `.env.docker` before testing live voice sessions.
+
+Open:
+
+```text
+http://localhost:5173
+```
+
+The Compose stack starts PostgreSQL, applies migrations, serves the web console, and exposes the voice runtime at `http://localhost:8787`.
+
+## Inspect the database
+
+Start the local database and migration job if the full stack is not already running:
+
+```bash
+docker compose --env-file .env.docker.example up -d postgres migrate
+```
+
+Then open Drizzle Studio:
+
+```bash
+cd platform
+npm run db:studio
+```
+
+Open `https://local.drizzle.studio` to inspect the PostgreSQL schema and rows.
+
+## Run with npm
 
 From the platform app:
 
 ```bash
 cd platform
 npm install
+npm run db:migrate
+```
+
+Start the API and web console in separate terminals:
+
+```bash
+# terminal 1
+npm run api
+
+# terminal 2
 npm run dev
 ```
 
@@ -21,9 +67,9 @@ Open the Vite URL printed in the terminal. It is usually:
 http://localhost:5173
 ```
 
-## Start the voice runtime
+## Start the voice runtime for npm runs
 
-The browser test needs a second process for live voice sessions:
+The browser test needs the voice runtime in another terminal:
 
 ```bash
 cd platform

@@ -10,7 +10,7 @@ The current implementation focuses on the first creation flow:
 - Attach a default voice pipeline with four explicit stages: VAD, STT, LLM, and TTS.
 - Edit first-pass pipeline, model, and runtime settings in the browser.
 - Test live sessions against the local voice runtime.
-- Persist draft agents in local storage.
+- Persist draft agents, settings, devices, and SDK key metadata in PostgreSQL.
 
 ## Pipeline Defaults
 
@@ -34,20 +34,71 @@ This keeps the product model clear while still matching how Deepgram exposes end
 
 ```bash
 npm install
+npm run db:migrate
+```
+
+Start the API and web console in separate terminals:
+
+```bash
+# Terminal 1
+npm run api
+
+# Terminal 2
 npm run dev
 ```
 
 Then open the Vite URL printed in the terminal.
 
-## Test An Agent In The Browser
+## Run With Docker Compose
 
-The browser test uses two local processes:
+From the repository root:
 
 ```bash
-# Terminal 1: frontend
+cp .env.docker.example .env.docker
+docker compose --env-file .env.docker up --build
+```
+
+Add provider keys to `.env.docker` before testing live voice sessions.
+
+The Compose stack runs PostgreSQL, the migration job, the platform API, the
+voice runtime, and an Nginx-served production build of the web console. The web
+console is available at `http://localhost:5173`, and the runtime remains exposed
+at `http://localhost:8787` for browser WebSocket sessions and local devices.
+
+## Inspect The Database
+
+The platform schema is defined with Drizzle in `src/server/db/schema.ts`, and
+migrations live in `drizzle/`.
+
+Start the local Compose database and apply migrations:
+
+```bash
+docker compose --env-file ../.env.docker.example up -d postgres migrate
+```
+
+Then launch Drizzle Studio from `platform/`:
+
+```bash
+npm run db:studio
+```
+
+Open `https://local.drizzle.studio` to inspect tables, columns, and stored data.
+The local connector listens on `127.0.0.1` while the Studio UI opens in the
+browser. For Supabase, set `POSTGRES_URI` and `POSTGRES_SSL=true` in
+`platform/.env` before launching Studio.
+
+## Test An Agent In The Browser
+
+The browser test uses the platform API, frontend, and voice runtime:
+
+```bash
+# Terminal 1: platform API
+npm run api
+
+# Terminal 2: frontend
 npm run dev
 
-# Terminal 2: voice runtime
+# Terminal 3: voice runtime
 cp .env.example .env
 npm run runtime
 ```

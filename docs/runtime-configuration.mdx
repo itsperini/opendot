@@ -5,6 +5,37 @@ description: Environment variables and local runtime behavior for voice sessions
 
 The runtime process handles live voice sessions for the browser and Dot devices.
 
+The platform API stores agents, devices, user settings, and SDK key metadata in PostgreSQL. For local npm runs, set:
+
+```bash
+POSTGRES_URI=postgres://opendot:opendot@localhost:5432/opendot
+POSTGRES_SSL=false
+```
+
+For Supabase, set `POSTGRES_URI` to the Supabase Postgres connection string and use `POSTGRES_SSL=true`.
+
+## Database inspection
+
+Use Drizzle Studio to inspect the current schema and persisted platform data:
+
+```bash
+cd platform
+npm run db:studio
+```
+
+Open `https://local.drizzle.studio`. The local Compose database uses:
+
+```bash
+POSTGRES_URI=postgres://opendot:opendot@localhost:5432/opendot
+POSTGRES_SSL=false
+```
+
+If only the database is needed, start it with:
+
+```bash
+docker compose --env-file .env.docker.example up -d postgres migrate
+```
+
 ## Required provider keys
 
 Create `platform/.env` from the example file:

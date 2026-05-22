@@ -13,16 +13,15 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
-import {
-  createDotDevice,
-  loadDotDevices,
-  saveDotDevices,
-} from "../lib/storage";
 import type { CreateDotDeviceInput, DotDevice, VoiceAgent } from "../types";
 
 type DotDevicePageProps = {
   agents: VoiceAgent[];
+  devices: DotDevice[];
   selectedAgent: VoiceAgent | null;
+  onCreateDevice: (input: CreateDotDeviceInput) => Promise<DotDevice | null>;
+  onRemoveDevice: (deviceId: string) => Promise<void>;
+  onUpdateDevice: (device: DotDevice) => Promise<DotDevice | null>;
 };
 
 type DeviceLog = {
@@ -153,12 +152,17 @@ function runtimeEventText(event: RuntimeDeviceEvent) {
   return `[${new Date(event.timestamp).toLocaleTimeString()}] ${event.text}`;
 }
 
-export function DotDevicePage({ agents, selectedAgent }: DotDevicePageProps) {
-  const [devices, setDevices] = useState<DotDevice[]>(() => loadDotDevices());
-  const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(() => {
-    const [firstDevice] = loadDotDevices();
-    return firstDevice?.id ?? null;
-  });
+export function DotDevicePage({
+  agents,
+  devices: persistedDevices,
+  selectedAgent,
+  onCreateDevice,
+  onRemoveDevice,
+  onUpdateDevice,
+}: DotDevicePageProps) {
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(
+    () => persistedDevices[0]?.id ?? null,
+  );
   const [deviceInput, setDeviceInput] =
     useState<CreateDotDeviceInput>(initialDeviceInput);
   const [bindingAgentId, setBindingAgentId] = useState(selectedAgent?.id ?? "");
@@ -169,66 +173,69 @@ export function DotDevicePage({ agents, selectedAgent }: DotDevicePageProps) {
   const [runtimeRefreshing, setRuntimeRefreshing] = useState(false);
 
   useEffect(() => {
-    saveDotDevices(devices);
-  }, [devices]);
-
-  useEffect(() => {
     if (selectedAgent) {
       setBindingAgentId(selectedAgent.id);
     }
   }, [selectedAgent]);
 
+  const persistedDeviceIds = useMemo(
+    () => new Set(persistedDevices.map((device) => device.id)),
+    [persistedDevices],
+  );
+
+  const devices = useMemo(() => {
+    const nextDevices = [...persistedDevices];
+
+    for (const runtimeDevice of runtimeDevices) {
+      const id = runtimeDeviceId(runtimeDevice.id);
+      const existingIndex = nextDevices.findIndex(
+        (device) => device.id === id || device.serialNumber === runtimeDevice.id,
+      );
+      const existing = existingIndex === -1 ? null : nextDevices[existingIndex];
+      const merged: DotDevice = {
+        id,
+        name: existing?.name ?? runtimeDevice.name,
+        model: runtimeDevice.model || existing?.model || "Dot S3",
+        serialNumber: runtimeDevice.id,
+        availability: runtimeDevice.availability,
+        ipAddress: runtimeDevice.ipAddress || existing?.ipAddress || "",
+        deviceEndpoint: runtimeApiBase,
+        lastSeenAt: runtimeDevice.lastSeenAt ?? existing?.lastSeenAt ?? null,
+        boundAgentId: runtimeDevice.boundAgentId ?? existing?.boundAgentId ?? null,
+        boundAgentName: runtimeDevice.boundAgentName ?? existing?.boundAgentName ?? null,
+        boundConfigVersion:
+          runtimeDevice.boundConfigVersion ?? existing?.boundConfigVersion ?? null,
+        boundAt: runtimeDevice.boundAt ?? existing?.boundAt ?? null,
+        updateMode: existing?.updateMode ?? "idle",
+        updatedAt: runtimeDevice.updatedAt ?? existing?.updatedAt ?? new Date().toISOString(),
+      };
+
+      if (existingIndex === -1) {
+        nextDevices.push(merged);
+      } else {
+        nextDevices[existingIndex] = merged;
+      }
+    }
+
+    return nextDevices.sort((left, right) => {
+      const leftRuntime = isRuntimeDevice(left) ? 0 : 1;
+      const rightRuntime = isRuntimeDevice(right) ? 0 : 1;
+      return leftRuntime - rightRuntime;
+    });
+  }, [persistedDevices, runtimeDevices]);
+
+  useEffect(() => {
+    if (selectedDeviceId && devices.some((device) => device.id === selectedDeviceId)) {
+      return;
+    }
+
+    setSelectedDeviceId(devices[0]?.id ?? null);
+  }, [devices, selectedDeviceId]);
+
   const syncRuntimeDevices = useCallback(
     (nextRuntimeDevices: RuntimeDevice[]) => {
-      setDevices((current) => {
-        const runtimeIds = new Set(
-          nextRuntimeDevices.map((device) => runtimeDeviceId(device.id)),
-        );
-        const withoutDefaultDemos =
-          nextRuntimeDevices.length > 0
-            ? current.filter((device) => !device.id.startsWith("dot-demo-"))
-            : current;
-        const nextDevices = withoutDefaultDemos.filter(
-          (device) => !runtimeIds.has(device.id),
-        );
-
-        for (const runtimeDevice of nextRuntimeDevices) {
-          const id = runtimeDeviceId(runtimeDevice.id);
-          const existing =
-            current.find((device) => device.id === id) ??
-            current.find((device) => device.serialNumber === runtimeDevice.id);
-
-          nextDevices.push({
-            id,
-            name: existing?.name ?? runtimeDevice.name,
-            model: runtimeDevice.model || existing?.model || "Dot S3",
-            serialNumber: runtimeDevice.id,
-            availability: runtimeDevice.availability,
-            ipAddress: runtimeDevice.ipAddress || existing?.ipAddress || "",
-            deviceEndpoint: runtimeApiBase,
-            lastSeenAt: runtimeDevice.lastSeenAt ?? existing?.lastSeenAt ?? null,
-            boundAgentId: runtimeDevice.boundAgentId ?? existing?.boundAgentId ?? null,
-            boundAgentName:
-              runtimeDevice.boundAgentName ?? existing?.boundAgentName ?? null,
-            boundConfigVersion:
-              runtimeDevice.boundConfigVersion ??
-              existing?.boundConfigVersion ??
-              null,
-            boundAt: runtimeDevice.boundAt ?? existing?.boundAt ?? null,
-            updateMode: existing?.updateMode ?? "idle",
-            updatedAt: runtimeDevice.updatedAt ?? new Date().toISOString(),
-          });
-        }
-
-        return nextDevices.sort((left, right) => {
-          const leftRuntime = left.id.startsWith("runtime:") ? 0 : 1;
-          const rightRuntime = right.id.startsWith("runtime:") ? 0 : 1;
-          return leftRuntime - rightRuntime;
-        });
-      });
-
       setSelectedDeviceId((current) => {
-        if (current && !(nextRuntimeDevices.length > 0 && current.startsWith("dot-demo-"))) {
+        if (current) {
           return current;
         }
         const [firstRuntimeDevice] = nextRuntimeDevices;
@@ -308,12 +315,14 @@ export function DotDevicePage({ agents, selectedAgent }: DotDevicePageProps) {
     deviceId: string,
     update: (device: DotDevice) => DotDevice,
   ) {
-    setDevices((current) =>
-      current.map((device) => (device.id === deviceId ? update(device) : device)),
-    );
+    const device = devices.find((item) => item.id === deviceId);
+    if (!device) {
+      return;
+    }
+    onUpdateDevice(update(device)).catch(() => undefined);
   }
 
-  function handleCreateDevice(event: FormEvent<HTMLFormElement>) {
+  async function handleCreateDevice(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const name = deviceInput.name.trim();
     const serialNumber = deviceInput.serialNumber.trim();
@@ -322,7 +331,7 @@ export function DotDevicePage({ agents, selectedAgent }: DotDevicePageProps) {
       return;
     }
 
-    const device = createDotDevice({
+    const device = await onCreateDevice({
       ...deviceInput,
       name,
       serialNumber,
@@ -331,7 +340,10 @@ export function DotDevicePage({ agents, selectedAgent }: DotDevicePageProps) {
       deviceEndpoint: deviceInput.deviceEndpoint.trim() || "demo://custom-dot",
     });
 
-    setDevices((current) => [device, ...current]);
+    if (!device) {
+      return;
+    }
+
     setSelectedDeviceId(device.id);
     setDeviceInput(initialDeviceInput);
     appendLog(setDeviceLog, `Paired ${device.name}.`);
@@ -339,7 +351,16 @@ export function DotDevicePage({ agents, selectedAgent }: DotDevicePageProps) {
 
   function removeDevice(deviceId: string) {
     const removed = devices.find((device) => device.id === deviceId);
-    setDevices((current) => current.filter((device) => device.id !== deviceId));
+
+    if (removed && !persistedDeviceIds.has(deviceId) && isRuntimeDevice(removed)) {
+      appendLog(
+        setDeviceLog,
+        `${removed.name} is discovered from the runtime and will disappear when it disconnects.`,
+      );
+      return;
+    }
+
+    onRemoveDevice(deviceId).catch(() => undefined);
     setSelectedDeviceId((current) => {
       if (current !== deviceId) {
         return current;

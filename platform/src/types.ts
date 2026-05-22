@@ -84,7 +84,7 @@ export type UserSettings = {
 export type UserApiKey = {
   id: string;
   name: string;
-  token: string;
+  token: string | null;
   prefix: string;
   createdAt: string;
   lastUsedAt: string | null;

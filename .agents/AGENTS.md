@@ -26,6 +26,8 @@ hardware, and operate sessions in the cloud, local network, or on-device.
   `.agents/skills/brand-guidelines/SKILL.md`
 - Shared agent setup and MCP configuration:
   `.agents/README.md`
+- Stress-testing plans, designs, or decision trees:
+  `.agents/skills/grill-me/SKILL.md`
 - Creating or refining shared skills:
   `.agents/skills/skill-creator/SKILL.md`
 - Documentation content and navigation:
@@ -61,8 +63,12 @@ opendot/
 Platform:
 
 - Install dependencies: `cd platform && npm install`
+- Apply database migrations: `cd platform && npm run db:migrate`
+- Inspect database with Drizzle Studio: `cd platform && npm run db:studio`
+- Run the platform API: `cd platform && npm run api`
 - Run the web console: `cd platform && npm run dev`
 - Run the local voice runtime: `cd platform && npm run runtime`
+- Run the Compose stack: `docker compose --env-file .env.docker.example up --build`
 - Build check: `cd platform && npm run build`
 - Preview production build: `cd platform && npm run preview`
 
@@ -123,7 +129,7 @@ answer.
 - `.agents/AGENTS.md` is the canonical root guide.
 - `.agents/README.md` documents the shared agent configuration.
 - `.agents/skills/` contains shared reusable skills such as
-  `brand-guidelines`, `firmware-build`, and `skill-creator`.
+  `brand-guidelines`, `firmware-build`, `grill-me`, and `skill-creator`.
 - When creating or editing shared skills, follow
   `.agents/skills/skill-creator/SKILL.md` and keep skills concise with
   progressive disclosure.

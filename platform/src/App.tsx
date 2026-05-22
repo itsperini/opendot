@@ -1,23 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
-import { AudioLines, Bot, Cpu, Settings2 } from "lucide-react";
+import { AlertCircle, AudioLines, Bot, Cpu, Loader2, Settings2 } from "lucide-react";
 import { OpenDotLogo } from "./components/OpenDotLogo";
 import { SidebarUserSettings } from "./components/SidebarUserSettings";
 import {
-  createDefaultPipeline,
   normalizeVoiceAgent,
   updateStageModel,
   updateStageSetting,
 } from "./lib/pipeline";
 import {
-  createId,
-  createUserApiKey,
-  loadAgents,
-  loadUserApiKeys,
-  loadUserSettings,
-  saveAgents,
-  saveUserApiKeys,
-  saveUserSettings,
-} from "./lib/storage";
+  createAgent as createPlatformAgent,
+  createDotDevice as createPlatformDotDevice,
+  createUserApiKey as createPlatformApiKey,
+  deleteDotDevice as deletePlatformDotDevice,
+  loadPlatformState,
+  revokeUserApiKey as revokePlatformApiKey,
+  updateAgent as updatePlatformAgent,
+  updateDotDevice as updatePlatformDotDevice,
+  updateUserSettings as updatePlatformUserSettings,
+} from "./lib/platformApi";
 import { AgentStudioPage } from "./pages/AgentStudioPage";
 import { BrowserTestPage } from "./pages/BrowserTestPage";
 import { ConfigurationPage } from "./pages/ConfigurationPage";
@@ -25,6 +25,8 @@ import { DotDevicePage } from "./pages/DotDevicePage";
 import { SettingsPage } from "./pages/SettingsPage";
 import type {
   CreateAgentInput,
+  CreateDotDeviceInput,
+  DotDevice,
   PipelineStage,
   StageSettingValue,
   UserApiKey,
@@ -79,56 +81,35 @@ const pageItems = [
 
 const primaryPageItems = pageItems.filter((item) => item.id !== "settings");
 
+const defaultUserSettings: UserSettings = {
+  displayName: "Marco",
+  email: "",
+  workspaceName: "OpenDot Lab",
+  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Zurich",
+  compactMode: false,
+};
+
 function pageFromPathname(pathname: string): PageId {
   const route = pageItems.find((item) => item.path === pathname);
   return route?.id ?? "agent-studio";
-}
-
-function createAgent(input: CreateAgentInput): VoiceAgent {
-  const now = new Date().toISOString();
-
-  return {
-    id: createId(),
-    name: input.name,
-    description: input.description,
-    status: "draft",
-    createdAt: now,
-    updatedAt: now,
-    pipeline: createDefaultPipeline(),
-  };
 }
 
 export default function App() {
   const [activePage, setActivePage] = useState<PageId>(() =>
     pageFromPathname(window.location.pathname),
   );
-  const [agents, setAgents] = useState<VoiceAgent[]>(() =>
-    loadAgents().map(normalizeVoiceAgent),
-  );
-  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(() => {
-    const [firstAgent] = loadAgents().map(normalizeVoiceAgent);
-    return firstAgent?.id ?? null;
-  });
-  const [userSettings, setUserSettings] = useState<UserSettings>(() =>
-    loadUserSettings(),
-  );
-  const [apiKeys, setApiKeys] = useState<UserApiKey[]>(() => loadUserApiKeys());
+  const [agents, setAgents] = useState<VoiceAgent[]>([]);
+  const [devices, setDevices] = useState<DotDevice[]>([]);
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [userSettings, setUserSettings] =
+    useState<UserSettings>(defaultUserSettings);
+  const [apiKeys, setApiKeys] = useState<UserApiKey[]>([]);
+  const [platformLoading, setPlatformLoading] = useState(true);
+  const [platformError, setPlatformError] = useState<string | null>(null);
 
-  useEffect(() => {
-    setAgents((current) => current.map(normalizeVoiceAgent));
-  }, []);
-
-  useEffect(() => {
-    saveAgents(agents);
-  }, [agents]);
-
-  useEffect(() => {
-    saveUserSettings(userSettings);
-  }, [userSettings]);
-
-  useEffect(() => {
-    saveUserApiKeys(apiKeys);
-  }, [apiKeys]);
+  function reportPlatformError(error: unknown) {
+    setPlatformError(error instanceof Error ? error.message : String(error));
+  }
 
   useEffect(() => {
     function handlePopState() {
@@ -139,12 +120,53 @@ export default function App() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
+  useEffect(() => {
+    let active = true;
+
+    loadPlatformState()
+      .then((state) => {
+        if (!active) {
+          return;
+        }
+
+        const nextAgents = state.agents.map(normalizeVoiceAgent);
+        setAgents(nextAgents);
+        setDevices(state.devices);
+        setUserSettings(state.userSettings);
+        setApiKeys(state.apiKeys);
+        setSelectedAgentId((current) => current ?? nextAgents[0]?.id ?? null);
+        setPlatformError(null);
+      })
+      .catch((error) => {
+        if (active) {
+          reportPlatformError(error);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setPlatformLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const normalizedAgents = useMemo(() => agents.map(normalizeVoiceAgent), [agents]);
 
   const selectedAgent = useMemo(
     () => normalizedAgents.find((agent) => agent.id === selectedAgentId) ?? null,
     [normalizedAgents, selectedAgentId],
   );
+
+  useEffect(() => {
+    if (selectedAgentId && normalizedAgents.some((agent) => agent.id === selectedAgentId)) {
+      return;
+    }
+
+    setSelectedAgentId(normalizedAgents[0]?.id ?? null);
+  }, [normalizedAgents, selectedAgentId]);
 
   function navigateToPage(pageId: PageId) {
     const nextPage = pageItems.find((item) => item.id === pageId) ?? pageItems[0];
@@ -153,10 +175,15 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function handleCreateAgent(input: CreateAgentInput) {
-    const agent = createAgent(input);
-    setAgents((current) => [agent, ...current]);
-    setSelectedAgentId(agent.id);
+  async function handleCreateAgent(input: CreateAgentInput) {
+    try {
+      const agent = await createPlatformAgent(input);
+      setAgents((current) => [normalizeVoiceAgent(agent), ...current]);
+      setSelectedAgentId(agent.id);
+      setPlatformError(null);
+    } catch (error) {
+      reportPlatformError(error);
+    }
   }
 
   function handleSettingChange(
@@ -168,22 +195,25 @@ export default function App() {
       return;
     }
 
+    const nextAgent = normalizeVoiceAgent({
+      ...selectedAgent,
+      updatedAt: new Date().toISOString(),
+      pipeline: updateStageSetting(selectedAgent.pipeline, stageId, key, value),
+    });
+
     setAgents((current) =>
-      current.map((agent) =>
-        agent.id === selectedAgent.id
-          ? {
-              ...agent,
-              updatedAt: new Date().toISOString(),
-              pipeline: updateStageSetting(
-                normalizeVoiceAgent(agent).pipeline,
-                stageId,
-                key,
-                value,
-              ),
-            }
-          : agent,
-      ),
+      current.map((agent) => (agent.id === nextAgent.id ? nextAgent : agent)),
     );
+    updatePlatformAgent(nextAgent)
+      .then((savedAgent) => {
+        setAgents((current) =>
+          current.map((agent) =>
+            agent.id === savedAgent.id ? normalizeVoiceAgent(savedAgent) : agent,
+          ),
+        );
+        setPlatformError(null);
+      })
+      .catch(reportPlatformError);
   }
 
   function handleModelChange(stageId: PipelineStage["id"], model: string) {
@@ -191,31 +221,52 @@ export default function App() {
       return;
     }
 
+    const nextAgent = normalizeVoiceAgent({
+      ...selectedAgent,
+      updatedAt: new Date().toISOString(),
+      pipeline: updateStageModel(selectedAgent.pipeline, stageId, model),
+    });
+
     setAgents((current) =>
-      current.map((agent) =>
-        agent.id === selectedAgent.id
-          ? {
-              ...agent,
-              updatedAt: new Date().toISOString(),
-              pipeline: updateStageModel(normalizeVoiceAgent(agent).pipeline, stageId, model),
-            }
-          : agent,
-      ),
+      current.map((agent) => (agent.id === nextAgent.id ? nextAgent : agent)),
     );
+    updatePlatformAgent(nextAgent)
+      .then((savedAgent) => {
+        setAgents((current) =>
+          current.map((agent) =>
+            agent.id === savedAgent.id ? normalizeVoiceAgent(savedAgent) : agent,
+          ),
+        );
+        setPlatformError(null);
+      })
+      .catch(reportPlatformError);
   }
 
   function handleUserSettingChange<Key extends keyof UserSettings>(
     key: Key,
     value: UserSettings[Key],
   ) {
-    setUserSettings((current) => ({
-      ...current,
+    const nextSettings = {
+      ...userSettings,
       [key]: value,
-    }));
+    };
+    setUserSettings(nextSettings);
+    updatePlatformUserSettings(nextSettings)
+      .then((savedSettings) => {
+        setUserSettings(savedSettings);
+        setPlatformError(null);
+      })
+      .catch(reportPlatformError);
   }
 
-  function handleCreateApiKey(name: string) {
-    setApiKeys((current) => [createUserApiKey(name), ...current]);
+  async function handleCreateApiKey(name: string) {
+    try {
+      const apiKey = await createPlatformApiKey(name);
+      setApiKeys((current) => [apiKey, ...current]);
+      setPlatformError(null);
+    } catch (error) {
+      reportPlatformError(error);
+    }
   }
 
   function handleRevokeApiKey(keyId: string) {
@@ -229,6 +280,64 @@ export default function App() {
           : key,
       ),
     );
+    revokePlatformApiKey(keyId)
+      .then((apiKey) => {
+        if (!apiKey) {
+          return;
+        }
+
+        setApiKeys((current) =>
+          current.map((key) => (key.id === apiKey.id ? apiKey : key)),
+        );
+        setPlatformError(null);
+      })
+      .catch(reportPlatformError);
+  }
+
+  async function handleCreateDevice(input: CreateDotDeviceInput) {
+    try {
+      const device = await createPlatformDotDevice(input);
+      setDevices((current) => [device, ...current]);
+      setPlatformError(null);
+      return device;
+    } catch (error) {
+      reportPlatformError(error);
+      return null;
+    }
+  }
+
+  async function handleUpdateDevice(device: DotDevice) {
+    setDevices((current) => {
+      const exists = current.some((item) => item.id === device.id);
+      return exists
+        ? current.map((item) => (item.id === device.id ? device : item))
+        : [device, ...current];
+    });
+
+    try {
+      const savedDevice = await updatePlatformDotDevice(device);
+      setDevices((current) => {
+        const exists = current.some((item) => item.id === savedDevice.id);
+        return exists
+          ? current.map((item) => (item.id === savedDevice.id ? savedDevice : item))
+          : [savedDevice, ...current];
+      });
+      setPlatformError(null);
+      return savedDevice;
+    } catch (error) {
+      reportPlatformError(error);
+      return null;
+    }
+  }
+
+  async function handleRemoveDevice(deviceId: string) {
+    setDevices((current) => current.filter((device) => device.id !== deviceId));
+    try {
+      await deletePlatformDotDevice(deviceId);
+      setPlatformError(null);
+    } catch (error) {
+      reportPlatformError(error);
+    }
   }
 
   return (
@@ -279,7 +388,21 @@ export default function App() {
       </aside>
 
       <div className="app-main">
-        {activePage === "agent-studio" ? (
+        {platformError ? (
+          <section className="platform-status-panel error" role="status">
+            <AlertCircle size={18} />
+            <span>{platformError}</span>
+          </section>
+        ) : null}
+
+        {platformLoading ? (
+          <section className="platform-status-panel" role="status">
+            <Loader2 size={18} />
+            <span>Loading platform data</span>
+          </section>
+        ) : null}
+
+        {!platformLoading && activePage === "agent-studio" ? (
           <AgentStudioPage
             agents={normalizedAgents}
             selectedAgentId={selectedAgentId}
@@ -288,7 +411,7 @@ export default function App() {
           />
         ) : null}
 
-        {activePage === "configuration" ? (
+        {!platformLoading && activePage === "configuration" ? (
           <ConfigurationPage
             agent={selectedAgent}
             onModelChange={handleModelChange}
@@ -296,13 +419,22 @@ export default function App() {
           />
         ) : null}
 
-        {activePage === "browser-test" ? <BrowserTestPage agent={selectedAgent} /> : null}
-
-        {activePage === "dot-device" ? (
-          <DotDevicePage agents={normalizedAgents} selectedAgent={selectedAgent} />
+        {!platformLoading && activePage === "browser-test" ? (
+          <BrowserTestPage agent={selectedAgent} />
         ) : null}
 
-        {activePage === "settings" ? (
+        {!platformLoading && activePage === "dot-device" ? (
+          <DotDevicePage
+            agents={normalizedAgents}
+            devices={devices}
+            selectedAgent={selectedAgent}
+            onCreateDevice={handleCreateDevice}
+            onRemoveDevice={handleRemoveDevice}
+            onUpdateDevice={handleUpdateDevice}
+          />
+        ) : null}
+
+        {!platformLoading && activePage === "settings" ? (
           <SettingsPage
             apiKeys={apiKeys}
             settings={userSettings}

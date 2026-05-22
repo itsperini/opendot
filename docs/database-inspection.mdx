@@ -1,0 +1,58 @@
+---
+title: Database inspection
+description: Inspect the local PostgreSQL schema and platform data with Drizzle Studio.
+---
+
+OpenDot uses PostgreSQL for durable platform data and Drizzle for schema and migrations.
+
+## Start the local database
+
+From the repository root:
+
+```bash
+docker compose --env-file .env.docker.example up -d postgres migrate
+```
+
+This starts the local PostgreSQL container on `127.0.0.1:5432` and applies the Drizzle migrations.
+
+## Open Drizzle Studio
+
+From the platform app:
+
+```bash
+cd platform
+npm run db:studio
+```
+
+Open:
+
+```text
+https://local.drizzle.studio
+```
+
+Drizzle Studio reads `platform/drizzle.config.ts`, connects through `POSTGRES_URI`, and lets you inspect tables, columns, and rows for agents, devices, settings, and API key metadata.
+
+## Connection defaults
+
+The local Compose database uses:
+
+```bash
+POSTGRES_URI=postgres://opendot:opendot@localhost:5432/opendot
+POSTGRES_SSL=false
+```
+
+For Supabase, set `POSTGRES_URI` to the Supabase Postgres connection string and use:
+
+```bash
+POSTGRES_SSL=true
+```
+
+## Stop inspection services
+
+Stop Drizzle Studio with `Ctrl+C` in the terminal where it is running.
+
+Stop the local database:
+
+```bash
+docker compose --env-file .env.docker.example down
+```

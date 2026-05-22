@@ -43,11 +43,14 @@ The current starter pipeline uses hosted Deepgram and OpenAI-compatible stages w
 
 ## Local services
 
-OpenDot currently runs as two local processes:
+OpenDot can run as one Docker Compose stack or as separate local npm processes:
 
 | Process | Command | Default URL |
 | --- | --- | --- |
+| Compose stack | `docker compose --env-file .env.docker up --build` | `http://localhost:5173` |
+| Platform API | `npm run api` | `http://localhost:8788/api` |
 | Web console | `npm run dev` | `http://localhost:5173` |
 | Voice runtime | `npm run runtime` | `ws://localhost:8787/voice` |
+| Drizzle Studio | `npm run db:studio` | `https://local.drizzle.studio` |
 
 Start with the [Quickstart](/quickstart) when setting up a fresh checkout.

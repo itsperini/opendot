@@ -30,7 +30,11 @@ function formatTime(value: string) {
   }).format(new Date(value));
 }
 
-function maskToken(token: string) {
+function maskToken(token: string | null) {
+  if (!token) {
+    return "Stored as a hash";
+  }
+
   return `${token.slice(0, 14)}...${token.slice(-6)}`;
 }
 
@@ -60,6 +64,10 @@ export function SettingsPage({
   }
 
   async function copyToken(key: UserApiKey) {
+    if (!key.token) {
+      return;
+    }
+
     await navigator.clipboard.writeText(key.token);
     setCopiedKeyId(key.id);
     window.setTimeout(() => setCopiedKeyId(null), 1600);
@@ -184,7 +192,7 @@ export function SettingsPage({
                     <button
                       type="button"
                       onClick={() => copyToken(key).catch(() => undefined)}
-                      disabled={key.status !== "active"}
+                      disabled={key.status !== "active" || !key.token}
                     >
                       {copiedKeyId === key.id ? <CheckCircle2 size={15} /> : <Copy size={15} />}
                       {copiedKeyId === key.id ? "Copied" : "Copy"}

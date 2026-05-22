@@ -33,6 +33,18 @@ Use only when:
 
 Open: [firmware-build/SKILL.md](firmware-build/SKILL.md)
 
+### grill-me
+
+Use for:
+
+- stress-testing a plan, design, architecture, product idea, or implementation
+  approach
+- interviewing the user until decision branches, dependencies, tradeoffs, and
+  risks are resolved
+- requests that mention "grill me" or ask to be challenged on a plan
+
+Open: [grill-me/SKILL.md](grill-me/SKILL.md)
+
 ### skill-creator
 
 Use for:

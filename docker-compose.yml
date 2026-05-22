@@ -1,0 +1,104 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-opendot}
+      POSTGRES_USER: ${POSTGRES_USER:-opendot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opendot}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-opendot} -d ${POSTGRES_DB:-opendot}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - opendot-postgres-data:/var/lib/postgresql/data
+
+  migrate:
+    build:
+      context: .
+      dockerfile: containers/platform-node.Dockerfile
+    command: ["node", "dist-server/server/db/migrate.js"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_URI: ${POSTGRES_URI:-postgres://opendot:opendot@postgres:5432/opendot}
+      POSTGRES_SSL: ${POSTGRES_SSL:-false}
+    restart: "no"
+
+  platform-api:
+    build:
+      context: .
+      dockerfile: containers/platform-node.Dockerfile
+    command: ["node", "dist-server/server/api.js"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      PLATFORM_API_HOST: 0.0.0.0
+      PLATFORM_API_PORT: 8788
+      POSTGRES_URI: ${POSTGRES_URI:-postgres://opendot:opendot@postgres:5432/opendot}
+      POSTGRES_SSL: ${POSTGRES_SSL:-false}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://localhost:8788/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\"",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  voice-runtime:
+    build:
+      context: .
+      dockerfile: containers/platform-node.Dockerfile
+    command: ["node", "src/server/runtime.js"]
+    depends_on:
+      platform-api:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      RUNTIME_HOST: 0.0.0.0
+      RUNTIME_PORT: 8787
+      DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4-mini}
+      OPENDOT_SYSTEM_PROMPT: ${OPENDOT_SYSTEM_PROMPT:-You are a concise voice assistant. Answer naturally in one or two short spoken paragraphs.}
+      DEEPGRAM_STT_MODEL: ${DEEPGRAM_STT_MODEL:-nova-3}
+      DEEPGRAM_STT_LANGUAGE: ${DEEPGRAM_STT_LANGUAGE:-en-US}
+      DEEPGRAM_ENDPOINTING_MS: ${DEEPGRAM_ENDPOINTING_MS:-900}
+      DEEPGRAM_UTTERANCE_END_MS: ${DEEPGRAM_UTTERANCE_END_MS:-1000}
+      DEEPGRAM_TTS_MODEL: ${DEEPGRAM_TTS_MODEL:-aura-2-thalia-en}
+      DEEPGRAM_TTS_ENCODING: ${DEEPGRAM_TTS_ENCODING:-mp3}
+      DEEPGRAM_TTS_SAMPLE_RATE: ${DEEPGRAM_TTS_SAMPLE_RATE:-24000}
+      MIN_TRANSCRIPT_CHARS: ${MIN_TRANSCRIPT_CHARS:-2}
+      CLOSE_DEVICE_AFTER_TURN: ${CLOSE_DEVICE_AFTER_TURN:-true}
+      CLOSE_DEVICE_AFTER_TURN_DELAY_MS: ${CLOSE_DEVICE_AFTER_TURN_DELAY_MS:-300}
+    ports:
+      - "${RUNTIME_PORT:-8787}:8787"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: containers/platform-web.Dockerfile
+      args:
+        VITE_PLATFORM_API_URL: ${VITE_PLATFORM_API_URL:-/api}
+        VITE_RUNTIME_WS_URL: ${VITE_RUNTIME_WS_URL:-ws://localhost:8787/voice}
+        VITE_RUNTIME_HTTP_URL: ${VITE_RUNTIME_HTTP_URL:-http://localhost:8787}
+    depends_on:
+      platform-api:
+        condition: service_healthy
+      voice-runtime:
+        condition: service_started
+    ports:
+      - "${WEB_PORT:-5173}:80"
+    restart: unless-stopped
+
+volumes:
+  opendot-postgres-data:

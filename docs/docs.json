@@ -64,7 +64,8 @@
         "expanded": true,
         "pages": [
           "index",
-          "quickstart"
+          "quickstart",
+          "database-inspection"
         ]
       },
       {

@@ -160,7 +160,7 @@ function normalizeApiKey(key: UserApiKey): UserApiKey {
   return {
     id: key.id ?? createId("api_key"),
     name: key.name ?? "SDK key",
-    token: key.token,
+    token: key.token ?? null,
     prefix: key.prefix ?? key.token?.slice(0, 14) ?? "od_sk",
     createdAt: key.createdAt ?? new Date().toISOString(),
     lastUsedAt: key.lastUsedAt ?? null,

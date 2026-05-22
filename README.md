@@ -76,11 +76,50 @@ The runtime is structured around replaceable stages so future work can move more
 
 ## Quickstart
 
-Run the platform UI:
+Run the full local platform with Docker Compose:
+
+```bash
+cp .env.docker.example .env.docker
+docker compose --env-file .env.docker up --build
+```
+
+Add provider keys to `.env.docker` before testing live voice sessions.
+
+Open:
+
+```text
+http://localhost:5173
+```
+
+The Compose stack starts PostgreSQL, applies migrations, serves the web console,
+and exposes the voice runtime on `http://localhost:8787`.
+
+Inspect the local database with Drizzle Studio:
+
+```bash
+cd platform
+npm run db:studio
+```
+
+Then open `https://local.drizzle.studio`. For the Compose database, make sure
+`postgres` is running first with `docker compose --env-file .env.docker up -d
+postgres migrate`.
+
+For fast frontend/runtime development against a local or hosted Postgres:
 
 ```bash
 cd platform
 npm install
+npm run db:migrate
+```
+
+Then start the API and web console in separate terminals:
+
+```bash
+# Terminal 1
+npm run api
+
+# Terminal 2
 npm run dev
 ```
 
@@ -90,7 +129,7 @@ Open the Vite URL printed in the terminal. It is usually:
 http://localhost:5173
 ```
 
-Start the realtime voice runtime in a second terminal:
+Start the realtime voice runtime in another terminal:
 
 ```bash
 cd platform
@@ -113,6 +152,9 @@ From `platform/`:
 
 | Command | Purpose |
 | --- | --- |
+| `npm run api` | Start the Postgres-backed platform API. |
+| `npm run db:migrate` | Apply local database migrations. |
+| `npm run db:studio` | Browse the Drizzle/Postgres schema and data. |
 | `npm run dev` | Start the Vite web console. |
 | `npm run runtime` | Start the local realtime voice runtime. |
 | `npm run build` | Type-check and build the web app. |

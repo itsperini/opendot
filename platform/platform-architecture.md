@@ -91,6 +91,12 @@ Drizzle vs Prisma:
 - Choose Prisma if you want a faster product development loop, rich generated client types, and a stronger admin/data-inspection workflow early.
 - Either is fine for the MVP. I would lean Drizzle if device manifests, event tables, and hand-tuned queries become central quickly. I would lean Prisma if the first milestone is mostly product CRUD and speed of iteration.
 
+Current prototype choice:
+
+- Use Drizzle with PostgreSQL for agents, devices, user settings, and API key metadata.
+- Keep the Drizzle schema in `platform/src/server/db/schema.ts` and migrations in `platform/drizzle/`.
+- Use Drizzle Studio via `cd platform && npm run db:studio` for local schema and data inspection at `https://local.drizzle.studio`.
+
 ### Voice Runtime
 
 Recommended:
@@ -566,6 +572,7 @@ MVP/local:
 
 - Docker Compose.
 - Postgres.
+- Drizzle migrations and Drizzle Studio for local inspection.
 - Redis.
 - NATS.
 - Mosquitto or EMQX.
