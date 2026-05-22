@@ -2,22 +2,26 @@
   <img src="assets/opendot-logo.svg" alt="OpenDot" width="50%" />
 </p>
 
-OpenDot is an open source, full-stack platform for building, tuning, and managing voice agents.
+<p align="center">
+  <strong>The open platform for voice agents on real devices.</strong>
+</p>
 
-It brings the control plane, voice runtime, and device layer into one local-first workflow, so teams can develop the full voice loop without treating the pipeline as a black box. The long-term goal is simple: make production-grade voice agents that can run on your own hardware, from a developer laptop to bare-metal deployments.
+<p align="center">
+  Build and tune the voice pipeline, configure agents with knowledge and models, bind them to hardware, and operate sessions in the cloud, local network, or on-device.
+</p>
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-early%20prototype-purple.svg)](#project-status)
 
 ## Why OpenDot
 
-Most voice agent stacks are split across hosted dashboards, hidden runtime behavior, provider-specific configuration, and disconnected device firmware. OpenDot is designed as a coherent system instead:
+Most voice agent stacks are split across hosted dashboards, hidden runtime behavior, provider-specific configuration, and disconnected device firmware. OpenDot is designed as a coherent operating layer for agents that need to run beyond a browser demo:
 
-- **Full-stack voice agents**: create agents, tune pipeline stages, test live turns, and bind configs to devices.
-- **Local-first runtime**: run the web console and realtime voice runtime on your machine during development.
-- **Pipeline control**: expose VAD, STT, LLM, and TTS as explicit, replaceable stages.
-- **Device-aware workflow**: pair Dot devices, check runtime availability, and bind voice configs to hardware.
-- **Open path to bare metal**: start with hosted starter providers today, then move toward local models, self-hosted inference, and on-premise deployments without changing the agent management model.
+- **Voice pipeline control**: build and tune VAD, STT, LLM, and TTS stages as explicit, replaceable components.
+- **Agent configuration**: connect agents to prompts, knowledge, model choices, and runtime presets.
+- **Real hardware binding**: bind voice configs to Dot devices and inspect runtime availability.
+- **Flexible operation**: run sessions in the cloud, local network, or on-device as the stack matures.
+- **Open path to bare metal**: start with hosted starter providers today, then move toward local models, self-hosted inference, and real-device deployments without changing the agent management model.
 
 ## Project Status
 
@@ -122,9 +126,10 @@ See `dot-device/firmware/README.md` for board setup, flashing, provisioning, and
 
 ## Roadmap
 
-OpenDot is moving toward a local-first, provider-pluggable voice agent platform. Major roadmap themes include:
+OpenDot is moving toward an open, provider-pluggable platform for voice agents on real devices. Major roadmap themes include:
 
 - stable agent and pipeline configuration
+- knowledge and model configuration for agents
 - local and self-hosted model support
 - stronger device fleet management
 - production-ready runtime packaging

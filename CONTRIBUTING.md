@@ -1,13 +1,13 @@
 # Contributing to OpenDot
 
-Thanks for taking the time to contribute. OpenDot is an open source, full-stack platform for local-first voice agents, and good contributions can come from many directions: product thinking, platform UI, realtime runtime work, firmware, documentation, tests, examples, and issue triage.
+Thanks for taking the time to contribute. OpenDot is the open platform for voice agents on real devices, and good contributions can come from many directions: product thinking, platform UI, realtime runtime work, firmware, documentation, tests, examples, and issue triage.
 
 ## Project Principles
 
-- **Local-first by default**: the core development loop should work on a laptop with clear runtime boundaries.
+- **Real devices first**: agent configuration should connect cleanly to hardware, sessions, and deployment targets.
 - **Pipeline transparency**: VAD, STT, LLM, and TTS should be visible, tunable, and replaceable.
-- **Device-aware design**: agent configuration should connect cleanly to real hardware and deployment targets.
-- **Production direction**: prototypes should leave a path toward reliable, observable, bare-metal operation.
+- **Agent context matters**: prompts, knowledge, models, and runtime presets should be understandable and portable.
+- **Flexible operation**: cloud, local-network, and on-device sessions should share a coherent product model.
 - **Small, reviewable changes**: prefer focused pull requests over broad rewrites.
 
 ## Ways to Contribute

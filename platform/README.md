@@ -1,12 +1,15 @@
-# OpenDot Platform Prototype
+# OpenDot Platform
 
-First prototype for a traditional voice agent platform.
+OpenDot is the open platform for voice agents on real devices.
 
-The prototype focuses on the first creation flow:
+This app is the current platform workbench for building and tuning voice agents, configuring their runtime behavior, testing sessions, and binding selected configs to hardware.
+
+The current implementation focuses on the first creation flow:
 
 - Create a draft voice agent with a name and description.
 - Attach a default voice pipeline with four explicit stages: VAD, STT, LLM, and TTS.
-- Edit first-pass stage settings in the browser.
+- Edit first-pass pipeline, model, and runtime settings in the browser.
+- Test live sessions against the local voice runtime.
 - Persist draft agents in local storage.
 
 ## Pipeline Defaults

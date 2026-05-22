@@ -1,18 +1,20 @@
 # OpenDot Roadmap
 
-OpenDot is moving toward an open source, local-first platform for building, tuning, deploying, and operating voice agents on your own infrastructure.
+OpenDot is the open platform for voice agents on real devices.
+
+The roadmap is organized around one product loop: build and tune the voice pipeline, configure agents with knowledge and models, bind them to hardware, and operate sessions in the cloud, local network, or on-device.
 
 This roadmap is intentionally directional. Priorities may change as the platform, runtime, and device stack mature.
 
 ## North Star
 
-OpenDot should make it practical to run a full voice agent pipeline locally and deploy it on bare metal:
+OpenDot should make it practical to run a full voice agent pipeline wherever the agent needs to live:
 
 ```text
 audio input -> VAD -> STT -> LLM -> TTS -> audio output
 ```
 
-The platform should expose each stage clearly, make it easy to test and compare configurations, and keep the path open for hosted, self-hosted, and fully local components.
+The platform should expose each stage clearly, make it easy to test and compare configurations, attach knowledge and model choices to agents, and keep the path open for hosted, local-network, and on-device runtimes.
 
 ## Current Milestone: Local Prototype
 
@@ -20,6 +22,7 @@ The current milestone is a complete local loop:
 
 - Create draft agents in the platform UI.
 - Configure VAD, STT, LLM, and TTS stages.
+- Prepare agent prompts, model settings, and runtime presets.
 - Persist local draft agents and device state.
 - Run browser microphone tests through the local voice runtime.
 - Stream assistant text and TTS chunks back to the browser.
@@ -31,6 +34,7 @@ The current milestone is a complete local loop:
 ### Platform
 
 - Improve agent creation, editing, duplication, and deletion flows.
+- Add knowledge and model configuration surfaces for agents.
 - Add stronger validation for pipeline settings.
 - Add configuration import/export for agents and runtime presets.
 - Improve Browser Test transcript, timing, and audio replay tooling.
@@ -84,7 +88,7 @@ The current milestone is a complete local loop:
 
 ### Deployment
 
-- Package the runtime for server and bare-metal deployments.
+- Package the runtime for cloud, local network, and bare-metal deployments.
 - Add Docker and systemd deployment examples.
 - Document reverse proxy, TLS, and local network patterns.
 - Add health checks and process supervision guidance.
@@ -114,5 +118,5 @@ Roadmap discussions are welcome. The most useful proposals include:
 
 - the user or operator problem being solved
 - the affected layer: platform, runtime, firmware, docs, or deployment
-- how it fits the local-first and bare-metal direction
+- how it fits the real-device, cloud, local-network, or on-device direction
 - a small first milestone that can be reviewed and tested

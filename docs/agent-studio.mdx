@@ -1,13 +1,13 @@
 ---
 title: Agent Studio
-description: Create and select draft voice agents.
+description: Create agents and prepare their runtime configuration.
 ---
 
-Agent Studio is the first step in the platform flow. It creates draft voice agents and stores them in browser local storage for the prototype.
+Agent Studio is the first step in the OpenDot flow. It creates draft voice agents that become the anchor for pipeline tuning, model settings, knowledge configuration, live testing, and hardware binding.
 
 ## Create a draft agent
 
-Each agent needs:
+Each agent starts with:
 
 - **Agent name**: a short label such as `Lobby guide`
 - **Description**: the job the agent should perform
@@ -18,7 +18,7 @@ When you create the agent, OpenDot attaches the default four-stage pipeline:
 VAD -> STT -> LLM -> TTS
 ```
 
-The new agent becomes the selected agent for **Configuration**, **Browser Test**, and **Dot Device**.
+The new agent becomes the selected agent for **Configuration**, **Browser Test**, and **Dot Device**. Today the prototype stores the basic draft locally; the agent model is designed to grow into prompts, knowledge, model choices, and deployment bindings.
 
 ## Select an existing agent
 

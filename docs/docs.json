@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "OpenDot",
-  "description": "Docs for creating, configuring, testing, and binding OpenDot voice agents.",
+  "description": "Docs for building voice agents, tuning pipelines, binding hardware, and operating sessions across cloud, local, and device runtimes.",
   "colors": {
     "primary": "#5B21B6",
     "light": "#7C3AED",

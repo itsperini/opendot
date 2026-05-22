@@ -1,7 +1,7 @@
 {
   "name": "OpenDot",
   "short_name": "OpenDot",
-  "description": "Open operating fabric for voice agents on real devices.",
+  "description": "The open platform for voice agents on real devices.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
