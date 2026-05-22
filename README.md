@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/opendot-logo.svg" alt="OpenDot" width="50%" />
+  <img src="assets/opendot-logo.svg" alt="OpenDot" width="72%" />
 </p>
 
 <p align="center">
