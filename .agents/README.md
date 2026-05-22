@@ -94,6 +94,8 @@ Shared skills live under `.agents/skills/`.
 Current shared skills:
 
 - `brand-guidelines`: OpenDot visual style for UI and brand assets.
+- `firmware-build`: ESP-IDF setup, build, flash, and serial checks for
+  `dot-device/firmware/**` work.
 - `skill-creator`: workflow for creating, refining, or reviewing shared skills.
 
 For the skill authoring workflow, see [skills/README.md](skills/README.md).
@@ -105,5 +107,5 @@ When editing `.agents/**`:
 1. Keep guidance tool-neutral unless the file is explicitly tool-specific.
 2. Keep root guidance short and route detailed workflows into skills only when
    they are reusable.
-3. Validate changed JSON with `python -m json.tool .agents/config.json`.
+3. Validate changed JSON with `python3 -m json.tool .agents/config.json`.
 4. Run `git diff --check` before handing work back.

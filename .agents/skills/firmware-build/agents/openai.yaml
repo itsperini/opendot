@@ -1,0 +1,4 @@
+interface:
+  display_name: "Firmware Build"
+  short_description: "ESP-IDF setup, build, flash, and serial checks."
+  default_prompt: "Use $firmware-build to set up, build, flash, and verify the OpenDot ESP32 firmware."

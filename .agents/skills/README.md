@@ -23,6 +23,16 @@ Use for:
 
 Open: [brand-guidelines/SKILL.md](brand-guidelines/SKILL.md)
 
+### firmware-build
+
+Use only when:
+
+- a task explicitly asks for firmware setup, ESP-IDF, build, test, flash,
+  serial monitoring, or hardware debugging
+- the task changes or verifies files under `dot-device/firmware/**`
+
+Open: [firmware-build/SKILL.md](firmware-build/SKILL.md)
+
 ### skill-creator
 
 Use for:
@@ -47,7 +57,7 @@ Open: [skill-creator/SKILL.md](skill-creator/SKILL.md)
 6. Link the skill from `.agents/AGENTS.md` only when it should be discoverable
    from the repo-wide routing guide.
 7. Run the relevant validator, usually:
-   `python .agents/skills/skill-creator/scripts/quick_validate.py .agents/skills/<skill-name>`.
+   `python3 .agents/skills/skill-creator/scripts/quick_validate.py .agents/skills/<skill-name>`.
 
 ## Skill Design Rules
 

@@ -34,6 +34,9 @@ hardware, and operate sessions in the cloud, local network, or on-device.
   `platform/`
 - Device firmware and hardware integration:
   `dot-device/firmware/`
+- Firmware setup, build, test, flash, and serial verification:
+  `.agents/skills/firmware-build/SKILL.md` only when requested or when changing
+  or verifying `dot-device/firmware/**`
 
 Read the smallest set of files needed for the task. More-specific guidance in a
 subdirectory takes precedence over this root guide for that scoped area.
@@ -120,7 +123,7 @@ answer.
 - `.agents/AGENTS.md` is the canonical root guide.
 - `.agents/README.md` documents the shared agent configuration.
 - `.agents/skills/` contains shared reusable skills such as
-  `brand-guidelines` and `skill-creator`.
+  `brand-guidelines`, `firmware-build`, and `skill-creator`.
 - When creating or editing shared skills, follow
   `.agents/skills/skill-creator/SKILL.md` and keep skills concise with
   progressive disclosure.

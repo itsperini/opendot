@@ -2,9 +2,12 @@ menu "OpenDot Firmware"
 
 config OTA_URL
     string "Default OTA URL"
-    default "http://192.168.1.77:8787/ota/"
+    default ""
     help
-        The application will access this URL to check for new firmwares and server address.
+        The application will access this URL to check for new firmware and fetch
+        the device WebSocket address. Set this to the OpenDot runtime OTA
+        endpoint reachable from the device, usually
+        http://<runtime-lan-ip>:8787/ota/ for local development.
 
 choice
     prompt "Flash Assets"

@@ -5,9 +5,11 @@ It is an ESP-IDF firmware project for an ESP32-S3 voice device with display, dua
 microphone audio input, speaker output, Wi-Fi provisioning, wake word support, and
 WebSocket-based connection to the local OpenDot runtime.
 
-The notes in this folder were condensed into this README so the firmware can be
-built, flashed, configured, and debugged without relying on the older upstream
-branding.
+The repository is:
+
+```text
+https://github.com/itsperini/opendot
+```
 
 ## Target Hardware
 
@@ -39,7 +41,7 @@ The firmware project name is:
 opendot
 ```
 
-## Current Local Runtime Setup
+## Runtime Endpoint
 
 The ESP32 does not use the browser URL directly. The browser UI runs from the
 Vite URL printed by `npm run dev`, usually:
@@ -49,36 +51,54 @@ http://localhost:5173/agent-studio
 ```
 
 The device must use the OpenDot runtime endpoint reachable from the local network.
-The current firmware default is:
+Use the LAN IP of the computer running the runtime, not `localhost`:
 
 ```text
-http://192.168.1.77:8787/ota/
+http://<runtime-lan-ip>:8787/ota/
 ```
 
 That endpoint is served by the OpenDot `platform` runtime and returns the
 device WebSocket URL:
 
 ```text
-ws://192.168.1.77:8787/ws
+ws://<runtime-lan-ip>:8787/ws
 ```
 
-If the Mac LAN IP changes, update the OTA URL in:
+The checked-in `CONFIG_OTA_URL` value is intentionally empty so forks do not
+inherit a private LAN address. Before flashing a device, set:
 
 ```text
-sdkconfig
-main/Kconfig.projbuild
+CONFIG_OTA_URL="http://<runtime-lan-ip>:8787/ota/"
 ```
 
-For local testing, keep both platform processes running:
+You can set it with `idf.py menuconfig` under:
+
+```text
+OpenDot Firmware -> Default OTA URL
+```
+
+For local testing, keep both platform processes running from the repository
+root:
 
 ```sh
 # Terminal 1: frontend
-cd /Users/marcoperini/Documents/opendot-project/opendot/platform
+cd platform
+npm install
 npm run dev
 
 # Terminal 2: runtime
-cd /Users/marcoperini/Documents/opendot-project/opendot/platform
+cd platform
 npm run runtime
+```
+
+Common ways to find the runtime LAN IP:
+
+```sh
+# macOS, Wi-Fi
+ipconfig getifaddr en0
+
+# Linux
+hostname -I | awk '{print $1}'
 ```
 
 ## Wi-Fi Provisioning
@@ -88,12 +108,6 @@ hotspot:
 
 ```text
 opendot-<device suffix>
-```
-
-For the current board, serial logs showed:
-
-```text
-opendot-C48D
 ```
 
 To provision Wi-Fi:
@@ -114,7 +128,7 @@ Successful provisioning should look like this in serial logs:
 ```text
 WifiBoard: Connected to WiFi: <ssid>
 Application: Network connected
-HttpClient: Established new connection to 192.168.1.77:8787
+HttpClient: Established new connection to <runtime-lan-ip>:8787
 Application: Activation done
 StateMachine: State: activating -> idle
 ```
@@ -123,32 +137,39 @@ StateMachine: State: activating -> idle
 
 This project uses ESP-IDF, not Arduino.
 
-The local paths used for this workspace are:
+The firmware requires ESP-IDF `>=5.5.2`. Use `v5.5.2` for reproducible local
+builds unless the project requirement changes in `main/idf_component.yml`.
 
-```text
-Repo:     /Users/marcoperini/Documents/opendot-project/opendot
-Firmware: /Users/marcoperini/Documents/opendot-project/opendot/dot-device/firmware
-ESP-IDF:  /Users/marcoperini/Documents/Projects/opendot/.deps/esp-idf
-Tools:    /Users/marcoperini/Documents/Projects/opendot/.deps/espressif-tools
-Target:   esp32s3
-```
-
-Export these once per shell so the local ESP-IDF environment is active:
+From a fresh fork:
 
 ```sh
-export OPENDOT_ROOT=/Users/marcoperini/Documents/opendot-project/opendot
-export OPENDOT_IDF_PATH=/Users/marcoperini/Documents/Projects/opendot/.deps/esp-idf
-export IDF_TOOLS_PATH=/Users/marcoperini/Documents/Projects/opendot/.deps/espressif-tools
+git clone https://github.com/itsperini/opendot.git
+cd opendot
+```
 
-bash -lc 'source "$OPENDOT_IDF_PATH/export.sh" >/dev/null && <command>'
+Install ESP-IDF into repo-local dependency folders:
+
+```sh
+mkdir -p .deps
+git clone --branch v5.5.2 --recursive https://github.com/espressif/esp-idf.git .deps/esp-idf
+
+export IDF_TOOLS_PATH="$PWD/.deps/espressif-tools"
+.deps/esp-idf/install.sh esp32s3
+```
+
+Activate ESP-IDF in each shell before building or flashing:
+
+```sh
+export IDF_TOOLS_PATH="$PWD/.deps/espressif-tools"
+. .deps/esp-idf/export.sh
 ```
 
 Build from this folder:
 
 ```sh
-cd "$OPENDOT_ROOT/dot-device/firmware"
-
-bash -lc 'source "$OPENDOT_IDF_PATH/export.sh" >/dev/null && idf.py build'
+cd dot-device/firmware
+idf.py set-target esp32s3
+idf.py build
 ```
 
 Expected main artifact:
@@ -159,16 +180,20 @@ build/opendot.bin
 
 ## Flashing
 
-The device currently appears on this Mac as:
+Find the serial port after connecting the board over USB:
 
-```text
-/dev/cu.usbmodem2101
+```sh
+# macOS
+ls /dev/cu.usbmodem* /dev/cu.SLAB_USBtoUART* 2>/dev/null
+
+# Linux
+ls /dev/ttyACM* /dev/ttyUSB* 2>/dev/null
 ```
 
 Flash the segmented ESP-IDF build:
 
 ```sh
-bash -lc 'source "$OPENDOT_IDF_PATH/export.sh" >/dev/null && idf.py -p /dev/cu.usbmodem2101 flash'
+idf.py -p <serial-port> flash
 ```
 
 If flashing a merged binary instead of the segmented ESP-IDF output, write it at
@@ -203,7 +228,7 @@ Erase NVS when you need to remove saved Wi-Fi credentials or stale runtime
 configuration:
 
 ```sh
-bash -lc 'source "$OPENDOT_IDF_PATH/export.sh" >/dev/null && python -m esptool --chip esp32s3 -p /dev/cu.usbmodem2101 erase_region 0x9000 0x4000'
+python3 -m esptool --chip esp32s3 -p <serial-port> erase_region 0x9000 0x4000
 ```
 
 After erasing NVS, the next boot should return to Wi-Fi provisioning mode.
@@ -213,7 +238,7 @@ After erasing NVS, the next boot should return to Wi-Fi provisioning mode.
 Attach the monitor with:
 
 ```sh
-bash -lc 'source "$OPENDOT_IDF_PATH/export.sh" >/dev/null && idf.py -p /dev/cu.usbmodem2101 monitor'
+idf.py -p <serial-port> monitor
 ```
 
 Useful boot evidence:
@@ -226,6 +251,17 @@ SKU=esp32-s3-audio-board
 AudioCodec: Audio codec started
 WifiConfigurationAp: Access Point started with SSID opendot-...
 ```
+
+After flashing, keep the monitor open and confirm the device reaches the runtime:
+
+```text
+WifiBoard: Connected to WiFi: <ssid>
+HttpClient: Established new connection to <runtime-lan-ip>:8787
+Application: Activation done
+StateMachine: State: activating -> idle
+```
+
+Exit the serial monitor with `Ctrl+]`.
 
 ## Wake Word
 
@@ -284,14 +320,14 @@ state, check the OTA/bootstrap endpoint first. The expected successful log line
 is:
 
 ```text
-HttpClient: Established new connection to 192.168.1.77:8787
+HttpClient: Established new connection to <runtime-lan-ip>:8787
 ```
 
 If it tries a different port, update the firmware OTA URL and reflash. If the
 connection fails, confirm the runtime is listening:
 
 ```sh
-curl http://192.168.1.77:8787/ota/
+curl http://<runtime-lan-ip>:8787/ota/
 ```
 
 If audio is choppy, check Wi-Fi quality before changing firmware. ESP32-S3 uses
@@ -299,16 +335,15 @@ If audio is choppy, check Wi-Fi quality before changing firmware. ESP32-S3 uses
 avoid weak extenders or poor mesh hops, and compare against a phone hotspot if
 needed.
 
-## Current Verified Status
+## Healthy Device Checklist
 
-The current flashed build has been verified to:
+A working flashed build should:
 
 - Boot as `opendot`
 - Start OpenDot Wi-Fi provisioning
 - Save Wi-Fi credentials
-- Connect to `CasaCamilla_3`
-- Receive LAN IP `192.168.1.79`
-- Reach `http://192.168.1.77:8787/ota/`
+- Receive a LAN IP from the local 2.4 GHz Wi-Fi network
+- Reach `http://<runtime-lan-ip>:8787/ota/`
 - Enter idle state after activation
 - Appear in the platform runtime as available and ready
 

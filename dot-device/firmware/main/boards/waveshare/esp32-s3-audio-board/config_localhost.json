@@ -5,7 +5,7 @@
         {
             "name": "esp32-s3-audio-board-dot-localhost",
             "sdkconfig_append": [
-                "CONFIG_OTA_URL=\"http://192.168.1.77:8787/ota/\"",
+                "CONFIG_OTA_URL=\"\"",
                 "CONFIG_LANGUAGE_ZH_CN=n",
                 "CONFIG_LANGUAGE_EN_US=y",
                 "CONFIG_USE_WECHAT_MESSAGE_STYLE=y",
