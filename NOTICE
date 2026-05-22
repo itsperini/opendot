@@ -1,0 +1,14 @@
+OpenDot License Notice
+
+OpenDot is licensed under the GNU Affero General Public License, version 3.
+See the root LICENSE file for the full AGPLv3 license text.
+
+Firmware notice:
+
+The firmware under dot-device/firmware includes MIT-licensed upstream work
+from the xiaozhi firmware project. The original MIT notice is preserved in:
+
+    dot-device/firmware/LICENSE.xiaozhi
+
+That MIT notice applies to the firmware portions covered by it and must be
+preserved in copies or substantial portions of that firmware code.
