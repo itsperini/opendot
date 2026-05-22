@@ -1,5 +1,5 @@
 <svg width="140" height="32" viewBox="0 0 140 32" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="opendot-light-title">
   <title id="opendot-light-title">OpenDot</title>
-  <path d="M2 16C2 8.268 8.268 2 16 2C23.732 2 30 8.268 30 16C30 23.732 23.732 30 16 30C8.268 30 2 23.732 2 16ZM10.846 10.224C10.846 15.673 13.497 24.907 16 25.871C18.503 26.834 25.871 21.453 25.871 16C25.871 10.552 18.503 7.098 16 6.134C13.497 5.171 10.846 4.77 10.846 10.224Z" fill="#2E1065" fill-rule="evenodd" stroke="#FFFFFF" stroke-width="1" stroke-linejoin="round" paint-order="stroke fill"/>
-  <text x="40" y="22" fill="#171321" stroke="#FFFFFF" stroke-width="1" paint-order="stroke fill" stroke-linejoin="round" font-family="Avenir Next, Helvetica Neue, Inter, Arial, sans-serif" font-size="18" font-weight="500" letter-spacing="0">OpenDot</text>
+  <path d="M2 16C2 8.268 8.268 2 16 2C23.732 2 30 8.268 30 16C30 23.732 23.732 30 16 30C8.268 30 2 23.732 2 16ZM10.846 10.224C10.846 15.673 13.497 24.907 16 25.871C18.503 26.834 25.871 21.453 25.871 16C25.871 10.552 18.503 7.098 16 6.134C13.497 5.171 10.846 4.77 10.846 10.224Z" fill="#2E1065" fill-rule="evenodd" stroke="#E5E7EB" stroke-width="1" stroke-linejoin="round" paint-order="stroke fill"/>
+  <text x="40" y="22" fill="#171321" stroke="#E5E7EB" stroke-width="1" paint-order="stroke fill" stroke-linejoin="round" font-family="Avenir Next, Helvetica Neue, Inter, Arial, sans-serif" font-size="18" font-weight="500" letter-spacing="0">OpenDot</text>
 </svg>
