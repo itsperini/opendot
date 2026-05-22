@@ -91,8 +91,10 @@ not add it here.
 
 Shared skills live under `.agents/skills/`.
 
-Only `skill-creator` is kept for now. Use it when creating, refining, or
-reviewing future shared skills.
+Current shared skills:
+
+- `brand-guidelines`: OpenDot visual style for UI and brand assets.
+- `skill-creator`: workflow for creating, refining, or reviewing shared skills.
 
 For the skill authoring workflow, see [skills/README.md](skills/README.md).
 

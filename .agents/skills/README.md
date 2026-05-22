@@ -10,6 +10,19 @@ For the shared agent config, start with [`../README.md`](../README.md).
 
 ## Available Skills
 
+### brand-guidelines
+
+Use for:
+
+- creating, editing, or reviewing OpenDot UI and frontend styling
+- creating brand assets, README banners, docs visuals, diagrams, screenshots,
+  or product mockups
+- keeping colors, typography, logo treatment, radii, shadows, cards, buttons,
+  and product motifs aligned with the OpenDot visual system
+- exporting brand SVGs to crisp PNGs with the bundled `sharp-cli` helper
+
+Open: [brand-guidelines/SKILL.md](brand-guidelines/SKILL.md)
+
 ### skill-creator
 
 Use for:

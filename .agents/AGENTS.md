@@ -22,6 +22,8 @@ hardware, and operate sessions in the cloud, local network, or on-device.
 
 - Product and architecture principles:
   `.agents/ARCHITECTURE_PRINCIPLES.md`
+- UI styling, brand assets, diagrams, screenshots, or visual design:
+  `.agents/skills/brand-guidelines/SKILL.md`
 - Shared agent setup and MCP configuration:
   `.agents/README.md`
 - Creating or refining shared skills:
@@ -117,7 +119,8 @@ answer.
 
 - `.agents/AGENTS.md` is the canonical root guide.
 - `.agents/README.md` documents the shared agent configuration.
-- `.agents/skills/` currently contains only `skill-creator`.
+- `.agents/skills/` contains shared reusable skills such as
+  `brand-guidelines` and `skill-creator`.
 - When creating or editing shared skills, follow
   `.agents/skills/skill-creator/SKILL.md` and keep skills concise with
   progressive disclosure.

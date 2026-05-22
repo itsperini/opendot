@@ -1,0 +1,4 @@
+interface:
+  display_name: "Brand Guidelines"
+  short_description: "OpenDot visual style and asset export guidance."
+  default_prompt: "Use this skill when creating, editing, or reviewing OpenDot UI, docs visuals, marketing pages, product mockups, logos, diagrams, SVG-to-PNG exports, or other brand assets."
