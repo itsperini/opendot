@@ -16,11 +16,7 @@
     "eyebrows": "breadcrumbs"
   },
   "contextual": {
-    "options": [
-      "copy",
-      "view",
-      "assistant"
-    ]
+    "options": ["copy", "view", "assistant"]
   },
   "navigation": {
     "global": {
@@ -74,21 +70,13 @@
         "group": "Build agents",
         "icon": "bot",
         "expanded": true,
-        "pages": [
-          "agent-studio",
-          "voice-pipeline",
-          "browser-test"
-        ]
+        "pages": ["agent-studio", "voice-pipeline", "browser-test"]
       },
       {
         "group": "Devices and runtime",
         "icon": "cpu",
         "expanded": true,
-        "pages": [
-          "dot-device",
-          "runtime-configuration",
-          "settings-api-keys"
-        ]
+        "pages": ["dot-device", "runtime-configuration", "settings-api-keys"]
       }
     ]
   },

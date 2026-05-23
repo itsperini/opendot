@@ -13,7 +13,7 @@ Create the root environment file once:
 cp .env.example .env
 ```
 
-For local npm runs, leave `POSTGRES_URI` empty and the API/Drizzle commands use
+For local pnpm runs, leave `POSTGRES_URI` empty and the API/Drizzle commands use
 `localhost:${POSTGRES_PORT:-5432}` with the configured `POSTGRES_DB`,
 `POSTGRES_USER`, and `POSTGRES_PASSWORD`.
 
@@ -36,8 +36,7 @@ When a Bearer token is provided, the API maps the Supabase JWT `sub` to `app_use
 Use Drizzle Studio to inspect the current schema and persisted platform data:
 
 ```bash
-cd platform
-npm run db:studio
+pnpm --filter ./platform run db:studio
 ```
 
 Open `https://local.drizzle.studio`. The local Compose database uses:

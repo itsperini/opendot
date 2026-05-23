@@ -11,16 +11,13 @@ Make sure the platform API, web console, and voice runtime are running:
 
 ```bash
 # terminal 1
-cd platform
-npm run api
+pnpm run api
 
 # terminal 2
-cd platform
-npm run dev
+pnpm run dev
 
 # terminal 3
-cd platform
-npm run runtime
+pnpm run runtime
 ```
 
 The platform API and runtime load the root `.env`. Leave `POSTGRES_URI` empty for local defaults, and add provider keys there before testing live audio. The Docker Compose stack wires the local service hostnames for you.
@@ -54,8 +51,8 @@ VITE_RUNTIME_WS_URL=ws://localhost:8787/voice
 
 ## Common checks
 
-- If the page does not load agent data, confirm `npm run api` is still running and Postgres is reachable.
-- If **Connect** fails, confirm `npm run runtime` is still running.
+- If the page does not load agent data, confirm `pnpm run api` is still running and Postgres is reachable.
+- If **Connect** fails, confirm `pnpm run runtime` is still running.
 - If the mic does not start, check browser microphone permissions.
 - If text appears but audio does not play, review the TTS encoding and browser delivery settings.
 - If turns close too quickly, tune VAD endpointing in **Configuration**.

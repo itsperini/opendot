@@ -6,10 +6,10 @@ OpenDot is an early-stage open source project that touches realtime audio, local
 
 OpenDot does not have stable release branches yet. Security fixes target the `main` branch until versioned releases are introduced.
 
-| Version | Supported |
-| --- | --- |
-| `main` | Yes |
-| older commits or forks | No |
+| Version                | Supported |
+| ---------------------- | --------- |
+| `main`                 | Yes       |
+| older commits or forks | No        |
 
 ## Reporting a Vulnerability
 

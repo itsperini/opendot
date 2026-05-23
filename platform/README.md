@@ -41,19 +41,20 @@ cp .env.example .env
 Then install dependencies and apply migrations from `platform/`:
 
 ```bash
-cd platform
-npm install
-npm run db:migrate
+corepack enable
+corepack prepare pnpm@11.1.3 --activate
+pnpm install
+pnpm --filter ./platform run db:migrate
 ```
 
 Start the API and web console in separate terminals:
 
 ```bash
 # Terminal 1
-npm run api
+pnpm run api
 
 # Terminal 2
-npm run dev
+pnpm run dev
 ```
 
 Then open the Vite URL printed in the terminal.
@@ -92,10 +93,10 @@ Start the local Compose database and apply migrations:
 docker compose up -d postgres migrate
 ```
 
-Then launch Drizzle Studio from `platform/`:
+Then launch Drizzle Studio:
 
 ```bash
-npm run db:studio
+pnpm --filter ./platform run db:studio
 ```
 
 Open `https://local.drizzle.studio` to inspect tables, columns, and stored data.
@@ -113,13 +114,13 @@ The browser test uses the platform API, frontend, and voice runtime:
 
 ```bash
 # Terminal 1: platform API
-npm run api
+pnpm run api
 
 # Terminal 2: frontend
-npm run dev
+pnpm run dev
 
 # Terminal 3: voice runtime
-npm run runtime
+pnpm run runtime
 ```
 
 Add real keys to the root `.env` before starting the runtime:

@@ -54,9 +54,9 @@ Linear, and wait for an explicit selection before making changes.
 
 Use this table structure unless the domain needs additional columns:
 
-| ID | Finding | Evidence | Impact / Scope | Existing Ticket Match | Proposed Linear Action | Confidence | Human Decision |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| F1 | Concise symptom or bug claim | Measured counts, deltas, links, traces, logs, or "No measurements found" | Affected env, service, route, customer segment, or blast radius supported by evidence | Existing issue key/link, duplicate candidate, or "None found" | Create new ticket, add evidence comment, update status/labels, or no action | High/medium/low plus one short reason | Leave blank for the human to choose |
+| ID  | Finding                      | Evidence                                                                 | Impact / Scope                                                                        | Existing Ticket Match                                         | Proposed Linear Action                                                      | Confidence                            | Human Decision                      |
+| --- | ---------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------- | ----------------------------------- |
+| F1  | Concise symptom or bug claim | Measured counts, deltas, links, traces, logs, or "No measurements found" | Affected env, service, route, customer segment, or blast radius supported by evidence | Existing issue key/link, duplicate candidate, or "None found" | Create new ticket, add evidence comment, update status/labels, or no action | High/medium/low plus one short reason | Leave blank for the human to choose |
 
 In the skill instructions, state that Codex must not create tickets, comment on
 tickets, edit ticket fields, or add evidence until the human chooses one or more
@@ -65,7 +65,7 @@ this review table before writing to Linear.
 
 ### Protect Validation Integrity
 
-You may use subagents during iteration to validate whether a skill works on realistic tasks or whether a suspected problem is real. This is most useful when you want an independent pass on the skill's behavior, outputs, or failure modes after a revision.  Only do this when it is possible to start new subagents.
+You may use subagents during iteration to validate whether a skill works on realistic tasks or whether a suspected problem is real. This is most useful when you want an independent pass on the skill's behavior, outputs, or failure modes after a revision. Only do this when it is possible to start new subagents.
 
 When using subagents for validation, treat that as an evaluation surface. The goal is to learn whether the skill generalizes, not whether another agent can reconstruct the answer from leaked context.
 
@@ -404,31 +404,33 @@ User testing often this happens right after using the skill, with fresh context 
 ## Forward-testing
 
 To forward-test, launch subagents as a way to stress test the skill with minimal context.
-Subagents should *not* know that they are being asked to test the skill.  They should be treated as
-an agent asked to perform a task by the user.  Prompts to subagents should look like:
-  `Use $skill-x at /path/to/skill-x to solve problem y`
+Subagents should _not_ know that they are being asked to test the skill. They should be treated as
+an agent asked to perform a task by the user. Prompts to subagents should look like:
+`Use $skill-x at /path/to/skill-x to solve problem y`
 Not:
-  `Review the skill at /path/to/skill-x; pretend a user asks you to...`
+`Review the skill at /path/to/skill-x; pretend a user asks you to...`
 
 Decision rule for forward-testing:
-  - Err on the side of forward-testing
-  - Ask for approval if you think there's a risk that forward-testing would:
-    * take a long time,
-    * require additional approvals from the user, or
-    * modify live production systems
 
-  In these cases, show the user your proposed prompt and request (1) a yes/no decision, and
-  (2) any suggested modifictions.
+- Err on the side of forward-testing
+- Ask for approval if you think there's a risk that forward-testing would:
+  - take a long time,
+  - require additional approvals from the user, or
+  - modify live production systems
+
+In these cases, show the user your proposed prompt and request (1) a yes/no decision, and
+(2) any suggested modifictions.
 
 Considerations when forward-testing:
-   - use fresh threads for independent passes
-   - pass the skill, and a request in a similar way the user would.
-   - pass raw artifacts, not your conclusions
-   - avoid showing expected answers or intended fixes
-   - rebuild context from source artifacts after each iteration
-   - review the subagent's output and reasoning and emitted artifacts
-   - avoid leaving artifacts the agent can find on disk between iterations;
-     clean up subagents' artifacts to avoid additional contamination.
+
+- use fresh threads for independent passes
+- pass the skill, and a request in a similar way the user would.
+- pass raw artifacts, not your conclusions
+- avoid showing expected answers or intended fixes
+- rebuild context from source artifacts after each iteration
+- review the subagent's output and reasoning and emitted artifacts
+- avoid leaving artifacts the agent can find on disk between iterations;
+  clean up subagents' artifacts to avoid additional contamination.
 
 If forward-testing only succeeds when subagents see leaked context, tighten the skill or the
 forward-testing setup before trusting the result.

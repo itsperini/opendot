@@ -112,12 +112,8 @@
           "name": "agent_versions_agent_id_agents_id_fk",
           "tableFrom": "agent_versions",
           "tableTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -125,12 +121,8 @@
           "name": "agent_versions_pipeline_version_id_pipeline_versions_id_fk",
           "tableFrom": "agent_versions",
           "tableTo": "pipeline_versions",
-          "columnsFrom": [
-            "pipeline_version_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["pipeline_version_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -138,12 +130,8 @@
           "name": "agent_versions_created_by_user_id_app_users_id_fk",
           "tableFrom": "agent_versions",
           "tableTo": "app_users",
-          "columnsFrom": [
-            "created_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -270,12 +258,8 @@
           "name": "agents_user_id_app_users_id_fk",
           "tableFrom": "agents",
           "tableTo": "app_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -283,12 +267,8 @@
           "name": "agents_pipeline_id_pipelines_id_fk",
           "tableFrom": "agents",
           "tableTo": "pipelines",
-          "columnsFrom": [
-            "pipeline_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["pipeline_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -413,12 +393,8 @@
           "name": "api_keys_user_id_app_users_id_fk",
           "tableFrom": "api_keys",
           "tableTo": "app_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -637,12 +613,8 @@
           "name": "deployment_device_targets_deployment_id_deployments_id_fk",
           "tableFrom": "deployment_device_targets",
           "tableTo": "deployments",
-          "columnsFrom": [
-            "deployment_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["deployment_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -650,12 +622,8 @@
           "name": "deployment_device_targets_device_id_devices_id_fk",
           "tableFrom": "deployment_device_targets",
           "tableTo": "devices",
-          "columnsFrom": [
-            "device_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["device_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -759,12 +727,8 @@
           "name": "deployments_user_id_app_users_id_fk",
           "tableFrom": "deployments",
           "tableTo": "app_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -772,12 +736,8 @@
           "name": "deployments_agent_version_id_agent_versions_id_fk",
           "tableFrom": "deployments",
           "tableTo": "agent_versions",
-          "columnsFrom": [
-            "agent_version_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_version_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         },
@@ -785,12 +745,8 @@
           "name": "deployments_pipeline_version_id_pipeline_versions_id_fk",
           "tableFrom": "deployments",
           "tableTo": "pipeline_versions",
-          "columnsFrom": [
-            "pipeline_version_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["pipeline_version_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -873,12 +829,8 @@
           "name": "device_state_device_id_devices_id_fk",
           "tableFrom": "device_state",
           "tableTo": "devices",
-          "columnsFrom": [
-            "device_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["device_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1010,12 +962,8 @@
           "name": "devices_user_id_app_users_id_fk",
           "tableFrom": "devices",
           "tableTo": "app_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1122,12 +1070,8 @@
           "name": "local_auth_credentials_user_id_app_users_id_fk",
           "tableFrom": "local_auth_credentials",
           "tableTo": "app_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1246,12 +1190,8 @@
           "name": "pipeline_versions_pipeline_id_pipelines_id_fk",
           "tableFrom": "pipeline_versions",
           "tableTo": "pipelines",
-          "columnsFrom": [
-            "pipeline_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["pipeline_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1259,12 +1199,8 @@
           "name": "pipeline_versions_created_by_user_id_app_users_id_fk",
           "tableFrom": "pipeline_versions",
           "tableTo": "app_users",
-          "columnsFrom": [
-            "created_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1379,12 +1315,8 @@
           "name": "pipelines_user_id_app_users_id_fk",
           "tableFrom": "pipelines",
           "tableTo": "app_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1443,12 +1375,8 @@
           "name": "user_preferences_user_id_app_users_id_fk",
           "tableFrom": "user_preferences",
           "tableTo": "app_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }

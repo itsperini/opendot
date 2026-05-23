@@ -1,9 +1,4 @@
-import {
-  createRemoteJWKSet,
-  SignJWT,
-  jwtVerify,
-  type JWTPayload,
-} from "jose";
+import { createRemoteJWKSet, SignJWT, jwtVerify, type JWTPayload } from "jose";
 import { createSecretKey } from "node:crypto";
 
 export type AuthIdentity = {

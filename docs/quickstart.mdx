@@ -37,30 +37,30 @@ docker compose up -d postgres migrate
 Then open Drizzle Studio:
 
 ```bash
-cd platform
-npm run db:studio
+pnpm --filter ./platform run db:studio
 ```
 
 Open `https://local.drizzle.studio` to inspect the PostgreSQL schema and rows, including `app_users`, `local_auth_credentials`, `user_preferences`, API keys, versioned agents/pipelines, devices, device state, and deployments.
 
-## Run with npm
+## Run with pnpm
 
-From the platform app:
+From the repository root:
 
 ```bash
-cd platform
-npm install
-npm run db:migrate
+corepack enable
+corepack prepare pnpm@11.1.3 --activate
+pnpm install
+pnpm --filter ./platform run db:migrate
 ```
 
 Start the API and web console in separate terminals:
 
 ```bash
 # terminal 1
-npm run api
+pnpm run api
 
 # terminal 2
-npm run dev
+pnpm run dev
 ```
 
 Open the Vite URL printed in the terminal. It is usually:
@@ -69,13 +69,12 @@ Open the Vite URL printed in the terminal. It is usually:
 http://localhost:5173
 ```
 
-## Start the voice runtime for npm runs
+## Start the voice runtime for pnpm runs
 
 The browser test needs the voice runtime in another terminal:
 
 ```bash
-cd platform
-npm run runtime
+pnpm run runtime
 ```
 
 Add real provider keys to the root `.env` before using the runtime:

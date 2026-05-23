@@ -124,9 +124,7 @@ const STT_FEATURE_OPTIONS: StageOption[] = [
   { label: "Numerals", value: "numerals" },
 ];
 
-const LLM_API_OPTIONS: StageOption[] = [
-  { label: "Responses API", value: "Responses" },
-];
+const LLM_API_OPTIONS: StageOption[] = [{ label: "Responses API", value: "Responses" }];
 
 const REASONING_EFFORT_OPTIONS: StageOption[] = [
   { label: "None", value: "none" },
@@ -176,7 +174,10 @@ function includesOption(options: StageOption[] | undefined, value: StageSettingV
   return optionValueSet(options).has(String(value));
 }
 
-function normalizeScalarValue(setting: StageSetting, value: StageSettingValue | undefined) {
+function normalizeScalarValue(
+  setting: StageSetting,
+  value: StageSettingValue | undefined,
+) {
   if (value === undefined) {
     return setting.value;
   }
@@ -186,7 +187,9 @@ function normalizeScalarValue(setting: StageSetting, value: StageSettingValue | 
   }
 
   if (setting.control === "select" && includesOption(setting.options, value)) {
-    const match = setting.options?.find((option) => String(option.value) === String(value));
+    const match = setting.options?.find(
+      (option) => String(option.value) === String(value),
+    );
     return match?.value ?? setting.value;
   }
 
@@ -222,12 +225,19 @@ function deriveFeatureList(
       existingSettings?.find((item) => item.key === legacyKey)?.value === true,
   );
 
-  return hasLegacySettings ? normalizeMultiValue(nextSetting, legacyValues) : nextSetting.value;
+  return hasLegacySettings
+    ? normalizeMultiValue(nextSetting, legacyValues)
+    : nextSetting.value;
 }
 
-function normalizeSetting(defaultSetting: StageSetting, existingSettings: StageSetting[] = []) {
+function normalizeSetting(
+  defaultSetting: StageSetting,
+  existingSettings: StageSetting[] = [],
+) {
   if (defaultSetting.key === "system_prompt") {
-    const existing = existingSettings.find((setting) => setting.key === defaultSetting.key);
+    const existing = existingSettings.find(
+      (setting) => setting.key === defaultSetting.key,
+    );
     const value = typeof existing?.value === "string" ? existing.value.trim() : "";
     const upgradedValue =
       value && !value.toLowerCase().includes("<chunk")
@@ -529,7 +539,11 @@ function selectedFeature(
   return typeof legacyValue === "boolean" ? legacyValue : fallback;
 }
 
-function settingString(stage: PipelineStage | undefined, key: string, fallback: string | number) {
+function settingString(
+  stage: PipelineStage | undefined,
+  key: string,
+  fallback: string | number,
+) {
   const value = stage ? getSetting(stage, key) : undefined;
   return String(value ?? fallback);
 }

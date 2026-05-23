@@ -27,20 +27,21 @@ Clone the repository and install the platform dependencies:
 git clone git@github.com:itsperini/opendot.git
 cd opendot
 cp .env.example .env
-cd platform
-npm install
+corepack enable
+corepack prepare pnpm@11.1.3 --activate
+pnpm install
 ```
 
 Start the web console:
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 Start the local voice runtime in a second terminal:
 
 ```bash
-npm run runtime
+pnpm run runtime
 ```
 
 Add provider keys to the root `.env` when testing live audio:
@@ -63,8 +64,7 @@ platform/              React platform UI and local voice runtime
 Run the checks that match your change:
 
 ```bash
-cd platform
-npm run build
+pnpm run ci
 ```
 
 For docs changes:

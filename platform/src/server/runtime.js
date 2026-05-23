@@ -23,7 +23,9 @@ const config = {
   ttsSampleRate: Number(process.env.DEEPGRAM_TTS_SAMPLE_RATE || 24000),
   minTranscriptChars: Number(process.env.MIN_TRANSCRIPT_CHARS || 2),
   closeDeviceAfterTurn: process.env.CLOSE_DEVICE_AFTER_TURN !== "false",
-  closeDeviceAfterTurnDelayMs: Number(process.env.CLOSE_DEVICE_AFTER_TURN_DELAY_MS || 300),
+  closeDeviceAfterTurnDelayMs: Number(
+    process.env.CLOSE_DEVICE_AFTER_TURN_DELAY_MS || 300,
+  ),
 };
 
 const ttsChunkBaseInstructions = [
@@ -43,9 +45,12 @@ function ttsChunkStyleInstruction(runtimeConfig) {
   return (
     {
       fast: "Keep each chunk very short: normally 6-16 words and never more than 120 characters.",
-      balanced: "Keep each chunk short: normally 8-25 words and never more than 180 characters.",
-      relaxed: "Use sentence-sized chunks: normally 16-40 words and never more than 260 characters.",
-    }[style] || "Keep each chunk short: normally 8-25 words and never more than 180 characters."
+      balanced:
+        "Keep each chunk short: normally 8-25 words and never more than 180 characters.",
+      relaxed:
+        "Use sentence-sized chunks: normally 16-40 words and never more than 260 characters.",
+    }[style] ||
+    "Keep each chunk short: normally 8-25 words and never more than 180 characters."
   );
 }
 
@@ -141,7 +146,11 @@ function parseAssistantChunks(text) {
   const parser = createChunkParser();
   const chunks = parser.push(String(text || ""));
   chunks.push(...parser.flush());
-  return chunks.length > 0 ? chunks : cleanAssistantText(text) ? [cleanAssistantText(text)] : [];
+  return chunks.length > 0
+    ? chunks
+    : cleanAssistantText(text)
+      ? [cleanAssistantText(text)]
+      : [];
 }
 
 function responseInstructions(runtimeConfig) {
@@ -156,7 +165,9 @@ function responseInstructions(runtimeConfig) {
 }
 
 function isTranscriptTooShort(text, runtimeConfig = null) {
-  const minimum = Number(runtimeConfig?.turn?.minTranscriptChars ?? config.minTranscriptChars);
+  const minimum = Number(
+    runtimeConfig?.turn?.minTranscriptChars ?? config.minTranscriptChars,
+  );
   return text.replace(/\s+/g, "").length < minimum;
 }
 
@@ -228,7 +239,8 @@ function normalizeAgentConfig(agent) {
   return {
     agentName: agent?.name || "Untitled agent",
     description: agent?.description || "",
-    systemPrompt: stringSetting(llm, "system_prompt", "").trim() || defaultPromptInstructions(),
+    systemPrompt:
+      stringSetting(llm, "system_prompt", "").trim() || defaultPromptInstructions(),
     listen,
     llm: {
       model: llm?.model || config.openaiModel,
@@ -244,10 +256,20 @@ function normalizeAgentConfig(agent) {
       chunkStyle: String(setting(tts, "chunk_style", "fast")),
     },
     turn: {
-      minTranscriptChars: Number(setting(vad, "min_transcript_chars", config.minTranscriptChars)),
-      closeDeviceAfterTurn: booleanSetting(vad, "close_device_after_turn", config.closeDeviceAfterTurn),
+      minTranscriptChars: Number(
+        setting(vad, "min_transcript_chars", config.minTranscriptChars),
+      ),
+      closeDeviceAfterTurn: booleanSetting(
+        vad,
+        "close_device_after_turn",
+        config.closeDeviceAfterTurn,
+      ),
       closeDeviceAfterTurnDelayMs: Number(
-        setting(vad, "close_device_after_turn_delay_ms", config.closeDeviceAfterTurnDelayMs),
+        setting(
+          vad,
+          "close_device_after_turn_delay_ms",
+          config.closeDeviceAfterTurnDelayMs,
+        ),
       ),
     },
   };
@@ -267,7 +289,10 @@ function ttsSampleRate(runtimeConfig) {
 }
 
 function shouldStreamBrowserPcm(runtimeConfig) {
-  return runtimeConfig.tts.delivery === "pcm_stream" && ttsEncoding(runtimeConfig) === "linear16";
+  return (
+    runtimeConfig.tts.delivery === "pcm_stream" &&
+    ttsEncoding(runtimeConfig) === "linear16"
+  );
 }
 
 function ttsMimeType(runtimeConfig) {
@@ -387,7 +412,8 @@ function getOrCreateDevice(id, request = null) {
     device.ipAddress = requestIp(request) || device.ipAddress;
     device.clientId = request.headers["client-id"] || device.clientId;
     device.userAgent = request.headers["user-agent"] || device.userAgent;
-    device.protocolVersion = request.headers["protocol-version"] || device.protocolVersion;
+    device.protocolVersion =
+      request.headers["protocol-version"] || device.protocolVersion;
   }
 
   device.lastSeenAt = now;
@@ -415,7 +441,8 @@ function setDeviceState(session, state, text = null) {
   }
 
   device.state = state;
-  device.availability = session.ws.readyState === WebSocket.OPEN ? "available" : device.availability;
+  device.availability =
+    session.ws.readyState === WebSocket.OPEN ? "available" : device.availability;
   device.lastSeenAt = new Date().toISOString();
   device.updatedAt = device.lastSeenAt;
   if (text) {
@@ -429,7 +456,10 @@ function publicDevice(device) {
     name: device.name,
     model: device.model,
     serialNumber: device.serialNumber,
-    availability: device.session?.ws.readyState === WebSocket.OPEN ? "available" : device.availability,
+    availability:
+      device.session?.ws.readyState === WebSocket.OPEN
+        ? "available"
+        : device.availability,
     state: device.state,
     ipAddress: device.ipAddress,
     clientId: device.clientId,
@@ -517,14 +547,13 @@ function elapsedMs(turn, at = Date.now()) {
 }
 
 function sendTimeline(session, turn, payload) {
-  const elapsed =
-    Number.isFinite(payload.elapsedMs)
-      ? payload.elapsedMs
-      : Number.isFinite(payload.endMs)
-        ? payload.endMs
-        : Number.isFinite(payload.startMs)
-          ? payload.startMs
-          : elapsedMs(turn);
+  const elapsed = Number.isFinite(payload.elapsedMs)
+    ? payload.elapsedMs
+    : Number.isFinite(payload.endMs)
+      ? payload.endMs
+      : Number.isFinite(payload.startMs)
+        ? payload.startMs
+        : elapsedMs(turn);
 
   sendJson(session.client, {
     type: "timeline",
@@ -534,7 +563,12 @@ function sendTimeline(session, turn, payload) {
   });
 }
 
-async function askOpenAIStream(session, turn, transcript, { onChunk = async () => {} } = {}) {
+async function askOpenAIStream(
+  session,
+  turn,
+  transcript,
+  { onChunk = async () => {} } = {},
+) {
   const stream = session.runtimeConfig.llm.stream;
   const requestStartedAt = Date.now();
   const requestStartMs = elapsedMs(turn, requestStartedAt);
@@ -670,7 +704,9 @@ async function askOpenAIStream(session, turn, transcript, { onChunk = async () =
             await onChunk(chunk);
           }
         } else if (event.type === "error" || event.error) {
-          throw new Error(event.error?.message || event.message || "OpenAI stream error.");
+          throw new Error(
+            event.error?.message || event.message || "OpenAI stream error.",
+          );
         }
       }
     }
@@ -702,7 +738,11 @@ async function askOpenAIStream(session, turn, transcript, { onChunk = async () =
   return cleanAssistantText(answer);
 }
 
-async function synthesizeSpeechAudio(session, text, { turn = null, chunkIndex = null } = {}) {
+async function synthesizeSpeechAudio(
+  session,
+  text,
+  { turn = null, chunkIndex = null } = {},
+) {
   const response = await fetch(deepgramSpeakUrl(session.runtimeConfig), {
     method: "POST",
     headers: {
@@ -826,7 +866,9 @@ function createBrowserTtsStreamer(session, turn) {
       }
 
       const item = items[index];
-      const result = item.promise ? await item.promise : await synthesizeBrowserChunk(item.chunkIndex, item.text);
+      const result = item.promise
+        ? await item.promise
+        : await synthesizeBrowserChunk(item.chunkIndex, item.text);
       if (result.error) {
         throw result.error;
       }
@@ -1095,7 +1137,9 @@ async function askOpenAIDeviceResponse(session, onTextDelta = () => {}) {
           answer += event.delta;
           await onTextDelta(event.delta);
         } else if (event.type === "error" || event.error) {
-          throw new Error(event.error?.message || event.message || "OpenAI stream error.");
+          throw new Error(
+            event.error?.message || event.message || "OpenAI stream error.",
+          );
         }
       }
     }
@@ -1149,7 +1193,10 @@ function closeDeviceAfterTurn(session, reason = "turn_complete") {
   session.listening = false;
   closeDeviceStt(session);
 
-  if (!session.runtimeConfig.turn.closeDeviceAfterTurn || session.ws.readyState !== WebSocket.OPEN) {
+  if (
+    !session.runtimeConfig.turn.closeDeviceAfterTurn ||
+    session.ws.readyState !== WebSocket.OPEN
+  ) {
     setDeviceState(session, "ready", "Turn complete.");
     return;
   }
@@ -1159,7 +1206,11 @@ function closeDeviceAfterTurn(session, reason = "turn_complete") {
     clearTimeout(session.closeTimer);
   }
 
-  setDeviceState(session, "closing_audio_channel", "Closing audio channel to return to wake-word mode.");
+  setDeviceState(
+    session,
+    "closing_audio_channel",
+    "Closing audio channel to return to wake-word mode.",
+  );
   session.closeTimer = setTimeout(() => {
     if (session.ws.readyState === WebSocket.OPEN) {
       session.ws.close(1000, reason);
@@ -1217,7 +1268,11 @@ function createDeviceSttConnection(session) {
       return;
     }
 
-    if (data.type !== "Results" || session.processing || (!session.listening && !session.awaitingFinal)) {
+    if (
+      data.type !== "Results" ||
+      session.processing ||
+      (!session.listening && !session.awaitingFinal)
+    ) {
       return;
     }
 
@@ -1237,7 +1292,11 @@ function createDeviceSttConnection(session) {
       closeDeviceStt(session);
 
       if (!text || isTranscriptTooShort(text, session.runtimeConfig)) {
-        setDeviceState(session, "ignored_transcript", text ? `Ignored short transcript: ${text}` : "Ignored empty transcript.");
+        setDeviceState(
+          session,
+          "ignored_transcript",
+          text ? `Ignored short transcript: ${text}` : "Ignored empty transcript.",
+        );
         closeDeviceAfterTurn(session, "ignored_transcript");
         return;
       }
@@ -1358,7 +1417,11 @@ function createDeviceTtsStreamer(session, turnStartedAt) {
           started = true;
         }
 
-        sendDeviceJson(session, { type: "tts", state: "sentence_start", text: result.text });
+        sendDeviceJson(session, {
+          type: "tts",
+          state: "sentence_start",
+          text: result.text,
+        });
 
         for (const frame of result.frames) {
           if (session.ws.readyState !== WebSocket.OPEN) {
@@ -1366,7 +1429,11 @@ function createDeviceTtsStreamer(session, turnStartedAt) {
           }
           if (!firstAudioSent) {
             firstAudioSent = true;
-            setDeviceState(session, "speaking", `First TTS audio in ${Date.now() - turnStartedAt}ms.`);
+            setDeviceState(
+              session,
+              "speaking",
+              `First TTS audio in ${Date.now() - turnStartedAt}ms.`,
+            );
           }
           session.ws.send(frame, { binary: true });
           await sleep(55);
@@ -1398,7 +1465,11 @@ function createDeviceTtsStreamer(session, turnStartedAt) {
         const startedAt = Date.now();
         const pcm = await synthesizeDevicePcm(session, cleanText);
         const frames = encodePcmToOpusFrames(pcm, 24000, 60);
-        setDeviceState(session, "tts_chunk_ready", `TTS chunk ${chunkIndex}: ${pcm.length} PCM bytes in ${Date.now() - startedAt}ms.`);
+        setDeviceState(
+          session,
+          "tts_chunk_ready",
+          `TTS chunk ${chunkIndex}: ${pcm.length} PCM bytes in ${Date.now() - startedAt}ms.`,
+        );
         return { text: cleanText, pcmBytes: pcm.length, frames };
       })().catch((error) => ({ error }));
 
@@ -1497,7 +1568,8 @@ function startDeviceStt(session) {
   if (
     session.sttConnecting ||
     (session.deepgram &&
-      (session.deepgram.readyState === WebSocket.OPEN || session.deepgram.readyState === WebSocket.CONNECTING))
+      (session.deepgram.readyState === WebSocket.OPEN ||
+        session.deepgram.readyState === WebSocket.CONNECTING))
   ) {
     return;
   }
@@ -1517,16 +1589,24 @@ function handleDeviceJson(session, message) {
       },
     });
     console.log(`[device ${session.id}] hello version=${message.version}`);
-    session.deviceRecord.protocolVersion = String(message.version || session.deviceRecord.protocolVersion || "");
+    session.deviceRecord.protocolVersion = String(
+      message.version || session.deviceRecord.protocolVersion || "",
+    );
     setDeviceState(session, "ready", `Protocol hello v${message.version || "unknown"}.`);
     return;
   }
 
   if (message.type === "listen") {
-    console.log(`[device ${session.id}] listen ${message.state} mode=${message.mode || ""} text=${message.text || ""}`);
+    console.log(
+      `[device ${session.id}] listen ${message.state} mode=${message.mode || ""} text=${message.text || ""}`,
+    );
     if (message.state === "start" || message.state === "detect") {
       if (session.processing || session.closingAfterTurn) {
-        setDeviceState(session, "listen_ignored", "Ignored listen start while finishing previous turn.");
+        setDeviceState(
+          session,
+          "listen_ignored",
+          "Ignored listen start while finishing previous turn.",
+        );
         return;
       }
       session.listening = true;
@@ -1592,7 +1672,8 @@ function configureSession(session, agent) {
   if (!config.deepgramApiKey || !config.openaiApiKey) {
     sendJson(session.client, {
       type: "error",
-      message: "Missing DEEPGRAM_API_KEY or OPENAI_API_KEY. Create root .env from .env.example.",
+      message:
+        "Missing DEEPGRAM_API_KEY or OPENAI_API_KEY. Create root .env from .env.example.",
     });
     return;
   }
@@ -1600,7 +1681,10 @@ function configureSession(session, agent) {
   session.runtimeConfig = normalizeAgentConfig(agent);
   session.conversation = [];
   session.finalSegments = [];
-  if (session.deepgram?.readyState === WebSocket.OPEN || session.deepgram?.readyState === WebSocket.CONNECTING) {
+  if (
+    session.deepgram?.readyState === WebSocket.OPEN ||
+    session.deepgram?.readyState === WebSocket.CONNECTING
+  ) {
     session.deepgram.close();
   }
   session.deepgram = createDeepgramConnection(session);
@@ -1653,7 +1737,9 @@ const server = http.createServer((req, res) => {
     const deviceId = decodeURIComponent(deviceForgetMatch[1]);
     const device = deviceRegistry.get(deviceId);
     if (device?.session?.ws.readyState === WebSocket.OPEN) {
-      writeJson(res, 409, { error: "Connected devices cannot be forgotten from runtime." });
+      writeJson(res, 409, {
+        error: "Connected devices cannot be forgotten from runtime.",
+      });
       return;
     }
     deviceRegistry.delete(deviceId);
@@ -1664,7 +1750,10 @@ const server = http.createServer((req, res) => {
   if (url.pathname === "/ota/") {
     const host = req.headers.host || `${config.host}:${config.port}`;
     const wsUrl = `ws://${host}/ws`;
-    const device = getOrCreateDevice(req.headers["device-id"] || req.headers["client-id"], req);
+    const device = getOrCreateDevice(
+      req.headers["device-id"] || req.headers["client-id"],
+      req,
+    );
     req.resume();
     console.log(`[ota] ${req.method} device=${device.id} -> ${wsUrl}`);
     logDeviceEvent(device, `OTA requested. WebSocket ${wsUrl}.`);
@@ -1740,13 +1829,19 @@ wss.on("connection", (client) => {
       session.conversation = [];
       session.finalSegments = [];
       sendJson(client, { type: "reset_done" });
-    } else if (payload.type === "finalize" && session.deepgram?.readyState === WebSocket.OPEN) {
+    } else if (
+      payload.type === "finalize" &&
+      session.deepgram?.readyState === WebSocket.OPEN
+    ) {
       session.deepgram.send(JSON.stringify({ type: "Finalize" }));
     }
   });
 
   client.on("close", () => {
-    if (session.deepgram?.readyState === WebSocket.OPEN || session.deepgram?.readyState === WebSocket.CONNECTING) {
+    if (
+      session.deepgram?.readyState === WebSocket.OPEN ||
+      session.deepgram?.readyState === WebSocket.CONNECTING
+    ) {
       session.deepgram.close();
     }
   });
@@ -1758,7 +1853,10 @@ deviceWss.on("connection", (ws, request) => {
     return;
   }
 
-  const device = getOrCreateDevice(request.headers["device-id"] || request.headers["client-id"], request);
+  const device = getOrCreateDevice(
+    request.headers["device-id"] || request.headers["client-id"],
+    request,
+  );
   const session = {
     id: randomUUID(),
     deviceId: device.id,

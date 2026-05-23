@@ -115,8 +115,7 @@ export default function App() {
   const [agents, setAgents] = useState<VoiceAgent[]>([]);
   const [devices, setDevices] = useState<DotDevice[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
-  const [userSettings, setUserSettings] =
-    useState<UserSettings>(defaultUserSettings);
+  const [userSettings, setUserSettings] = useState<UserSettings>(defaultUserSettings);
   const [apiKeys, setApiKeys] = useState<UserApiKey[]>([]);
   const [platformLoading, setPlatformLoading] = useState(false);
   const [platformError, setPlatformError] = useState<string | null>(null);
@@ -151,9 +150,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    setPlatformAccessTokenProvider(
-      authSession ? () => authSession.accessToken : null,
-    );
+    setPlatformAccessTokenProvider(authSession ? () => authSession.accessToken : null);
 
     return () => setPlatformAccessTokenProvider(null);
   }, [authSession]);
@@ -214,7 +211,10 @@ export default function App() {
   );
 
   useEffect(() => {
-    if (selectedAgentId && normalizedAgents.some((agent) => agent.id === selectedAgentId)) {
+    if (
+      selectedAgentId &&
+      normalizedAgents.some((agent) => agent.id === selectedAgentId)
+    ) {
       return;
     }
 
@@ -441,11 +441,7 @@ export default function App() {
 
   if (!authSession) {
     return (
-      <AuthPage
-        error={authError}
-        loading={authSubmitting}
-        onSubmit={handleAuthSubmit}
-      />
+      <AuthPage error={authError} loading={authSubmitting} onSubmit={handleAuthSubmit} />
     );
   }
 

@@ -40,21 +40,21 @@ equivalents when Tailwind/shadcn variables are not available.
 
 ### Core Colors
 
-| Role | Token/value | Use |
-| --- | --- | --- |
-| Deep violet | `#14091f` / `violet-950` | dark hero, runtime panes, code/env rows, primary dark CTAs |
-| Logo violet | `#2e1065` | OpenDot mark on light surfaces |
-| Primary violet | `#5b21b6` / `violet-800` | active nav, links, selected state text |
-| Accent violet | `#6d28d9` / `violet-700` | focus, icons, labels, active controls |
-| Soft violet | `#ede9fe` / `violet-100` | icon backgrounds, selected nav, subtle badges |
-| Page tint | `#fbf9ff` | light brand page sections |
-| Soft surface | `#f7f5fb` | product mockup interiors and subtle panels |
-| White | `#ffffff` | cards, controls, content panels |
-| Ink | `#171321` or zinc-950 | primary text |
-| Muted | `#625c6f` or zinc-600 | body copy and secondary UI text |
-| Subtle | `#91889f` or zinc-400/500 | helper text, timestamps, quiet metadata |
-| Border | `#e8ddf8` / `violet-100` | standard panel/card borders |
-| Strong border | `#d8c3f7` / `violet-200` | selected/hover/focusable borders |
+| Role           | Token/value               | Use                                                        |
+| -------------- | ------------------------- | ---------------------------------------------------------- |
+| Deep violet    | `#14091f` / `violet-950`  | dark hero, runtime panes, code/env rows, primary dark CTAs |
+| Logo violet    | `#2e1065`                 | OpenDot mark on light surfaces                             |
+| Primary violet | `#5b21b6` / `violet-800`  | active nav, links, selected state text                     |
+| Accent violet  | `#6d28d9` / `violet-700`  | focus, icons, labels, active controls                      |
+| Soft violet    | `#ede9fe` / `violet-100`  | icon backgrounds, selected nav, subtle badges              |
+| Page tint      | `#fbf9ff`                 | light brand page sections                                  |
+| Soft surface   | `#f7f5fb`                 | product mockup interiors and subtle panels                 |
+| White          | `#ffffff`                 | cards, controls, content panels                            |
+| Ink            | `#171321` or zinc-950     | primary text                                               |
+| Muted          | `#625c6f` or zinc-600     | body copy and secondary UI text                            |
+| Subtle         | `#91889f` or zinc-400/500 | helper text, timestamps, quiet metadata                    |
+| Border         | `#e8ddf8` / `violet-100`  | standard panel/card borders                                |
+| Strong border  | `#d8c3f7` / `violet-200`  | selected/hover/focusable borders                           |
 
 Canonical shadcn/Tailwind OKLCH variables:
 

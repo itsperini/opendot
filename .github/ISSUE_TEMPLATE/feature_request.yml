@@ -1,0 +1,33 @@
+name: Feature Request
+description: Suggest an improvement to OpenDot.
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    attributes:
+      label: What should OpenDot support?
+      description: Describe the capability, workflow, or improvement you want.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Why does this matter?
+      description: Explain the voice-agent, runtime, device, or contributor problem this solves.
+    validations:
+      required: true
+  - type: dropdown
+    attributes:
+      label: Affected area
+      options:
+        - Platform UI
+        - Voice runtime
+        - Dot device firmware
+        - Docs
+        - Tooling or CI
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Additional context
+      description: Add mockups, examples, related tools, prior art, or constraints.

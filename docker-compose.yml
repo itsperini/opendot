@@ -6,7 +6,11 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-opendot}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opendot}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-opendot} -d ${POSTGRES_DB:-opendot}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-opendot} -d ${POSTGRES_DB:-opendot}",
+        ]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -62,7 +66,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "node -e \"fetch('http://localhost:8788/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\"",
+          'node -e "fetch(''http://localhost:8788/health'').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"',
         ]
       interval: 10s
       timeout: 5s

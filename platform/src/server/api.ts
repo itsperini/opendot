@@ -169,9 +169,7 @@ function availability(value: unknown): DotDeviceAvailability {
 }
 
 function updateMode(value: unknown): DotDeviceUpdateMode {
-  return value === "checking" || value === "binding" || value === "idle"
-    ? value
-    : "idle";
+  return value === "checking" || value === "binding" || value === "idle" ? value : "idle";
 }
 
 function slugify(value: string, fallback: string) {
@@ -497,9 +495,7 @@ async function ensureUserContext(identity: AuthIdentity): Promise<UserContext> {
   };
 }
 
-async function contextFromRequest(
-  authorization: string | string[] | undefined,
-) {
+async function contextFromRequest(authorization: string | string[] | undefined) {
   return ensureUserContext(await resolveAuthIdentity(authorization));
 }
 
@@ -508,9 +504,7 @@ function hasBearerToken(authorization: string | string[] | undefined) {
   return Boolean(header?.match(/^Bearer\s+.+$/i));
 }
 
-async function authSessionFromRequest(
-  authorization: string | string[] | undefined,
-) {
+async function authSessionFromRequest(authorization: string | string[] | undefined) {
   if (!hasBearerToken(authorization)) {
     throw httpError("An active session is required.", 401);
   }
@@ -540,37 +534,11 @@ async function latestAgentVersions(agentIds: string[]) {
   return latest;
 }
 
-async function latestPipelineVersions(pipelineIds: string[]) {
-  if (pipelineIds.length === 0) {
-    return new Map<string, PipelineVersionRow>();
-  }
-
-  const rows = await db
-    .select()
-    .from(pipelineVersions)
-    .where(inArray(pipelineVersions.pipelineId, pipelineIds))
-    .orderBy(desc(pipelineVersions.versionNumber));
-  const latest = new Map<string, PipelineVersionRow>();
-
-  for (const row of rows) {
-    if (!latest.has(row.pipelineId)) {
-      latest.set(row.pipelineId, row);
-    }
-  }
-
-  return latest;
-}
-
 async function readAgents(context: UserContext) {
   const agentRows = await db
     .select()
     .from(agents)
-    .where(
-      and(
-        eq(agents.userId, context.user.id),
-        isNull(agents.deletedAt),
-      ),
-    )
+    .where(and(eq(agents.userId, context.user.id), isNull(agents.deletedAt)))
     .orderBy(desc(agents.updatedAt));
 
   const latestAgentVersionByAgent = await latestAgentVersions(
@@ -585,14 +553,12 @@ async function readAgents(context: UserContext) {
         .from(pipelineVersions)
         .where(inArray(pipelineVersions.id, pipelineVersionIds))
     : [];
-  const pipelineVersionById = new Map(
-    pipelineVersionRows.map((row) => [row.id, row]),
-  );
+  const pipelineVersionById = new Map(pipelineVersionRows.map((row) => [row.id, row]));
 
   return agentRows.map((agent) => {
     const agentVersion = latestAgentVersionByAgent.get(agent.id) ?? null;
     const pipelineVersion = agentVersion?.pipelineVersionId
-      ? pipelineVersionById.get(agentVersion.pipelineVersionId) ?? null
+      ? (pipelineVersionById.get(agentVersion.pipelineVersionId) ?? null)
       : null;
     return agentFromRows(agent, agentVersion, pipelineVersion);
   });
@@ -602,12 +568,7 @@ async function readDevices(context: UserContext) {
   const deviceRows = await db
     .select()
     .from(devices)
-    .where(
-      and(
-        eq(devices.userId, context.user.id),
-        isNull(devices.deletedAt),
-      ),
-    )
+    .where(and(eq(devices.userId, context.user.id), isNull(devices.deletedAt)))
     .orderBy(desc(devices.updatedAt));
 
   if (deviceRows.length === 0) {
@@ -944,8 +905,7 @@ function mergeDevice(
     lastSeenAt: body.lastSeenAt ?? existing?.lastSeenAt ?? null,
     boundAgentId: body.boundAgentId ?? existing?.boundAgentId ?? null,
     boundAgentName: body.boundAgentName ?? existing?.boundAgentName ?? null,
-    boundConfigVersion:
-      body.boundConfigVersion ?? existing?.boundConfigVersion ?? null,
+    boundConfigVersion: body.boundConfigVersion ?? existing?.boundConfigVersion ?? null,
     boundAt: body.boundAt ?? existing?.boundAt ?? null,
     updateMode: updateMode(body.updateMode ?? existing?.updateMode),
     updatedAt,
@@ -1054,7 +1014,6 @@ async function saveDevice(
           updatedAt,
         },
       });
-
   });
 
   const bindingChanged =
@@ -1255,12 +1214,15 @@ server.get("/api/dot-devices", async (request) => {
   return { devices: await readDevices(context) };
 });
 
-server.post<{ Body: CreateDotDeviceInput }>("/api/dot-devices", async (request, reply) => {
-  const context = await contextFromRequest(request.headers.authorization);
-  const device = createDevice(request.body ?? ({} as CreateDotDeviceInput));
-  const savedDevice = await saveDevice(context, device);
-  return reply.code(201).send({ device: savedDevice ?? device });
-});
+server.post<{ Body: CreateDotDeviceInput }>(
+  "/api/dot-devices",
+  async (request, reply) => {
+    const context = await contextFromRequest(request.headers.authorization);
+    const device = createDevice(request.body ?? ({} as CreateDotDeviceInput));
+    const savedDevice = await saveDevice(context, device);
+    return reply.code(201).send({ device: savedDevice ?? device });
+  },
+);
 
 server.put<{ Params: { id: string }; Body: Partial<DotDevice> }>(
   "/api/dot-devices/:id",
@@ -1273,7 +1235,8 @@ server.put<{ Params: { id: string }; Body: Partial<DotDevice> }>(
       body.serialNumber ?? null,
     );
     const existing = existingRow ? await publicDeviceById(context, existingRow.id) : null;
-    const deviceId = existing?.id ?? (isUuid(request.params.id) ? request.params.id : randomUUID());
+    const deviceId =
+      existing?.id ?? (isUuid(request.params.id) ? request.params.id : randomUUID());
     const device = mergeDevice(deviceId, existing, body);
     const savedDevice = await saveDevice(context, device, existing);
 
@@ -1293,7 +1256,10 @@ server.put<{ Body: Partial<UserSettings> }>("/api/settings", async (request) => 
   const body = request.body ?? {};
   const timestamp = nowDate();
   const next: UserSettings = {
-    displayName: stringValue(body.displayName ?? current.displayName, current.displayName),
+    displayName: stringValue(
+      body.displayName ?? current.displayName,
+      current.displayName,
+    ),
     email: stringValue(body.email ?? current.email, current.email),
     workspaceName: stringValue(
       body.workspaceName ?? current.workspaceName,
@@ -1379,12 +1345,7 @@ server.post<{ Params: { id: string } }>("/api/api-keys/:id/revoke", async (reque
   const [row] = await db
     .select()
     .from(apiKeys)
-    .where(
-      and(
-        eq(apiKeys.id, request.params.id),
-        eq(apiKeys.userId, context.user.id),
-      ),
-    )
+    .where(and(eq(apiKeys.id, request.params.id), eq(apiKeys.userId, context.user.id)))
     .limit(1);
 
   return { apiKey: row ? apiKeyFromRow(row) : null };
@@ -1393,9 +1354,7 @@ server.post<{ Params: { id: string } }>("/api/api-keys/:id/revoke", async (reque
 server.setErrorHandler((error, _request, reply) => {
   const message = error instanceof Error ? error.message : String(error);
   const maybeStatus =
-    error && typeof error === "object" && "statusCode" in error
-      ? error.statusCode
-      : null;
+    error && typeof error === "object" && "statusCode" in error ? error.statusCode : null;
   const statusCode =
     typeof maybeStatus === "number"
       ? maybeStatus

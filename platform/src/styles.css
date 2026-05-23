@@ -155,8 +155,7 @@ p {
 .auth-brand-panel {
   align-content: space-between;
   background:
-    linear-gradient(135deg, rgba(91, 33, 182, 0.2), transparent 42%),
-    var(--violet-950);
+    linear-gradient(135deg, rgba(91, 33, 182, 0.2), transparent 42%), var(--violet-950);
   color: #ffffff;
   display: grid;
   gap: 40px;
@@ -2164,7 +2163,8 @@ p {
 
 .timeline-track {
   background:
-    linear-gradient(to right, rgba(148, 163, 184, 0.24) 1px, transparent 1px) 0 0 / 25% 100%,
+    linear-gradient(to right, rgba(148, 163, 184, 0.24) 1px, transparent 1px) 0 0 / 25%
+      100%,
     #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
@@ -2341,7 +2341,6 @@ p {
   .api-key-actions {
     justify-content: start;
   }
-
 }
 
 @media (max-width: 520px) {

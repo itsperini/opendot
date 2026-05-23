@@ -1,0 +1,10 @@
+node_modules/
+platform/node_modules/
+platform/dist/
+platform/dist-server/
+dot-device/firmware/
+.git/
+.local-logs/
+coverage/
+*.log
+pnpm-lock.yaml

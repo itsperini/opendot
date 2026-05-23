@@ -107,8 +107,7 @@ surfaces that are active today.
 Inspect the local database with Drizzle Studio:
 
 ```bash
-cd platform
-npm run db:studio
+pnpm --filter ./platform run db:studio
 ```
 
 Then open `https://local.drizzle.studio`. For the Compose database, make sure
@@ -117,9 +116,10 @@ Then open `https://local.drizzle.studio`. For the Compose database, make sure
 For fast frontend/runtime development against a local or hosted Postgres:
 
 ```bash
-cd platform
-npm install
-npm run db:migrate
+corepack enable
+corepack prepare pnpm@11.1.3 --activate
+pnpm install
+pnpm --filter ./platform run db:migrate
 ```
 
 For Supabase Postgres, set `POSTGRES_URI` to the Supabase connection string and
@@ -131,10 +131,10 @@ Then start the API and web console in separate terminals:
 
 ```bash
 # Terminal 1
-npm run api
+pnpm run api
 
 # Terminal 2
-npm run dev
+pnpm run dev
 ```
 
 Open the Vite URL printed in the terminal. It is usually:
@@ -146,8 +146,7 @@ http://localhost:5173
 Start the realtime voice runtime in another terminal:
 
 ```bash
-cd platform
-npm run runtime
+pnpm run runtime
 ```
 
 Add provider keys to the root `.env` before testing live voice sessions:
@@ -193,17 +192,20 @@ preview project.
 
 ## Platform Commands
 
-From `platform/`:
+From the repository root:
 
-| Command | Purpose |
-| --- | --- |
-| `npm run api` | Start the Postgres-backed platform API. |
-| `npm run db:migrate` | Apply local database migrations. |
-| `npm run db:studio` | Browse the Drizzle/Postgres schema and data. |
-| `npm run dev` | Start the Vite web console. |
-| `npm run runtime` | Start the local realtime voice runtime. |
-| `npm run build` | Type-check and build the web app. |
-| `npm run preview` | Preview the built web app. |
+| Command                                   | Purpose                                      |
+| ----------------------------------------- | -------------------------------------------- |
+| `pnpm install`                            | Install workspace dependencies.              |
+| `pnpm run api`                            | Start the Postgres-backed platform API.      |
+| `pnpm --filter ./platform run db:migrate` | Apply local database migrations.             |
+| `pnpm --filter ./platform run db:studio`  | Browse the Drizzle/Postgres schema and data. |
+| `pnpm run dev`                            | Start the Vite web console.                  |
+| `pnpm run runtime`                        | Start the local realtime voice runtime.      |
+| `pnpm run lint`                           | Run platform lint checks.                    |
+| `pnpm run test`                           | Run platform unit tests.                     |
+| `pnpm run build`                          | Type-check and build the web app.            |
+| `pnpm --filter ./platform run preview`    | Preview the built web app.                   |
 
 ## Documentation
 

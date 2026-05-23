@@ -59,10 +59,7 @@ function wait(ms: number) {
   });
 }
 
-function appendLog(
-  setLog: Dispatch<SetStateAction<DeviceLog[]>>,
-  text: string,
-) {
+function appendLog(setLog: Dispatch<SetStateAction<DeviceLog[]>>, text: string) {
   setLog((current) =>
     [
       {
@@ -141,11 +138,16 @@ function runtimeDeviceId(deviceId: string) {
 }
 
 function isRuntimeDevice(device: DotDevice) {
-  return device.id.startsWith("runtime:") || endpointBase(device.deviceEndpoint) === runtimeApiBase;
+  return (
+    device.id.startsWith("runtime:") ||
+    endpointBase(device.deviceEndpoint) === runtimeApiBase
+  );
 }
 
 function runtimeSerial(device: DotDevice) {
-  return device.id.startsWith("runtime:") ? device.id.slice("runtime:".length) : device.serialNumber;
+  return device.id.startsWith("runtime:")
+    ? device.id.slice("runtime:".length)
+    : device.serialNumber;
 }
 
 function runtimeEventText(event: RuntimeDeviceEvent) {
@@ -207,7 +209,8 @@ export function DotDevicePage({
           runtimeDevice.boundConfigVersion ?? existing?.boundConfigVersion ?? null,
         boundAt: runtimeDevice.boundAt ?? existing?.boundAt ?? null,
         updateMode: existing?.updateMode ?? "idle",
-        updatedAt: runtimeDevice.updatedAt ?? existing?.updatedAt ?? new Date().toISOString(),
+        updatedAt:
+          runtimeDevice.updatedAt ?? existing?.updatedAt ?? new Date().toISOString(),
       };
 
       if (existingIndex === -1) {
@@ -232,18 +235,15 @@ export function DotDevicePage({
     setSelectedDeviceId(devices[0]?.id ?? null);
   }, [devices, selectedDeviceId]);
 
-  const syncRuntimeDevices = useCallback(
-    (nextRuntimeDevices: RuntimeDevice[]) => {
-      setSelectedDeviceId((current) => {
-        if (current) {
-          return current;
-        }
-        const [firstRuntimeDevice] = nextRuntimeDevices;
-        return firstRuntimeDevice ? runtimeDeviceId(firstRuntimeDevice.id) : null;
-      });
-    },
-    [],
-  );
+  const syncRuntimeDevices = useCallback((nextRuntimeDevices: RuntimeDevice[]) => {
+    setSelectedDeviceId((current) => {
+      if (current) {
+        return current;
+      }
+      const [firstRuntimeDevice] = nextRuntimeDevices;
+      return firstRuntimeDevice ? runtimeDeviceId(firstRuntimeDevice.id) : null;
+    });
+  }, []);
 
   const refreshRuntimeDevices = useCallback(
     async (logResult = false) => {
@@ -311,10 +311,7 @@ export function DotDevicePage({
     return runtimeDeviceById.get(serial) ?? null;
   }, [runtimeDeviceById, selectedDevice]);
 
-  function updateDevice(
-    deviceId: string,
-    update: (device: DotDevice) => DotDevice,
-  ) {
+  function updateDevice(deviceId: string, update: (device: DotDevice) => DotDevice) {
     const device = devices.find((item) => item.id === deviceId);
     if (!device) {
       return;
@@ -407,7 +404,9 @@ export function DotDevicePage({
       }
     } else if (device.deviceEndpoint.startsWith("demo://")) {
       await wait(550);
-      nextAvailability = device.deviceEndpoint.includes("lobby") ? "offline" : "available";
+      nextAvailability = device.deviceEndpoint.includes("lobby")
+        ? "offline"
+        : "available";
     } else if (device.deviceEndpoint.startsWith("http")) {
       const controller = new AbortController();
       const timeout = window.setTimeout(() => controller.abort(), 2500);
@@ -483,7 +482,9 @@ export function DotDevicePage({
 
         if (!response.ok) {
           const body = await response.json().catch(() => null);
-          throw new Error(body?.error || `Runtime rejected config with ${response.status}.`);
+          throw new Error(
+            body?.error || `Runtime rejected config with ${response.status}.`,
+          );
         }
 
         const body = (await response.json()) as { device?: RuntimeDevice };
@@ -498,11 +499,14 @@ export function DotDevicePage({
           ]);
         }
       } else if (selectedDevice.deviceEndpoint.startsWith("http")) {
-        const response = await fetch(`${endpointBase(selectedDevice.deviceEndpoint)}/config`, {
-          body: JSON.stringify(payload),
-          headers: { "Content-Type": "application/json" },
-          method: "PUT",
-        });
+        const response = await fetch(
+          `${endpointBase(selectedDevice.deviceEndpoint)}/config`,
+          {
+            body: JSON.stringify(payload),
+            headers: { "Content-Type": "application/json" },
+            method: "PUT",
+          },
+        );
 
         if (!response.ok) {
           throw new Error(`Device rejected config with ${response.status}.`);
@@ -582,7 +586,9 @@ export function DotDevicePage({
                   </span>
                   <span className="device-row-copy">
                     <strong>{device.name}</strong>
-                    <small>{device.model} / {device.serialNumber}</small>
+                    <small>
+                      {device.model} / {device.serialNumber}
+                    </small>
                     <em>
                       {availabilityLabel(device)}
                       {runtimeDevice?.state ? ` / ${runtimeDevice.state}` : ""} /{" "}
@@ -734,7 +740,9 @@ export function DotDevicePage({
                   onChange={(event) => setBindingAgentId(event.target.value)}
                   disabled={agents.length === 0}
                 >
-                  <option value="">{agents.length === 0 ? "No agents" : "Select agent"}</option>
+                  <option value="">
+                    {agents.length === 0 ? "No agents" : "Select agent"}
+                  </option>
                   {agents.map((agent) => (
                     <option key={agent.id} value={agent.id}>
                       {agent.name}
@@ -756,7 +764,9 @@ export function DotDevicePage({
             <div className="binding-meta">
               <span>{selectedDevice?.boundAgentName ?? "No agent bound"}</span>
               <strong>
-                {selectedDevice?.boundAt ? formatTime(selectedDevice.boundAt) : "Not synced"}
+                {selectedDevice?.boundAt
+                  ? formatTime(selectedDevice.boundAt)
+                  : "Not synced"}
               </strong>
             </div>
           </section>

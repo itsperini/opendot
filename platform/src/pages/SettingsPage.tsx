@@ -179,7 +179,9 @@ export function SettingsPage({
 
           <div className="sdk-env-row">
             <span>OPENDOT_API_KEY</span>
-            <strong>{apiKeys.find((key) => key.status === "active")?.prefix ?? "No active key"}</strong>
+            <strong>
+              {apiKeys.find((key) => key.status === "active")?.prefix ?? "No active key"}
+            </strong>
           </div>
 
           <div className="api-key-list">
@@ -204,7 +206,11 @@ export function SettingsPage({
                       onClick={() => copyToken(key).catch(() => undefined)}
                       disabled={key.status !== "active" || !key.token}
                     >
-                      {copiedKeyId === key.id ? <CheckCircle2 size={15} /> : <Copy size={15} />}
+                      {copiedKeyId === key.id ? (
+                        <CheckCircle2 size={15} />
+                      ) : (
+                        <Copy size={15} />
+                      )}
                       {copiedKeyId === key.id ? "Copied" : "Copy"}
                     </button>
                     <button

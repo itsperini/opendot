@@ -2,9 +2,9 @@ services:
   - type: web
     name: opendot-web
     runtime: static
-    rootDir: platform
-    buildCommand: npm ci && npm run build
-    staticPublishPath: dist
+    rootDir: .
+    buildCommand: corepack enable && corepack prepare pnpm@11.1.3 --activate && pnpm install --frozen-lockfile && pnpm --filter ./platform run build
+    staticPublishPath: platform/dist
     routes:
       - type: rewrite
         source: "/*"

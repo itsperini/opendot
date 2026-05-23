@@ -99,10 +99,13 @@ export async function createAgent(input: CreateAgentInput) {
 }
 
 export async function updateAgent(agent: VoiceAgent) {
-  const body = await requestJson<{ agent: VoiceAgent }>(`/agents/${encodeURIComponent(agent.id)}`, {
-    body: JSON.stringify(agent),
-    method: "PUT",
-  });
+  const body = await requestJson<{ agent: VoiceAgent }>(
+    `/agents/${encodeURIComponent(agent.id)}`,
+    {
+      body: JSON.stringify(agent),
+      method: "PUT",
+    },
+  );
   return body.agent;
 }
 

@@ -35,10 +35,7 @@ export const appUsers = pgTable(
     updatedAt: timestamp("updated_at", timestampConfig).notNull(),
   },
   (table) => [
-    uniqueIndex("app_users_auth_identity_idx").on(
-      table.authProvider,
-      table.authSubject,
-    ),
+    uniqueIndex("app_users_auth_identity_idx").on(table.authProvider, table.authSubject),
   ],
 );
 
@@ -126,9 +123,7 @@ export const pipelineVersions = pgTable(
       .references(() => pipelines.id, { onDelete: "cascade" }),
     versionNumber: integer("version_number").notNull(),
     status: text("status").notNull(),
-    manifestJson: jsonb("manifest_json")
-      .$type<{ stages: PipelineStage[] }>()
-      .notNull(),
+    manifestJson: jsonb("manifest_json").$type<{ stages: PipelineStage[] }>().notNull(),
     latencyBudgetMs: integer("latency_budget_ms"),
     createdByUserId: uuid("created_by_user_id").references(() => appUsers.id, {
       onDelete: "set null",
@@ -141,10 +136,7 @@ export const pipelineVersions = pgTable(
       table.pipelineId,
       table.versionNumber,
     ),
-    index("pipeline_versions_pipeline_created_idx").on(
-      table.pipelineId,
-      table.createdAt,
-    ),
+    index("pipeline_versions_pipeline_created_idx").on(table.pipelineId, table.createdAt),
   ],
 );
 
@@ -179,10 +171,9 @@ export const agentVersions = pgTable(
     agentId: uuid("agent_id")
       .notNull()
       .references(() => agents.id, { onDelete: "cascade" }),
-    pipelineVersionId: uuid("pipeline_version_id").references(
-      () => pipelineVersions.id,
-      { onDelete: "set null" },
-    ),
+    pipelineVersionId: uuid("pipeline_version_id").references(() => pipelineVersions.id, {
+      onDelete: "set null",
+    }),
     versionNumber: integer("version_number").notNull(),
     status: text("status").notNull(),
     manifestJson: jsonb("manifest_json").$type<JsonObject>().notNull(),
@@ -254,16 +245,12 @@ export const deployments = pgTable(
       .references(() => pipelineVersions.id, { onDelete: "restrict" }),
     name: text("name").notNull(),
     status: text("status").notNull(),
-    rolloutStrategyJson: jsonb("rollout_strategy_json")
-      .$type<JsonObject>()
-      .notNull(),
+    rolloutStrategyJson: jsonb("rollout_strategy_json").$type<JsonObject>().notNull(),
     createdAt: timestamp("created_at", timestampConfig).notNull(),
     activatedAt: timestamp("activated_at", timestampConfig),
     supersededAt: timestamp("superseded_at", timestampConfig),
   },
-  (table) => [
-    index("deployments_user_status_idx").on(table.userId, table.status),
-  ],
+  (table) => [index("deployments_user_status_idx").on(table.userId, table.status)],
 );
 
 export const deploymentDeviceTargets = pgTable(
@@ -288,10 +275,7 @@ export const deploymentDeviceTargets = pgTable(
     uniqueIndex("deployment_device_targets_active_device_idx")
       .on(table.deviceId)
       .where(sql`${table.status} = 'active'`),
-    index("deployment_device_targets_device_status_idx").on(
-      table.deviceId,
-      table.status,
-    ),
+    index("deployment_device_targets_device_status_idx").on(table.deviceId, table.status),
     index("deployment_device_targets_deployment_idx").on(table.deploymentId),
   ],
 );

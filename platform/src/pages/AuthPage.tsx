@@ -52,7 +52,11 @@ export function AuthPage({ error, loading, onSubmit }: AuthPageProps) {
   return (
     <main className="auth-shell">
       <section className="auth-brand-panel" aria-labelledby="auth-brand-title">
-        <a className="auth-brand" href="/login" onClick={(event) => event.preventDefault()}>
+        <a
+          className="auth-brand"
+          href="/login"
+          onClick={(event) => event.preventDefault()}
+        >
           <OpenDotLogo className="auth-brand-mark" title="OpenDot" />
           <span>OpenDot</span>
         </a>
@@ -160,7 +164,9 @@ export function AuthPage({ error, loading, onSubmit }: AuthPageProps) {
         <div className="auth-secondary-row">
           <button
             type="button"
-            onClick={() => setPendingNotice("Password reset is prepared in the UI and not wired yet.")}
+            onClick={() =>
+              setPendingNotice("Password reset is prepared in the UI and not wired yet.")
+            }
           >
             Forgot password?
           </button>

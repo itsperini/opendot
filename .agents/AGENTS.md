@@ -70,15 +70,17 @@ opendot/
 
 Platform:
 
-- Install dependencies: `cd platform && npm install`
-- Apply database migrations: `cd platform && npm run db:migrate`
-- Inspect database with Drizzle Studio: `cd platform && npm run db:studio`
-- Run the platform API: `cd platform && npm run api`
-- Run the web console: `cd platform && npm run dev`
-- Run the local voice runtime: `cd platform && npm run runtime`
+- Install dependencies: `pnpm install`
+- Apply database migrations: `pnpm --filter ./platform run db:migrate`
+- Inspect database with Drizzle Studio: `pnpm --filter ./platform run db:studio`
+- Run the platform API: `pnpm run api`
+- Run the web console: `pnpm run dev`
+- Run the local voice runtime: `pnpm run runtime`
 - Run the Compose stack: `docker compose up --build`
-- Build check: `cd platform && npm run build`
-- Preview production build: `cd platform && npm run preview`
+- Lint check: `pnpm run lint`
+- Unit tests: `pnpm run test`
+- Build check: `pnpm run build`
+- Preview production build: `pnpm --filter ./platform run preview`
 
 Docs:
 
@@ -92,13 +94,13 @@ Firmware:
 
 ## Verification Defaults
 
-| Change scope | Minimum verification |
-| --- | --- |
-| `platform/**` | `cd platform && npm run build` |
-| `docs/**` | Preview with `cd docs && mint dev` when layout/navigation changed |
-| `dot-device/firmware/**` | `idf.py build` when ESP-IDF is available |
-| `.agents/**` | validate JSON/config syntax and run the affected skill validator when relevant |
-| Root docs (`README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `ROADMAP.md`) | spelling/link review plus `git diff --check` |
+| Change scope                                                            | Minimum verification                                                           |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `platform/**`                                                           | `pnpm run lint && pnpm run test && pnpm run build`                             |
+| `docs/**`                                                               | Preview with `cd docs && mint dev` when layout/navigation changed              |
+| `dot-device/firmware/**`                                                | `idf.py build` when ESP-IDF is available                                       |
+| `.agents/**`                                                            | validate JSON/config syntax and run the affected skill validator when relevant |
+| Root docs (`README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `ROADMAP.md`) | spelling/link review plus `git diff --check`                                   |
 
 Prefer targeted verification that matches the touched surface. If a command
 cannot run because a local toolchain is missing, say so clearly in the final
