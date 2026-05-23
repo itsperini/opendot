@@ -44,7 +44,7 @@ opendot
 ## Runtime Endpoint
 
 The ESP32 does not use the browser URL directly. The browser UI runs from the
-Vite URL printed by `npm run dev`, usually:
+Vite URL printed by `pnpm run dev`, usually:
 
 ```text
 http://localhost:5173/agent-studio
@@ -82,13 +82,11 @@ root:
 
 ```sh
 # Terminal 1: frontend
-cd platform
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 
 # Terminal 2: runtime
-cd platform
-npm run runtime
+pnpm run runtime
 ```
 
 Common ways to find the runtime LAN IP:

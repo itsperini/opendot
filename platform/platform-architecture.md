@@ -1,683 +1,186 @@
-# OpenDot Platform Architecture Recommendation
+# OpenDot Platform Stack Direction
+
+This document captures the current stack direction for the OpenDot platform:
+the authenticated console, control API, local voice runtime, and device-facing
+paths for real voice agents.
+
+## Decision Summary
+
+- Keep Fastify for the Node control API. OpenDot is container and on-prem
+  oriented today, not edge-first.
+- Use TanStack Query for frontend server state. Agents, devices, settings,
+  sessions, deployments, and API keys are all server-owned data.
+- Keep one `platform` app for now, but enforce internal boundaries that map to
+  future services.
+- Keep WebSocket audio for current browser and device sessions.
+- Delay WebRTC, MQTT, UDP, NATS, Redis, and service extraction until the product
+  has a concrete need for those capabilities.
+- Keep the runtime in TypeScript while the codebase and team are TypeScript-led.
+
+## Current Recommended Stack
 
-This document captures a recommended technical direction for the OpenDot platform webapp: the authenticated control plane for configuring voice agents, binding them to devices and rooms, operating live sessions, and managing the device/runtime layer behind the landing page promise.
-
-## Updated First Milestone
-
-The first platform milestone should be a traditional voice agent studio before the broader device-control plane.
-
-Initial scope:
-
-- Create a voice agent with a name and description.
-- Configure a clear four-stage voice pipeline: VAD, STT, LLM, and TTS.
-- Start with Deepgram for VAD/STT/TTS and OpenAI for the LLM.
-- Represent Deepgram VAD as a product-level pipeline stage even though the runtime maps it to Deepgram live streaming options such as `endpointing`, `utterance_end_ms`, `vad_events`, `interim_results`, and `speech_final`.
-- Keep device binding, MQTT, OTA, and Dot Device management as the next layer after the browser-based voice agent creation flow is solid.
-
-## Product Shape
-
-OpenDot should be built as three connected planes, not as one large monolithic webapp.
-
-1. Control plane
-   - OSS core: users, preferences, API keys, devices, agents, pipelines, and deployments.
-   - Mostly request/response CRUD and transactional workflows.
-   - Primary interface for builders and operators.
-
-2. Realtime/session plane
-   - Live voice sessions, partial transcripts, LLM tokens, tool calls, latency metrics, runtime logs, and deployment progress.
-   - Event-driven and reconnect-friendly.
-   - Drives the debugging/operator experience in the webapp.
-
-3. Device plane
-   - MQTT/device identity, telemetry, commands, desired/reported state, config updates, presence, firmware metadata, and hardware diagnostics.
-   - Optimized for constrained devices and unreliable networks.
-   - Devices should never be treated like normal browser clients.
-
-## Recommended High-Level Stack
-
-### Frontend
-
-Recommended:
-
-- React
-- TypeScript
-- Vite
-- TanStack Router
-- TanStack Query
-- Tailwind CSS
-- shadcn/ui + Radix primitives
-- React Flow for the voice pipeline editor
-- Zustand only for local UI/editor state that is not server state
-
-Why:
-
-- The platform is a logged-in operations console, not a public content site. A Vite SPA keeps the frontend simple, fast, and easy to host.
-- TanStack Query is the right default for server state: agents, devices, sessions, deployments, and logs.
-- TanStack Router gives type-safe routing and URL state for filters, selected resources, active tabs, and debugger views.
-- React Flow is the right fit for a visual pipeline builder such as `VAD -> STT -> LLM -> Tools -> TTS`.
-- shadcn/Radix keeps the product UI consistent without committing to a heavy design system too early.
-
-When to choose Next.js instead:
-
-- If the platform needs server-rendered pages inside the app.
-- If docs, marketing, changelog, account pages, and platform routes should live in the same full-stack framework.
-- If React Server Components become central to the app architecture.
-
-For OpenDot's authenticated realtime console, I would start with Vite + React and keep the landing page separate.
-
-### Backend Control API
-
-Recommended:
-
-- TypeScript
-- Fastify
-- PostgreSQL
-- Drizzle or Prisma
-- Zod for validation
-- OpenAPI for HTTP API contracts
-- Redis for ephemeral caches, leases, rate limits, and short-lived session coordination
-
-Why:
-
-- Fastify is lightweight, fast, and fits high-I/O API services well.
-- TypeScript keeps shared API/event schemas close to the frontend.
-- PostgreSQL fits relational product data and JSONB manifests well.
-- Zod lets the same schema style validate API payloads, event payloads, device messages, and internal config.
-- OpenAPI gives generated clients, docs, contract tests, and a clean integration surface.
-
-Drizzle vs Prisma:
-
-- Choose Drizzle if you want SQL-shaped control, lightweight runtime behavior, and explicit migrations.
-- Choose Prisma if you want a faster product development loop, rich generated client types, and a stronger admin/data-inspection workflow early.
-- Either is fine for the MVP. I would lean Drizzle if device manifests, event tables, and hand-tuned queries become central quickly. I would lean Prisma if the first milestone is mostly product CRUD and speed of iteration.
-
-Current platform schema choice:
-
-- Use Drizzle with PostgreSQL for the durable OSS control plane: app users, local auth credentials, user preferences, API keys, versioned agents and pipelines, devices, device state, and deployments.
-- Keep the OSS schema single-workspace and Supabase-compatible without making Supabase mandatory. Supabase Auth can own authentication, while OpenDot keeps `app_users` and product data in the public app schema.
-- Map Supabase `auth.users.id` to `app_users.id` when Supabase Auth is configured; in local Compose runs, use OpenDot local email/password auth backed by hashed credentials so plain PostgreSQL remains self-hostable.
-- Keep the current schema intentionally small and aligned with the product surfaces that are active today.
-- Keep the Drizzle schema in `platform/src/server/db/schema.ts` and migrations in `platform/drizzle/`.
-- Use Drizzle Studio via `cd platform && npm run db:studio` for local schema and data inspection at `https://local.drizzle.studio`.
-
-### Voice Runtime
-
-Recommended:
-
-- Separate runtime service from the control API.
-- Python + FastAPI/asyncio for AI/audio-heavy orchestration, or TypeScript workers if the team strongly prefers one language.
-- Runtime workers communicate through NATS JetStream and persist important session state back to PostgreSQL/object storage.
-
-Why split it:
-
-- Voice sessions have different failure modes than CRUD APIs.
-- The runtime will talk to STT, LLM, tools, memory, TTS, VAD, WebRTC, local device adapters, and possibly offline models.
-- You will want to scale runtime workers independently from the dashboard API.
-
-Runtime responsibilities:
-
-- Create and manage voice sessions.
-- Receive audio from browser/device paths.
-- Run VAD/STT/LLM/tool/TTS orchestration.
-- Emit partial and final transcript events.
-- Emit timing, token, cost, error, and quality metrics.
-- Store session artifacts.
-- Apply agent config and pipeline version snapshots.
-
-### Realtime Gateway
-
-Recommended:
-
-- Dedicated WebSocket gateway service.
-- Browser connects to this service for live session and device events.
-- Gateway subscribes to NATS subjects and forwards authorized event subsets to the browser.
-
-Why:
-
-- Keeps WebSocket connection management separate from normal HTTP APIs.
-- Makes horizontal scaling easier.
-- Prevents the browser from directly subscribing to internal NATS or MQTT topics.
-- Provides one place for reconnect, replay cursors, event filtering, auth, and backpressure policy.
-
-Use WebSockets for:
-
-- Session timelines.
-- Partial transcripts.
-- LLM token streams.
-- Tool call status.
-- Device online/offline state.
-- Deployment progress.
-- Runtime logs and metrics.
-
-Do not use raw WebSockets as the primary long-term media transport for production voice audio unless you intentionally want to own jitter, buffering, codec, and reconnection behavior.
-
-### Browser Audio and Live Testing
-
-Recommended:
-
-- Use WebRTC for browser-based live audio testing.
-- Use WebSocket only for signaling, session events, and debug metadata.
-
-Why:
-
-- WebRTC is designed for low-latency audio/video/data in browsers.
-- It handles media transport concerns that raw WebSocket audio would force the platform to solve manually.
-
-Suggested browser flow:
-
-1. User clicks "Test agent".
-2. Frontend calls `POST /sessions` to create a test session.
-3. Frontend opens WebSocket subscription for session events.
-4. Frontend starts WebRTC negotiation through the runtime/signaling endpoint.
-5. Runtime emits events through NATS.
-6. Realtime gateway forwards authorized events to the browser.
-
-### Device Messaging
-
-Recommended:
-
-- MQTT for device connectivity.
-- EMQX for production broker.
-- Mosquitto for local development and small pilots.
-- MQTT bridge service between broker topics and the internal event bus/control plane.
-
-Why:
-
-- MQTT is purpose-built for lightweight publish/subscribe device messaging.
-- It supports constrained devices, unreliable networks, persistent sessions, retained messages, and QoS levels.
-- EMQX gives a production path for clustering, high availability, MQTT over WebSocket, auth integration, and broker observability.
-
-Use MQTT for:
-
-- Device telemetry.
-- Device presence.
-- Desired/reported state.
-- Config updates.
-- Commands.
-- OTA/firmware metadata.
-- Heartbeats.
-- Diagnostics.
-
-Do not let the platform webapp publish directly to privileged MQTT topics. The browser should call the control API or realtime gateway; backend services enforce user/device permissions before publishing the command.
-
-### Internal Event Bus
-
-Recommended:
-
-- NATS JetStream.
-
-Why:
-
-- Good fit for evented services without Kafka-level operational weight.
-- Supports streams, consumers, replay, at-least-once delivery, and decoupled flow control.
-- Useful for session event logs, deployment events, runtime events, and bridge events.
-
-Use NATS JetStream for:
-
-- `session.created`
-- `session.audio.started`
-- `session.transcript.partial`
-- `session.transcript.final`
-- `session.llm.delta`
-- `session.tool.started`
-- `session.tool.finished`
-- `session.tts.started`
-- `session.ended`
-- `device.connected`
-- `device.disconnected`
-- `device.telemetry.received`
-- `deployment.started`
-- `deployment.applied`
-- `deployment.failed`
-
-Use Redis for:
-
-- Short-lived connection state.
-- Rate limits.
-- Temporary locks.
-- Presence acceleration.
-- WebSocket fanout helper state if needed.
-
-Do not use Redis as the durable event log for sessions.
-
-## Recommended Repository Shape
-
-For the platform, use a monorepo:
-
-```text
-opendot-platform/
-  apps/
-    web/
-      React + Vite platform console
-    api/
-      Fastify control API
-    realtime-gateway/
-      Browser WebSocket gateway
-
-  services/
-    runtime/
-      Voice session orchestration
-    mqtt-bridge/
-      MQTT broker integration and validation
-    workers/
-      Async jobs, deployment packaging, cleanup
-
-  packages/
-    schemas/
-      Zod schemas, OpenAPI helpers, AsyncAPI payload schemas
-    ui/
-      Shared OpenDot platform UI components
-    config/
-      Shared TypeScript config, eslint, prettier
-    sdk/
-      Generated or hand-authored API client
-
-  infra/
-    docker-compose.yml
-    migrations/
-    nats/
-    emqx/
-    observability/
-
-  docs/
-    architecture/
-    api/
-    device-protocol/
-```
-
-Use `pnpm` workspaces or Turborepo if the repo becomes large. Keep service boundaries clear even if deployment starts simple.
-
-## Core Data Model
-
-OSS core tables/entities:
-
-- `app_users`
-- `local_auth_credentials`
-- `user_preferences`
-- `api_keys`
-- `agents`
-- `agent_versions`
-- `pipelines`
-- `pipeline_versions`
-- `devices`
-- `device_state`
-- `deployments`
-- `deployment_device_targets`
-
-Important principle:
-
-- Agents and pipelines should be versioned.
-- A deployment should reference immutable snapshots: `agent_version_id`, `pipeline_version_id`, and `device_id`.
-- Do not let runtime history point only to mutable "current agent config", or debugging historical runs becomes painful.
-
-## HTTP API Shape
-
-Use REST/OpenAPI for product workflows.
-
-Example routes:
-
-```text
-GET    /v1/me
-GET    /v1/platform-state
-PUT    /v1/settings
-
-GET    /v1/devices
-POST   /v1/devices
-GET    /v1/devices/:deviceId
-POST   /v1/devices/:deviceId/commands
-
-GET    /v1/agents
-POST   /v1/agents
-GET    /v1/agents/:agentId
-POST   /v1/agents/:agentId/versions
-
-GET    /v1/pipelines
-POST   /v1/pipelines
-POST   /v1/pipelines/:pipelineId/versions
-
-POST   /v1/deployments
-GET    /v1/deployments/:deploymentId
-```
-
-Use OpenAPI for:
-
-- API documentation.
-- Generated frontend client.
-- Contract testing.
-- External integrations.
-
-## Realtime WebSocket Shape
-
-Browser endpoint:
-
-```text
-wss://api.opendot.ai/v1/realtime
-```
-
-Client subscribes after auth:
-
-```json
-{
-  "type": "subscribe",
-  "requestId": "req_123",
-  "scope": "session",
-  "sessionId": "ses_123",
-  "cursor": "optional-last-event-id"
-}
-```
-
-Server event:
-
-```json
-{
-  "type": "session.transcript.partial",
-  "eventId": "evt_123",
-  "sessionId": "ses_123",
-  "createdAt": "2026-05-19T12:00:00.000Z",
-  "payload": {
-    "channel": "user",
-    "text": "Can you tell me where meeting room A is",
-    "stability": 0.82
-  }
-}
-```
-
-Recommended event rules:
-
-- Every event has `type`, `eventId`, `createdAt`, and an authorization scope.
-- Every session event is append-only.
-- Browser can reconnect with a cursor.
-- Large logs/artifacts should be referenced by URL or artifact ID, not pushed inline forever.
-- Backpressure policy should drop or coalesce noisy telemetry before it harms the browser.
-
-## MQTT Topic Design
-
-Topic pattern:
-
-```text
-org/{orgId}/device/{deviceId}/telemetry
-org/{orgId}/device/{deviceId}/state/reported
-org/{orgId}/device/{deviceId}/state/desired
-org/{orgId}/device/{deviceId}/commands/{commandId}
-org/{orgId}/device/{deviceId}/commands/{commandId}/ack
-org/{orgId}/device/{deviceId}/sessions/{sessionId}/events
-org/{orgId}/device/{deviceId}/diagnostics
-org/{orgId}/device/{deviceId}/ota
-```
-
-Suggested QoS:
-
-- QoS 0: frequent telemetry, audio level meters, non-critical diagnostics.
-- QoS 1: commands, command acknowledgements, reported state, session lifecycle.
-- QoS 1 retained: desired state/config pointer.
-- LWT: device offline/presence signal.
-
-Retained messages:
-
-- Use retained messages for desired state and latest config pointer.
-- Avoid retained messages for noisy telemetry or session events.
-
-Payload conventions:
-
-```json
-{
-  "schemaVersion": "2026-05-19",
-  "messageId": "msg_123",
-  "deviceId": "dev_123",
-  "sentAt": "2026-05-19T12:00:00.000Z",
-  "payload": {}
-}
-```
-
-The MQTT bridge should:
-
-- Validate topic and payload.
-- Attach trusted identity from broker auth, not from untrusted payload fields.
-- Translate MQTT messages into internal NATS events.
-- Publish backend-approved commands to MQTT.
-- Enforce org/device authorization boundaries.
-
-## AsyncAPI
-
-Use AsyncAPI to document:
-
-- WebSocket events.
-- MQTT topics.
-- NATS subjects.
-- Payload schemas.
-- QoS expectations.
-- Retained message behavior.
-- Reconnect/cursor semantics.
-
-OpenAPI covers HTTP. AsyncAPI covers messaging and event-driven behavior. OpenDot needs both.
-
-## Authentication And Authorization
-
-Recommended:
-
-- Supabase-compatible auth bridge for the near-term platform.
-- Keep the OpenDot API as the authorization boundary: browsers send a Supabase Bearer token when signed in, the API verifies it, resolves `app_users`, and scopes OSS data to the current user.
-- Keep product state in OpenDot-owned tables regardless of auth provider. Do not put authorization-critical product state in Supabase `user_metadata`.
-
-Core authorization model:
-
-- OSS core: authenticated user owns agents, devices, deployments, settings, and API keys in a single workspace.
-- Audit logging for privileged operations.
-
-Device identity:
-
-- Each device gets a unique credential.
-- Use mTLS or broker-issued credentials for production devices.
-- Never trust `orgId` or `deviceId` only because it appears in a payload.
-- Broker auth and the MQTT bridge should derive the real device identity.
-
-Important permissions:
-
-- View devices.
-- Register devices.
-- Issue commands.
-- Deploy agent config.
-- View sessions.
-- View transcripts/audio.
-- Manage API keys.
-- Manage org members.
-
-## Voice Pipeline Model
-
-Pipeline graph should support:
-
-- VAD provider/config.
-- STT provider/config.
-- LLM provider/model/config.
-- Tool routing.
-- Memory/knowledge settings.
-- TTS provider/voice/config.
-- Runtime target: cloud, edge, offline, hybrid.
-- Latency budget per stage.
-
-Example pipeline shape:
-
-```json
-{
-  "nodes": [
-    { "id": "vad", "type": "vad", "provider": "silero" },
-    { "id": "stt", "type": "stt", "provider": "whisper" },
-    { "id": "llm", "type": "llm", "provider": "openai", "model": "gpt-4o" },
-    { "id": "tts", "type": "tts", "provider": "piper" }
-  ],
-  "edges": [
-    { "from": "vad", "to": "stt" },
-    { "from": "stt", "to": "llm" },
-    { "from": "llm", "to": "tts" }
-  ]
-}
-```
-
-The UI should separate:
-
-- Draft pipeline editing.
-- Test runs.
-- Published versions.
-- Deployments to devices.
-
-Do not deploy mutable drafts to devices. Deploy immutable pipeline and agent versions.
-
-## Observability
-
-Use OpenTelemetry from the beginning.
-
-Track:
-
-- API latency.
-- Runtime session latency.
-- Stage latency: VAD, STT, LLM, tools, TTS.
-- Time to first transcript.
-- Time to first agent token.
-- Time to first audio response.
-- MQTT connect/disconnect counts.
-- Device command success/failure.
-- Deployment success/failure.
-- Per-session error taxonomy.
-
-Recommended tools:
-
-- OpenTelemetry SDKs.
-- Prometheus/Grafana or a managed equivalent.
-- Structured JSON logs.
-- Sentry for frontend/backend exceptions.
-- PostHog for product analytics if acceptable under privacy goals.
-
-## Deployment Path
-
-MVP/local:
-
-- Docker Compose.
-- Postgres.
-- Drizzle migrations and Drizzle Studio for local inspection.
-- Redis.
-- NATS.
-- Mosquitto or EMQX.
-- `apps/web`.
-- `apps/api`.
-- `apps/realtime-gateway`.
-- `services/mqtt-bridge`.
-- Simulated Dot device.
-
-Pilot/production:
-
-- Kubernetes or a simpler container platform first, depending on team size.
-- Managed Postgres.
-- Managed Redis.
-- NATS cluster or managed NATS.
-- EMQX cluster or managed EMQX.
-- Separate runtime worker pool.
-- Object storage for artifacts.
-- CDN/static hosting for frontend.
-
-Keep deployment boring at the start. The hard part is the protocol/runtime product, not orchestration complexity.
-
-## MVP Build Order
-
-1. Platform foundation
-   - Auth, app users, user preferences, and single-workspace data scoping.
-   - Postgres schema and migrations.
-   - Fastify API with OpenAPI.
-   - React app shell with routing, layouts, and auth.
-
-2. Device registry
-   - Devices.
-   - Device status model.
-   - Simulated device.
-
-3. MQTT path
-   - Local MQTT broker.
-   - MQTT bridge.
-   - Presence, telemetry, desired/reported state.
-   - Basic commands and acknowledgements.
-
-4. Pipeline and agent studio
-   - Agent CRUD.
-   - Pipeline editor with React Flow.
-   - Versioning.
-   - Test configuration snapshots.
-
-5. Realtime gateway
-   - WebSocket auth.
-   - Subscribe/unsubscribe.
-   - NATS session events.
-   - Reconnect with cursor.
-
-6. Voice runtime MVP
-   - Browser test session.
-   - WebRTC audio ingress.
-   - STT -> LLM -> TTS loop.
-   - Session event timeline.
-   - Runtime metrics.
-
-7. Deployment workflow
-   - Bind agent/pipeline version to device/environment.
-   - Push desired state through MQTT.
-   - Device ack.
-   - Audit log.
-
-8. Operator polish
-   - Session debugger.
-   - Device diagnostics.
-   - Latency breakdowns.
-   - Error recovery and retry UX.
-
-## Strong Recommendations
-
-- Keep the landing page separate from the authenticated platform app.
-- Do not put voice runtime orchestration inside the normal CRUD API.
-- Do not expose MQTT directly to the browser for privileged operations.
-- Use immutable versions for agents and pipelines.
-- Treat sessions as append-only event streams.
-- Use WebRTC for browser audio, WebSocket for events.
-- Use MQTT for device state and commands.
-- Use NATS JetStream as the internal event backbone.
-- Use OpenAPI for HTTP contracts and AsyncAPI for realtime/device contracts.
-- Build a simulated Dot device early. It will make platform development much faster.
-
-## Initial Technology Decision
-
-If starting today, I would choose:
-
-```text
 Frontend:
-  React + TypeScript + Vite
-  TanStack Router
-  TanStack Query
-  Tailwind + shadcn/ui + Radix
-  React Flow
 
-Control API:
-  TypeScript + Fastify
-  PostgreSQL
-  Drizzle or Prisma
-  Zod
-  OpenAPI
+- React + TypeScript + Vite.
+- TanStack Query for server state.
+- TanStack Router when URL state, nested routes, and typed route params become
+  worth the migration.
+- React Flow when the pipeline editor grows beyond the current four-stage
+  configuration UI.
+- Radix/shadcn-style primitives later, when the component surface is large
+  enough to justify the design-system work.
 
-Realtime:
-  Dedicated WebSocket gateway
-  NATS JetStream internally
+Backend/control API:
+
+- Fastify + TypeScript.
+- PostgreSQL + Drizzle.
+- Zod for request, event, and device payload validation.
+- OpenAPI for public/control API contracts.
 
 Runtime:
-  Python FastAPI/asyncio for audio/AI orchestration
-  WebRTC for browser audio testing
 
-Device:
-  MQTT broker: Mosquitto locally, EMQX for production
-  MQTT bridge service
-  AsyncAPI documented topics/events
+- TypeScript runtime for now.
+- WebSocket audio for current browser and Dot device sessions.
+- Runtime concepts should stay explicit: `Session`, `Transport`,
+  `PipelineRunner`, `DeviceConnection`, and `RuntimeEvent`.
+- WebRTC, MQTT, and UDP should be adapters later, not rewrites of the product
+  model.
 
-Infrastructure:
-  Postgres
-  Redis
-  NATS JetStream
-  EMQX/Mosquitto
-  Object storage
-  OpenTelemetry
+Device layer:
+
+- WebSocket stays the short-term session path for the physical device.
+- MQTT should be introduced when devices need production-grade presence,
+  desired/reported state, commands, telemetry, diagnostics, and OTA metadata.
+- Mosquitto is the right local-first broker. EMQX is a strong later choice when
+  clustering, broker observability, MQTT over WebSocket, and enterprise IoT
+  features matter.
+
+Eventing:
+
+- Do not add an event backbone by default.
+- Add NATS JetStream when session, device, deployment, or runtime events need
+  durable replay, fanout, service decoupling, or independent consumers.
+- Add Redis only for concrete ephemeral needs: locks, leases, rate limits,
+  short-lived connection state, or multi-instance coordination.
+
+## Hono Decision
+
+Do not migrate to Hono now.
+
+Hono is strongest when runtime portability is a primary goal: Workers, Deno,
+Bun, Node, Lambda, and edge-style Web Standards APIs. That is useful, but it is
+not OpenDot's main bottleneck today. OpenDot needs reliable Node/container
+services, on-prem deployability, WebSocket/device handling, Postgres-backed
+control workflows, and provider integrations. Fastify already fits that shape
+well.
+
+Reconsider Hono only if OpenDot intentionally moves part of the control surface
+to edge runtimes or needs one framework across Workers and Node services.
+
+## TanStack Query Decision
+
+TanStack Query is worth adopting now because the platform console is dominated
+by server state:
+
+- Agents and pipeline configuration.
+- Devices and binding state.
+- User/workspace settings.
+- API keys.
+- Deployments.
+- Sessions, timelines, and runtime/debug status.
+
+The frontend should not hand-roll fetch lifecycles, loading flags, cache
+invalidation, optimistic updates, and refetch behavior for each surface. The
+first step is to make `platform-state` a TanStack Query cache and migrate
+individual mutations around that cache. Future routes can split this into
+dedicated query keys such as `agents`, `devices`, `settings`, `api-keys`, and
+`sessions`.
+
+## Modular Monolith Boundaries
+
+Keep one `platform` app for now. Organize the code as if these services will
+exist later:
+
+- `control-api`: agents, devices, auth, settings, deployments, API keys.
+- `runtime`: live voice sessions and pipeline orchestration.
+- `realtime-gateway`: browser event streams and session timelines.
+- `device-gateway`: MQTT/device protocol bridge.
+- `worker`: async jobs, cleanup, deployment packaging, and artifact handling.
+
+The first extraction should be `runtime`, not the API. Voice sessions have
+different scaling, failure, latency, and provider-dependency behavior than CRUD
+workflows.
+
+The second extraction should be `device-gateway` once devices need reliable
+presence, desired/reported state, and command delivery.
+
+Only add NATS, Redis, or object storage when the product needs replay, fanout,
+queues, locks, artifacts, or multi-instance coordination.
+
+## Runtime Transport Direction
+
+The runtime should treat WebSocket as the first transport adapter, not the whole
+architecture.
+
+Current transport:
+
+- Browser WebSocket sessions for local live testing.
+- Dot device WebSocket sessions for audio ingress, JSON control messages, and
+  synthesized audio egress.
+
+Future transport adapters:
+
+- WebRTC for realtime browser/device media once raw WebSocket audio becomes
+  limiting.
+- MQTT for device presence, state, commands, telemetry, diagnostics, and OTA
+  metadata.
+- UDP only for tightly scoped local-network media or discovery cases where the
+  reliability tradeoff is intentional.
+
+WebRTC is still the right long-term media direction because it is built for
+realtime audio/video/data and handles media concerns that raw WebSockets force
+the platform to own. LiveKit remains a strong future candidate because it
+provides an open-source WebRTC SFU and agent/media infrastructure, but OpenDot
+should not adopt it before the current WebSocket path becomes limiting.
+
+## Product Plan Fit
+
+Short-term priorities:
+
+- Keep the TypeScript codebase understandable.
+- Build the agent studio and device binding surfaces.
+- Keep local, Docker Compose, Render, and container deployments simple.
+- Make the runtime vocabulary explicit before adding more protocols.
+
+Medium-term priorities:
+
+- Split query keys by resource as the console grows.
+- Add OpenAPI contracts for the control API.
+- Add Zod schemas for API payloads, runtime events, and device messages.
+- Add React Flow when users need a visual pipeline builder.
+- Introduce MQTT when device state and commands outgrow a live session socket.
+
+Long-term priorities:
+
+- Extract runtime when voice-session scaling requires it.
+- Add WebRTC when media quality, NAT traversal, jitter handling, or multi-party
+  media becomes a bottleneck.
+- Add NATS JetStream when events need durable replay and independent consumers.
+- Add object storage when audio/session artifacts need durable references.
+
+## Current Commands
+
+```bash
+pnpm install
+pnpm run dev
+pnpm run api
+pnpm run runtime
+pnpm run lint
+pnpm run test
+pnpm run build
+pnpm --filter ./platform run db:studio
 ```
 
-This stack gives OpenDot a clean path from MVP to real deployments: a fast product console, a reliable event backbone, a proper device protocol layer, and a runtime that can evolve independently as the voice pipeline becomes more sophisticated.
+The key principle is modular monolith first. Keep the deployable system boring
+while the product learns what its real runtime, device, and eventing constraints
+are.

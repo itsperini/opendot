@@ -139,16 +139,14 @@ For local runtime testing, the platform processes are:
 
 ```sh
 # Terminal 1: frontend
-cd platform
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 
 # Terminal 2: runtime
-cd platform
-npm run runtime
+pnpm run runtime
 ```
 
-Use separate terminals for the frontend and runtime. If `npm run runtime` fails
+Use separate terminals for the frontend and runtime. If `pnpm run runtime` fails
 with `EADDRINUSE` on port `8787`, do not switch ports unless you also update
 `CONFIG_OTA_URL`; inspect the existing listener and curl `/ota/`:
 

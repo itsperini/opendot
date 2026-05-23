@@ -60,6 +60,113 @@ function sendJson(ws, payload) {
   }
 }
 
+const runtimeTransportKinds = Object.freeze({
+  browserWebSocket: "websocket.browser",
+  deviceWebSocket: "websocket.device",
+  mqtt: "mqtt",
+  udp: "udp",
+  webrtc: "webrtc",
+});
+
+function createRuntimeEvent(session, type, payload = {}) {
+  return {
+    type,
+    eventId: randomUUID(),
+    sessionId: session.id,
+    transport: session.transport.kind,
+    createdAt: new Date().toISOString(),
+    payload,
+  };
+}
+
+// Runtime transport adapter contract: keep this small enough for WebRTC, MQTT,
+// and UDP adapters to implement without changing pipeline/session code.
+function createWebSocketTransport(kind, socket) {
+  return {
+    kind,
+    protocol: "websocket",
+    socket,
+    isOpen() {
+      return socket.readyState === WebSocket.OPEN;
+    },
+    sendJson(payload) {
+      sendJson(socket, payload);
+    },
+    sendBinary(payload, options) {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(payload, options);
+      }
+    },
+    close(code, reason) {
+      if (
+        socket.readyState === WebSocket.OPEN ||
+        socket.readyState === WebSocket.CONNECTING
+      ) {
+        socket.close(code, reason);
+      }
+    },
+  };
+}
+
+function createPipelineRunner(kind, runTurn) {
+  return {
+    kind,
+    runTurn,
+  };
+}
+
+function createBrowserSession(client) {
+  return {
+    id: randomUUID(),
+    kind: "browser",
+    transport: createWebSocketTransport(runtimeTransportKinds.browserWebSocket, client),
+    pipelineRunner: createPipelineRunner("browser", handleTurn),
+    client,
+    deepgram: null,
+    runtimeConfig: normalizeAgentConfig(null),
+    conversation: [],
+    finalSegments: [],
+    processing: false,
+  };
+}
+
+function createDeviceConnection(device, request) {
+  return {
+    deviceId: device.id,
+    deviceRecord: device,
+    remoteAddress: request.socket.remoteAddress,
+    userAgent: request.headers["user-agent"] || null,
+  };
+}
+
+function createDeviceSession(ws, device, request) {
+  return {
+    id: randomUUID(),
+    kind: "device",
+    transport: createWebSocketTransport(runtimeTransportKinds.deviceWebSocket, ws),
+    pipelineRunner: createPipelineRunner("device", handleDeviceTurn),
+    deviceConnection: createDeviceConnection(device, request),
+    deviceId: device.id,
+    deviceRecord: device,
+    ws,
+    deepgram: null,
+    decoder: null,
+    runtimeConfig: device.runtimeConfig,
+    conversation: [],
+    finalSegments: [],
+    sttConnecting: false,
+    sttOpen: false,
+    listening: false,
+    awaitingFinal: false,
+    closingAfterTurn: false,
+    closeTimer: null,
+    pendingPcm: [],
+    turnAudioFrames: 0,
+    turnAudioBytes: 0,
+    processing: false,
+  };
+}
+
 function writeJson(res, statusCode, payload) {
   res.writeHead(statusCode, {
     "access-control-allow-headers": "content-type",
@@ -925,6 +1032,7 @@ function createBrowserTtsStreamer(session, turn) {
   };
 }
 
+// PipelineRunner for browser sessions: VAD/STT has already produced a turn.
 async function handleTurn(session, transcript) {
   const cleanTranscript = transcript.trim();
   if (!cleanTranscript || session.processing) {
@@ -1149,7 +1257,7 @@ async function askOpenAIDeviceResponse(session, onTextDelta = () => {}) {
 }
 
 function sendDeviceJson(session, payload) {
-  sendJson(session.ws, {
+  session.transport.sendJson({
     session_id: session.id,
     ...payload,
   });
@@ -1193,10 +1301,7 @@ function closeDeviceAfterTurn(session, reason = "turn_complete") {
   session.listening = false;
   closeDeviceStt(session);
 
-  if (
-    !session.runtimeConfig.turn.closeDeviceAfterTurn ||
-    session.ws.readyState !== WebSocket.OPEN
-  ) {
+  if (!session.runtimeConfig.turn.closeDeviceAfterTurn || !session.transport.isOpen()) {
     setDeviceState(session, "ready", "Turn complete.");
     return;
   }
@@ -1212,9 +1317,7 @@ function closeDeviceAfterTurn(session, reason = "turn_complete") {
     "Closing audio channel to return to wake-word mode.",
   );
   session.closeTimer = setTimeout(() => {
-    if (session.ws.readyState === WebSocket.OPEN) {
-      session.ws.close(1000, reason);
-    }
+    session.transport.close(1000, reason);
   }, session.runtimeConfig.turn.closeDeviceAfterTurnDelayMs);
 }
 
@@ -1301,7 +1404,7 @@ function createDeviceSttConnection(session) {
         return;
       }
 
-      handleDeviceTurn(session, text).catch((error) => {
+      session.pipelineRunner.runTurn(session, text).catch((error) => {
         console.error(`[device ${session.id}] turn failed: ${error.message}`);
         setDeviceState(session, "error", `Turn failed: ${error.message}`);
         sendDeviceJson(session, {
@@ -1407,7 +1510,7 @@ function createDeviceTtsStreamer(session, turnStartedAt) {
           throw result.error;
         }
 
-        if (session.ws.readyState !== WebSocket.OPEN) {
+        if (!session.transport.isOpen()) {
           break;
         }
 
@@ -1424,7 +1527,7 @@ function createDeviceTtsStreamer(session, turnStartedAt) {
         });
 
         for (const frame of result.frames) {
-          if (session.ws.readyState !== WebSocket.OPEN) {
+          if (!session.transport.isOpen()) {
             break;
           }
           if (!firstAudioSent) {
@@ -1435,7 +1538,7 @@ function createDeviceTtsStreamer(session, turnStartedAt) {
               `First TTS audio in ${Date.now() - turnStartedAt}ms.`,
             );
           }
-          session.ws.send(frame, { binary: true });
+          session.transport.sendBinary(frame, { binary: true });
           await sleep(55);
         }
 
@@ -1445,7 +1548,7 @@ function createDeviceTtsStreamer(session, turnStartedAt) {
         index += 1;
       }
     } finally {
-      if (started && session.ws.readyState === WebSocket.OPEN) {
+      if (started && session.transport.isOpen()) {
         sendDeviceJson(session, { type: "tts", state: "stop" });
       }
     }
@@ -1555,7 +1658,7 @@ async function handleDeviceTurn(session, transcript) {
     });
   } finally {
     session.processing = false;
-    if (session.ws.readyState === WebSocket.OPEN) {
+    if (session.transport.isOpen()) {
       closeDeviceAfterTurn(session, closeReason);
     }
   }
@@ -1797,16 +1900,14 @@ server.on("upgrade", (request, socket, head) => {
 });
 
 wss.on("connection", (client) => {
-  const session = {
-    client,
-    deepgram: null,
-    runtimeConfig: normalizeAgentConfig(null),
-    conversation: [],
-    finalSegments: [],
-    processing: false,
-  };
+  const session = createBrowserSession(client);
+  console.log(JSON.stringify(createRuntimeEvent(session, "session.connected")));
 
-  sendJson(client, { type: "runtime_connected" });
+  session.transport.sendJson({
+    type: "runtime_connected",
+    sessionId: session.id,
+    transport: session.transport.protocol,
+  });
 
   client.on("message", (message, isBinary) => {
     if (isBinary) {
@@ -1824,7 +1925,7 @@ wss.on("connection", (client) => {
     if (payload.type === "configure") {
       configureSession(session, payload.agent);
     } else if (payload.type === "force_response") {
-      handleTurn(session, session.finalSegments.join(" "));
+      session.pipelineRunner.runTurn(session, session.finalSegments.join(" "));
     } else if (payload.type === "reset") {
       session.conversation = [];
       session.finalSegments = [];
@@ -1857,27 +1958,7 @@ deviceWss.on("connection", (ws, request) => {
     request.headers["device-id"] || request.headers["client-id"],
     request,
   );
-  const session = {
-    id: randomUUID(),
-    deviceId: device.id,
-    deviceRecord: device,
-    ws,
-    deepgram: null,
-    decoder: null,
-    runtimeConfig: device.runtimeConfig,
-    conversation: [],
-    finalSegments: [],
-    sttConnecting: false,
-    sttOpen: false,
-    listening: false,
-    awaitingFinal: false,
-    closingAfterTurn: false,
-    closeTimer: null,
-    pendingPcm: [],
-    turnAudioFrames: 0,
-    turnAudioBytes: 0,
-    processing: false,
-  };
+  const session = createDeviceSession(ws, device, request);
 
   if (device.session?.ws.readyState === WebSocket.OPEN) {
     device.session.ws.close(1000, "Replaced by a new device connection");
@@ -1890,9 +1971,7 @@ deviceWss.on("connection", (ws, request) => {
   device.updatedAt = device.connectedAt;
   logDeviceEvent(device, `Connected from ${device.ipAddress || "unknown IP"}.`);
 
-  console.log(
-    `[device ${session.id}] connected from ${request.socket.remoteAddress} device=${device.id}`,
-  );
+  console.log(JSON.stringify(createRuntimeEvent(session, "session.connected")));
 
   ws.on("message", (message, isBinary) => {
     if (isBinary) {

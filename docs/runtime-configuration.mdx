@@ -5,6 +5,11 @@ description: Environment variables and local runtime behavior for voice sessions
 
 The runtime process handles live voice sessions for the browser and Dot devices.
 
+The current runtime endpoints are intended for local prototype use. They do not
+yet enforce browser session or device authentication at the runtime boundary, so
+avoid exposing the runtime directly on the public internet with real provider
+keys.
+
 The platform API stores the OSS OpenDot control plane in PostgreSQL: app users, local auth credentials, user preferences, API keys, versioned agents and pipelines, devices, device state, and deployments.
 
 Create the root environment file once:

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, AudioLines, Bot, Cpu, Loader2, Settings2 } from "lucide-react";
 import { OpenDotLogo } from "./components/OpenDotLogo";
 import { SidebarUserSettings } from "./components/SidebarUserSettings";
@@ -25,6 +26,7 @@ import {
   updateDotDevice as updatePlatformDotDevice,
   updateUserSettings as updatePlatformUserSettings,
 } from "./lib/platformApi";
+import { platformStateQueryKey } from "./lib/queryClient";
 import { AgentStudioPage } from "./pages/AgentStudioPage";
 import { AuthPage } from "./pages/AuthPage";
 import { BrowserTestPage } from "./pages/BrowserTestPage";
@@ -39,10 +41,10 @@ import type {
   DotDevice,
   PipelineStage,
   StageSettingValue,
-  UserApiKey,
   UserSettings,
   VoiceAgent,
 } from "./types";
+import type { PlatformState } from "./lib/platformApi";
 
 type PageId =
   | "agent-studio"
@@ -99,6 +101,29 @@ const defaultUserSettings: UserSettings = {
   compactMode: false,
 };
 
+function withAgent(state: PlatformState, agent: VoiceAgent): PlatformState {
+  const nextAgent = normalizeVoiceAgent(agent);
+  const agentExists = state.agents.some((item) => item.id === nextAgent.id);
+
+  return {
+    ...state,
+    agents: agentExists
+      ? state.agents.map((item) => (item.id === nextAgent.id ? nextAgent : item))
+      : [nextAgent, ...state.agents],
+  };
+}
+
+function withDevice(state: PlatformState, device: DotDevice): PlatformState {
+  const deviceExists = state.devices.some((item) => item.id === device.id);
+
+  return {
+    ...state,
+    devices: deviceExists
+      ? state.devices.map((item) => (item.id === device.id ? device : item))
+      : [device, ...state.devices],
+  };
+}
+
 function pageFromPathname(pathname: string): PageId {
   const route = pageItems.find((item) => item.path === pathname);
   return route?.id ?? "agent-studio";
@@ -112,17 +137,14 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [agents, setAgents] = useState<VoiceAgent[]>([]);
-  const [devices, setDevices] = useState<DotDevice[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
-  const [userSettings, setUserSettings] = useState<UserSettings>(defaultUserSettings);
-  const [apiKeys, setApiKeys] = useState<UserApiKey[]>([]);
-  const [platformLoading, setPlatformLoading] = useState(false);
   const [platformError, setPlatformError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  function reportPlatformError(error: unknown) {
-    setPlatformError(error instanceof Error ? error.message : String(error));
-  }
+  const platformStateKey = useMemo(
+    () => platformStateQueryKey(authSession?.user.id),
+    [authSession?.user.id],
+  );
 
   useEffect(() => {
     let active = true;
@@ -155,6 +177,33 @@ export default function App() {
     return () => setPlatformAccessTokenProvider(null);
   }, [authSession]);
 
+  const platformStateQuery = useQuery({
+    enabled: Boolean(authSession) && !authLoading,
+    queryFn: loadPlatformState,
+    queryKey: platformStateKey,
+  });
+
+  const createAgentMutation = useMutation({ mutationFn: createPlatformAgent });
+  const updateAgentMutation = useMutation({ mutationFn: updatePlatformAgent });
+  const createDeviceMutation = useMutation({ mutationFn: createPlatformDotDevice });
+  const updateDeviceMutation = useMutation({ mutationFn: updatePlatformDotDevice });
+  const deleteDeviceMutation = useMutation({ mutationFn: deletePlatformDotDevice });
+  const updateUserSettingsMutation = useMutation({
+    mutationFn: updatePlatformUserSettings,
+  });
+  const createApiKeyMutation = useMutation({ mutationFn: createPlatformApiKey });
+  const revokeApiKeyMutation = useMutation({ mutationFn: revokePlatformApiKey });
+
+  function reportPlatformError(error: unknown) {
+    setPlatformError(error instanceof Error ? error.message : String(error));
+  }
+
+  function updatePlatformState(updater: (state: PlatformState) => PlatformState) {
+    queryClient.setQueryData<PlatformState>(platformStateKey, (state) =>
+      state ? updater(state) : state,
+    );
+  }
+
   useEffect(() => {
     function handlePopState() {
       setActivePage(pageFromPathname(window.location.pathname));
@@ -165,45 +214,27 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (authLoading || !authSession) {
-      setPlatformLoading(false);
-      return;
+    if (platformStateQuery.data) {
+      setPlatformError(null);
     }
+  }, [platformStateQuery.data]);
 
-    let active = true;
-    setPlatformLoading(true);
+  const normalizedAgents = useMemo(
+    () => (platformStateQuery.data?.agents ?? []).map(normalizeVoiceAgent),
+    [platformStateQuery.data?.agents],
+  );
 
-    loadPlatformState()
-      .then((state) => {
-        if (!active) {
-          return;
-        }
-
-        const nextAgents = state.agents.map(normalizeVoiceAgent);
-        setAgents(nextAgents);
-        setDevices(state.devices);
-        setUserSettings(state.userSettings);
-        setApiKeys(state.apiKeys);
-        setSelectedAgentId((current) => current ?? nextAgents[0]?.id ?? null);
-        setPlatformError(null);
-      })
-      .catch((error) => {
-        if (active) {
-          reportPlatformError(error);
-        }
-      })
-      .finally(() => {
-        if (active) {
-          setPlatformLoading(false);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [authLoading, authSession]);
-
-  const normalizedAgents = useMemo(() => agents.map(normalizeVoiceAgent), [agents]);
+  const devices = platformStateQuery.data?.devices ?? [];
+  const userSettings = platformStateQuery.data?.userSettings ?? defaultUserSettings;
+  const apiKeys = platformStateQuery.data?.apiKeys ?? [];
+  const platformLoading = platformStateQuery.isLoading;
+  const queryError =
+    platformStateQuery.error instanceof Error
+      ? platformStateQuery.error.message
+      : platformStateQuery.error
+        ? String(platformStateQuery.error)
+        : null;
+  const platformErrorMessage = platformError ?? queryError;
 
   const selectedAgent = useMemo(
     () => normalizedAgents.find((agent) => agent.id === selectedAgentId) ?? null,
@@ -253,20 +284,16 @@ export default function App() {
   async function handleSignOut() {
     await signOutFromAuth();
     setAuthSession(null);
-    setAgents([]);
-    setDevices([]);
     setSelectedAgentId(null);
-    setUserSettings(defaultUserSettings);
-    setApiKeys([]);
     setPlatformError(null);
-    setPlatformLoading(false);
+    queryClient.removeQueries({ queryKey: ["platform-state"] });
     window.history.replaceState({}, "", "/login");
   }
 
   async function handleCreateAgent(input: CreateAgentInput) {
     try {
-      const agent = await createPlatformAgent(input);
-      setAgents((current) => [normalizeVoiceAgent(agent), ...current]);
+      const agent = await createAgentMutation.mutateAsync(input);
+      updatePlatformState((state) => withAgent(state, agent));
       setSelectedAgentId(agent.id);
       setPlatformError(null);
     } catch (error) {
@@ -289,19 +316,17 @@ export default function App() {
       pipeline: updateStageSetting(selectedAgent.pipeline, stageId, key, value),
     });
 
-    setAgents((current) =>
-      current.map((agent) => (agent.id === nextAgent.id ? nextAgent : agent)),
-    );
-    updatePlatformAgent(nextAgent)
+    updatePlatformState((state) => withAgent(state, nextAgent));
+    updateAgentMutation
+      .mutateAsync(nextAgent)
       .then((savedAgent) => {
-        setAgents((current) =>
-          current.map((agent) =>
-            agent.id === savedAgent.id ? normalizeVoiceAgent(savedAgent) : agent,
-          ),
-        );
+        updatePlatformState((state) => withAgent(state, savedAgent));
         setPlatformError(null);
       })
-      .catch(reportPlatformError);
+      .catch((error) => {
+        reportPlatformError(error);
+        void queryClient.invalidateQueries({ queryKey: platformStateKey });
+      });
   }
 
   function handleModelChange(stageId: PipelineStage["id"], model: string) {
@@ -315,19 +340,17 @@ export default function App() {
       pipeline: updateStageModel(selectedAgent.pipeline, stageId, model),
     });
 
-    setAgents((current) =>
-      current.map((agent) => (agent.id === nextAgent.id ? nextAgent : agent)),
-    );
-    updatePlatformAgent(nextAgent)
+    updatePlatformState((state) => withAgent(state, nextAgent));
+    updateAgentMutation
+      .mutateAsync(nextAgent)
       .then((savedAgent) => {
-        setAgents((current) =>
-          current.map((agent) =>
-            agent.id === savedAgent.id ? normalizeVoiceAgent(savedAgent) : agent,
-          ),
-        );
+        updatePlatformState((state) => withAgent(state, savedAgent));
         setPlatformError(null);
       })
-      .catch(reportPlatformError);
+      .catch((error) => {
+        reportPlatformError(error);
+        void queryClient.invalidateQueries({ queryKey: platformStateKey });
+      });
   }
 
   function handleUserSettingChange<Key extends keyof UserSettings>(
@@ -338,19 +361,32 @@ export default function App() {
       ...userSettings,
       [key]: value,
     };
-    setUserSettings(nextSettings);
-    updatePlatformUserSettings(nextSettings)
+    updatePlatformState((state) => ({
+      ...state,
+      userSettings: nextSettings,
+    }));
+    updateUserSettingsMutation
+      .mutateAsync(nextSettings)
       .then((savedSettings) => {
-        setUserSettings(savedSettings);
+        updatePlatformState((state) => ({
+          ...state,
+          userSettings: savedSettings,
+        }));
         setPlatformError(null);
       })
-      .catch(reportPlatformError);
+      .catch((error) => {
+        reportPlatformError(error);
+        void queryClient.invalidateQueries({ queryKey: platformStateKey });
+      });
   }
 
   async function handleCreateApiKey(name: string) {
     try {
-      const apiKey = await createPlatformApiKey(name);
-      setApiKeys((current) => [apiKey, ...current]);
+      const apiKey = await createApiKeyMutation.mutateAsync(name);
+      updatePlatformState((state) => ({
+        ...state,
+        apiKeys: [apiKey, ...state.apiKeys],
+      }));
       setPlatformError(null);
     } catch (error) {
       reportPlatformError(error);
@@ -358,8 +394,9 @@ export default function App() {
   }
 
   function handleRevokeApiKey(keyId: string) {
-    setApiKeys((current) =>
-      current.map((key) =>
+    updatePlatformState((state) => ({
+      ...state,
+      apiKeys: state.apiKeys.map((key) =>
         key.id === keyId
           ? {
               ...key,
@@ -367,25 +404,30 @@ export default function App() {
             }
           : key,
       ),
-    );
-    revokePlatformApiKey(keyId)
+    }));
+    revokeApiKeyMutation
+      .mutateAsync(keyId)
       .then((apiKey) => {
         if (!apiKey) {
           return;
         }
 
-        setApiKeys((current) =>
-          current.map((key) => (key.id === apiKey.id ? apiKey : key)),
-        );
+        updatePlatformState((state) => ({
+          ...state,
+          apiKeys: state.apiKeys.map((key) => (key.id === apiKey.id ? apiKey : key)),
+        }));
         setPlatformError(null);
       })
-      .catch(reportPlatformError);
+      .catch((error) => {
+        reportPlatformError(error);
+        void queryClient.invalidateQueries({ queryKey: platformStateKey });
+      });
   }
 
   async function handleCreateDevice(input: CreateDotDeviceInput) {
     try {
-      const device = await createPlatformDotDevice(input);
-      setDevices((current) => [device, ...current]);
+      const device = await createDeviceMutation.mutateAsync(input);
+      updatePlatformState((state) => withDevice(state, device));
       setPlatformError(null);
       return device;
     } catch (error) {
@@ -395,36 +437,31 @@ export default function App() {
   }
 
   async function handleUpdateDevice(device: DotDevice) {
-    setDevices((current) => {
-      const exists = current.some((item) => item.id === device.id);
-      return exists
-        ? current.map((item) => (item.id === device.id ? device : item))
-        : [device, ...current];
-    });
+    updatePlatformState((state) => withDevice(state, device));
 
     try {
-      const savedDevice = await updatePlatformDotDevice(device);
-      setDevices((current) => {
-        const exists = current.some((item) => item.id === savedDevice.id);
-        return exists
-          ? current.map((item) => (item.id === savedDevice.id ? savedDevice : item))
-          : [savedDevice, ...current];
-      });
+      const savedDevice = await updateDeviceMutation.mutateAsync(device);
+      updatePlatformState((state) => withDevice(state, savedDevice));
       setPlatformError(null);
       return savedDevice;
     } catch (error) {
       reportPlatformError(error);
+      void queryClient.invalidateQueries({ queryKey: platformStateKey });
       return null;
     }
   }
 
   async function handleRemoveDevice(deviceId: string) {
-    setDevices((current) => current.filter((device) => device.id !== deviceId));
+    updatePlatformState((state) => ({
+      ...state,
+      devices: state.devices.filter((device) => device.id !== deviceId),
+    }));
     try {
-      await deletePlatformDotDevice(deviceId);
+      await deleteDeviceMutation.mutateAsync(deviceId);
       setPlatformError(null);
     } catch (error) {
       reportPlatformError(error);
+      void queryClient.invalidateQueries({ queryKey: platformStateKey });
     }
   }
 
@@ -493,10 +530,10 @@ export default function App() {
       </aside>
 
       <div className="app-main">
-        {platformError ? (
+        {platformErrorMessage ? (
           <section className="platform-status-panel error" role="status">
             <AlertCircle size={18} />
-            <span>{platformError}</span>
+            <span>{platformErrorMessage}</span>
           </section>
         ) : null}
 

@@ -219,11 +219,7 @@ disabled there so Supabase owns Render authentication. Disable email
 confirmations in Supabase Auth for this preview if signup should create an
 active session immediately.
 
-## Notes
-
-The old API folders are intentionally left untouched:
-
-- `old-api/`
-- `old-api-2/`
-
-They were used only as references for provider flow and event sequencing. The new prototype does not copy their implementation.
+Important: the platform API is auth-gated in this Blueprint, but the current
+voice runtime endpoints are still local-prototype endpoints. Do not expose
+`opendot-runtime` publicly with real provider keys until runtime and device
+endpoint authentication is added.

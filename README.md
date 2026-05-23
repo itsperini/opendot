@@ -190,6 +190,11 @@ The Render Blueprint is auth-gated: `PLATFORM_AUTH_REQUIRED=true` and
 verification, disable email confirmations in the Supabase Auth settings for the
 preview project.
 
+Important: the platform API is auth-gated in this Blueprint, but the current
+voice runtime endpoints are still local-prototype endpoints. Do not expose
+`opendot-runtime` publicly with real provider keys until runtime and device
+endpoint authentication is added.
+
 ## Platform Commands
 
 From the repository root:

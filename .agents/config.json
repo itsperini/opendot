@@ -1,7 +1,7 @@
 {
   "shared": {
-    "devCommand": "cd platform && npm run dev",
-    "runtimeCommand": "cd platform && npm run runtime",
+    "devCommand": "pnpm run dev",
+    "runtimeCommand": "pnpm run runtime",
     "docsCommand": "cd docs && mint dev",
     "devTerminalDescription": "OpenDot platform development server"
   },

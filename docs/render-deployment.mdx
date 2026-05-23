@@ -59,3 +59,13 @@ That makes Supabase the Render identity provider. For email/password signup
 without email verification, disable email confirmations in the Supabase Auth
 settings for the preview project. The forgot-password, Google, and GitHub
 controls are present in the UI but are not wired yet.
+
+## Runtime exposure
+
+The current voice runtime is still a local-prototype service. The platform API
+is auth-gated in the Blueprint, but runtime endpoints such as `/voice`, `/ws`,
+`/ota/`, and `/devices` do not yet enforce user or device authentication.
+
+Do not expose `opendot-runtime` publicly with real Deepgram or OpenAI keys until
+runtime and device endpoint authentication is implemented. For a safe preview,
+keep the runtime private or use throwaway provider keys with tight quotas.
