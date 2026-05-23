@@ -76,6 +76,24 @@ mint broken-links
 
 For firmware changes, build with the ESP-IDF environment described in `dot-device/firmware/README.md`.
 
+Target the `develop` branch for normal pull requests. `main` is the stable
+release branch; maintainers promote `develop` to `main` when the next release is
+ready.
+
+Use a Conventional Commit pull request title because squash merges use the PR
+title as the commit that semantic-release reads:
+
+```text
+feat(platform): add device pairing status
+fix(runtime): close stale voice sessions
+docs: clarify firmware setup
+```
+
+Release-impacting types are `feat`, `fix`, and `perf`. `docs`, `chore`, `ci`,
+`test`, `style`, `refactor`, and `build` do not create a release unless the
+commit is intentionally marked as breaking with `!` or a `BREAKING CHANGE:`
+footer.
+
 ## Pull Request Guidelines
 
 - Keep the pull request focused on one problem or feature.
@@ -84,6 +102,30 @@ For firmware changes, build with the ESP-IDF environment described in `dot-devic
 - Describe runtime or device testing when audio, WebSocket, firmware, or provisioning behavior changes.
 - Update docs when behavior, setup, configuration, or user workflows change.
 - Avoid unrelated formatting churn and broad refactors in feature PRs.
+
+## Release Flow
+
+OpenDot uses one repository-wide product version. Git tags named `vX.Y.Z` and
+GitHub Releases are the canonical release record for the platform UI, local
+runtime, firmware source, docs, and repository tooling.
+
+The release flow is:
+
+1. Contributors open PRs against `develop`.
+2. Maintainers squash-merge PRs into `develop` with a valid Conventional Commit
+   title.
+3. When a release is ready, maintainers open a promotion PR from `develop` to
+   `main`.
+4. The promotion PR is merged with a normal merge commit so semantic-release can
+   analyze the individual squashed PR commits.
+5. CI on `main` runs semantic-release, creates the next `vX.Y.Z` tag, and
+   publishes GitHub Release notes.
+
+The initial release package is source plus release notes only. Docker images,
+npm packages, firmware binaries, and firmware OTA version syncing are deferred
+until those distribution channels are intentionally added. Firmware source
+changes can still affect the OpenDot version when they add, fix, or break user
+behavior.
 
 ## Coding Guidelines
 

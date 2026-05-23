@@ -70,6 +70,9 @@ See the [Quickstart](/quickstart) for the full setup flow and
 
 ## Before opening a pull request
 
+- Target `develop` for normal pull requests. `main` is the stable release
+  branch and receives promotion PRs from `develop`.
+- Use a Conventional Commit PR title.
 - Keep the pull request focused on one problem or feature.
 - Update docs when setup, runtime behavior, configuration, device flow, or
   architecture changes.
@@ -77,6 +80,35 @@ See the [Quickstart](/quickstart) for the full setup flow and
 - Describe browser, runtime, or device testing when touching audio, WebSocket,
   firmware, activation, or provisioning behavior.
 - Keep secrets out of commits. Use `.env` locally and keep `.env.example` safe.
+
+Examples:
+
+```text
+feat(platform): add device pairing status
+fix(runtime): close stale voice sessions
+docs: clarify firmware setup
+```
+
+## Release flow
+
+OpenDot uses one repository-wide product version for the platform UI, local
+runtime, firmware source, docs, and repo tooling. Tags named `vX.Y.Z` and GitHub
+Releases are the canonical release record.
+
+Contributor PRs are squash-merged into `develop`; the squash commit comes from
+the PR title, so the title must be a valid Conventional Commit. Release-impacting
+types are `feat`, `fix`, and `perf`. `docs`, `chore`, `ci`, `test`, `style`,
+`refactor`, and `build` do not create releases unless intentionally marked as
+breaking with `!` or `BREAKING CHANGE:`.
+
+When a release is ready, maintainers open a promotion PR from `develop` to
+`main` and merge it with a normal merge commit. CI on `main` then runs
+semantic-release, creates the next `vX.Y.Z` tag, and publishes GitHub Release
+notes.
+
+The first public release channel ships source and release notes only. Docker
+images, npm packages, firmware binaries, and firmware OTA version syncing are
+future packaging tracks.
 
 For repository-wide expectations, also read the root
 [`CONTRIBUTING.md`](https://github.com/itsperini/opendot/blob/main/CONTRIBUTING.md).

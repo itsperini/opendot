@@ -4,12 +4,16 @@ OpenDot is an early-stage open source project that touches realtime audio, local
 
 ## Supported Versions
 
-OpenDot does not have stable release branches yet. Security fixes target the `main` branch until versioned releases are introduced.
+OpenDot uses GitHub Releases tagged as `vX.Y.Z`. Security fixes target `main`
+and ship in the next release. Long-lived maintenance branches are not supported
+yet while the project is still in early alpha.
 
-| Version                | Supported |
-| ---------------------- | --------- |
-| `main`                 | Yes       |
-| older commits or forks | No        |
+| Version                | Supported                           |
+| ---------------------- | ----------------------------------- |
+| latest GitHub Release  | Yes                                 |
+| `main`                 | Yes                                 |
+| `develop`              | Best effort before the next release |
+| older commits or forks | No                                  |
 
 ## Reporting a Vulnerability
 
