@@ -1,0 +1,27 @@
+<svg
+  width="512"
+  height="512"
+  viewBox="0 0 512 512"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+  role="img"
+  aria-labelledby="opendot-favicon-title"
+>
+  <title id="opendot-favicon-title">OpenDot favicon</title>
+  <rect x="40" y="40" width="432" height="432" rx="92" fill="#FFFFFF" />
+  <rect
+    x="44"
+    y="44"
+    width="424"
+    height="424"
+    rx="88"
+    stroke="#EDE9FE"
+    stroke-width="8"
+  />
+  <path
+    d="M0 252C0 112.824 112.82 0 252 0C391.18 0 504 112.824 504 252C504 391.18 391.18 504 252 504C112.82 504 0 391.18 0 252ZM159.22 147.937C159.22 246.009 206.94 412.23 252 429.57C297.06 446.92 429.57 350.07 429.57 252C429.57 153.928 297.06 91.769 252 74.425C206.94 57.082 159.22 49.865 159.22 147.937Z"
+    fill="#2E1065"
+    fill-rule="evenodd"
+    transform="translate(72 72) scale(0.730159)"
+  />
+</svg>
