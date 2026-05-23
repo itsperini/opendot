@@ -8,6 +8,12 @@ import OpusScript from "opusscript";
 const config = {
   host: process.env.RUNTIME_HOST || "0.0.0.0",
   port: Number(process.env.PORT || process.env.RUNTIME_PORT || 8787),
+  platformApiInternalUrl: (
+    process.env.PLATFORM_API_INTERNAL_URL || "http://localhost:8788/api"
+  ).replace(/\/+$/, ""),
+  runtimeInternalSecret:
+    process.env.OPENDOT_RUNTIME_INTERNAL_SECRET ||
+    "opendot-local-runtime-internal-secret-change-me",
   deepgramApiKey: process.env.DEEPGRAM_API_KEY,
   openaiApiKey: process.env.OPENAI_API_KEY,
   openaiModel: process.env.OPENAI_MODEL || "gpt-5.4-mini",
@@ -115,7 +121,8 @@ function createPipelineRunner(kind, runTurn) {
   };
 }
 
-function createBrowserSession(client) {
+function createBrowserSession(client, auth = null) {
+  const agent = auth?.agent || null;
   return {
     id: randomUUID(),
     kind: "browser",
@@ -123,7 +130,9 @@ function createBrowserSession(client) {
     pipelineRunner: createPipelineRunner("browser", handleTurn),
     client,
     deepgram: null,
-    runtimeConfig: normalizeAgentConfig(null),
+    runtimeConfig: normalizeAgentConfig(agent),
+    agentSnapshot: agent,
+    userId: auth?.userId || null,
     conversation: [],
     finalSegments: [],
     processing: false,
@@ -169,12 +178,73 @@ function createDeviceSession(ws, device, request) {
 
 function writeJson(res, statusCode, payload) {
   res.writeHead(statusCode, {
-    "access-control-allow-headers": "content-type",
+    "access-control-allow-headers": "authorization, content-type",
     "access-control-allow-methods": "GET, PUT, POST, DELETE, OPTIONS",
     "access-control-allow-origin": "*",
     "content-type": "application/json",
   });
   res.end(JSON.stringify(payload));
+}
+
+function writeUpgradeError(socket, statusCode, message) {
+  socket.write(
+    [
+      `HTTP/1.1 ${statusCode} ${message}`,
+      "Connection: close",
+      "Content-Type: text/plain; charset=utf-8",
+      `Content-Length: ${Buffer.byteLength(message)}`,
+      "",
+      message,
+    ].join("\r\n"),
+  );
+  socket.destroy();
+}
+
+async function callPlatformInternal(path, payload) {
+  const response = await fetch(`${config.platformApiInternalUrl}${path}`, {
+    body: JSON.stringify(payload),
+    headers: {
+      "Content-Type": "application/json",
+      "X-OpenDot-Runtime-Secret": config.runtimeInternalSecret,
+    },
+    method: "POST",
+  });
+  const body = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const error = new Error(body?.error || `Platform API returned ${response.status}.`);
+    error.statusCode = response.status;
+    throw error;
+  }
+
+  return { statusCode: response.status, body };
+}
+
+function requestAuthorization(request) {
+  const header = request.headers.authorization;
+  return Array.isArray(header) ? header[0] : header || "";
+}
+
+function bearerToken(authorization) {
+  return authorization.match(/^Bearer\s+(.+)$/i)?.[1] || "";
+}
+
+function runtimeWebSocketUrl(request) {
+  const host = request.headers.host || `${config.host}:${config.port}`;
+  return `ws://${host}/ws`;
+}
+
+function runtimeDevicePayload(request, extra = {}) {
+  return {
+    deviceId: request.headers["device-id"] || "",
+    clientId: request.headers["client-id"] || "",
+    serialNumber: request.headers["serial-number"] || null,
+    userAgent: request.headers["user-agent"] || "",
+    ipAddress: requestIp(request),
+    authorization: requestAuthorization(request),
+    websocketUrl: runtimeWebSocketUrl(request),
+    ...extra,
+  };
 }
 
 function parseJson(raw) {
@@ -528,6 +598,34 @@ function getOrCreateDevice(id, request = null) {
   return device;
 }
 
+function applyPlatformDeviceAuth(device, auth) {
+  const platformDevice = auth?.device;
+  const agent = auth?.agent || null;
+  const now = new Date().toISOString();
+
+  if (platformDevice) {
+    device.platformDeviceId = platformDevice.id;
+    device.name = platformDevice.name || device.name;
+    device.model = platformDevice.model || device.model;
+    device.serialNumber = platformDevice.serialNumber || device.serialNumber;
+    device.ipAddress = platformDevice.ipAddress || device.ipAddress;
+    device.boundAgentId = platformDevice.boundAgentId;
+    device.boundAgentName = platformDevice.boundAgentName;
+    device.boundConfigVersion = platformDevice.boundConfigVersion;
+    device.boundAt = platformDevice.boundAt;
+  }
+
+  device.agentSnapshot = agent;
+  device.runtimeConfig = normalizeAgentConfig(agent);
+  device.updatedAt = now;
+
+  if (agent) {
+    logDeviceEvent(device, `Loaded bound agent config: ${agent.name}.`);
+  } else {
+    logDeviceEvent(device, "No agent is bound; using default runtime config.");
+  }
+}
+
 function logDeviceEvent(device, text) {
   const now = new Date().toISOString();
   device.events = [
@@ -557,31 +655,6 @@ function setDeviceState(session, state, text = null) {
   }
 }
 
-function publicDevice(device) {
-  return {
-    id: device.id,
-    name: device.name,
-    model: device.model,
-    serialNumber: device.serialNumber,
-    availability:
-      device.session?.ws.readyState === WebSocket.OPEN
-        ? "available"
-        : device.availability,
-    state: device.state,
-    ipAddress: device.ipAddress,
-    clientId: device.clientId,
-    protocolVersion: device.protocolVersion,
-    lastSeenAt: device.lastSeenAt,
-    connectedAt: device.connectedAt,
-    updatedAt: device.updatedAt,
-    boundAgentId: device.boundAgentId,
-    boundAgentName: device.boundAgentName,
-    boundConfigVersion: device.boundConfigVersion,
-    boundAt: device.boundAt,
-    events: device.events,
-  };
-}
-
 function readJsonBody(req) {
   return new Promise((resolve, reject) => {
     let body = "";
@@ -609,32 +682,6 @@ function readJsonBody(req) {
 
     req.on("error", reject);
   });
-}
-
-function bindDeviceConfig(device, payload) {
-  const agent = payload.agent;
-  if (!agent?.id || !agent?.name) {
-    throw new Error("Missing agent payload.");
-  }
-
-  const now = new Date().toISOString();
-  device.agentSnapshot = agent;
-  device.runtimeConfig = normalizeAgentConfig(agent);
-  device.boundAgentId = agent.id;
-  device.boundAgentName = agent.name;
-  device.boundConfigVersion = agent.updatedAt || now;
-  device.boundAt = now;
-  device.updatedAt = now;
-  logDeviceEvent(device, `Bound voice config: ${agent.name}.`);
-
-  const session = device.session;
-  if (session) {
-    session.runtimeConfig = device.runtimeConfig;
-    session.conversation = [];
-    session.listening = false;
-    resetDeviceTurnAudio(session);
-    closeDeviceStt(session);
-  }
 }
 
 function responseInputMessage(message) {
@@ -1814,63 +1861,80 @@ const server = http.createServer((req, res) => {
   }
 
   if (url.pathname === "/devices" && req.method === "GET") {
-    writeJson(res, 200, {
-      devices: Array.from(deviceRegistry.values()).map(publicDevice),
+    writeJson(res, 403, {
+      error: "Runtime device inventory is managed by the platform API.",
     });
     return;
   }
 
   const deviceConfigMatch = url.pathname.match(/^\/devices\/([^/]+)\/config$/);
   if (deviceConfigMatch && req.method === "PUT") {
-    readJsonBody(req)
-      .then((payload) => {
-        const deviceId = decodeURIComponent(deviceConfigMatch[1]);
-        const device = getOrCreateDevice(deviceId);
-        bindDeviceConfig(device, payload);
-        writeJson(res, 200, { device: publicDevice(device) });
-      })
-      .catch((error) => {
-        writeJson(res, 400, { error: error.message || String(error) });
-      });
+    req.resume();
+    writeJson(res, 410, {
+      error: "Device config binding must go through the platform API.",
+    });
     return;
   }
 
   const deviceForgetMatch = url.pathname.match(/^\/devices\/([^/]+)$/);
   if (deviceForgetMatch && req.method === "DELETE") {
-    const deviceId = decodeURIComponent(deviceForgetMatch[1]);
-    const device = deviceRegistry.get(deviceId);
-    if (device?.session?.ws.readyState === WebSocket.OPEN) {
-      writeJson(res, 409, {
-        error: "Connected devices cannot be forgotten from runtime.",
-      });
-      return;
-    }
-    deviceRegistry.delete(deviceId);
-    writeJson(res, 200, { ok: true });
+    req.resume();
+    writeJson(res, 410, {
+      error: "Device removal must go through the platform API.",
+    });
     return;
   }
 
   if (url.pathname === "/ota/") {
-    const host = req.headers.host || `${config.host}:${config.port}`;
-    const wsUrl = `ws://${host}/ws`;
     const device = getOrCreateDevice(
       req.headers["device-id"] || req.headers["client-id"],
       req,
     );
-    req.resume();
-    console.log(`[ota] ${req.method} device=${device.id} -> ${wsUrl}`);
-    logDeviceEvent(device, `OTA requested. WebSocket ${wsUrl}.`);
-    writeJson(res, 200, {
-      websocket: {
-        url: wsUrl,
-        token: "dot-local",
-        version: 1,
-      },
-      server_time: {
-        timestamp: Date.now(),
-        timezone_offset: -new Date().getTimezoneOffset(),
-      },
-    });
+    readJsonBody(req)
+      .then((payload) =>
+        callPlatformInternal("/internal/device-activations/bootstrap", {
+          ...runtimeDevicePayload(req, { systemInfo: payload }),
+        }),
+      )
+      .then(({ body }) => {
+        console.log(`[ota] ${req.method} device=${device.id} -> platform bootstrap`);
+        logDeviceEvent(device, "OTA bootstrap requested.");
+        writeJson(res, 200, body);
+      })
+      .catch((error) => {
+        console.error(`[ota] bootstrap failed: ${error.message}`);
+        logDeviceEvent(device, `OTA bootstrap failed: ${error.message}`);
+        writeJson(res, error.statusCode || 502, {
+          error: error.message || String(error),
+        });
+      });
+    return;
+  }
+
+  if (url.pathname === "/ota/activate" || url.pathname === "/ota/activate/") {
+    const device = getOrCreateDevice(
+      req.headers["device-id"] || req.headers["client-id"],
+      req,
+    );
+    readJsonBody(req)
+      .then((payload) =>
+        callPlatformInternal("/internal/device-activations/activate", {
+          ...runtimeDevicePayload(req),
+          ...(payload && typeof payload === "object" ? payload : {}),
+        }),
+      )
+      .then(({ statusCode, body }) => {
+        console.log(`[ota] activate device=${device.id} status=${statusCode}`);
+        logDeviceEvent(device, `Activation poll returned ${statusCode}.`);
+        writeJson(res, statusCode, body);
+      })
+      .catch((error) => {
+        console.error(`[ota] activation failed: ${error.message}`);
+        logDeviceEvent(device, `Activation failed: ${error.message}`);
+        writeJson(res, error.statusCode || 502, {
+          error: error.message || String(error),
+        });
+      });
     return;
   }
 
@@ -1880,34 +1944,61 @@ const server = http.createServer((req, res) => {
 const wss = new WebSocketServer({ noServer: true });
 const deviceWss = new WebSocketServer({ noServer: true });
 
-server.on("upgrade", (request, socket, head) => {
+server.on("upgrade", async (request, socket, head) => {
   const url = new URL(request.url || "/", "http://localhost");
   if (url.pathname === "/voice") {
-    wss.handleUpgrade(request, socket, head, (ws) => {
-      wss.emit("connection", ws, request);
-    });
+    const token = url.searchParams.get("voice_token") || "";
+
+    try {
+      const { body } = await callPlatformInternal(
+        "/internal/runtime/voice-sessions/verify",
+        {
+          token,
+          ipAddress: requestIp(request),
+          userAgent: request.headers["user-agent"] || "",
+        },
+      );
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit("connection", ws, request, body);
+      });
+    } catch {
+      writeUpgradeError(socket, 401, "Voice session authentication failed");
+    }
     return;
   }
 
   if (url.pathname === "/ws") {
-    deviceWss.handleUpgrade(request, socket, head, (ws) => {
-      deviceWss.emit("connection", ws, request);
-    });
+    const token = bearerToken(requestAuthorization(request));
+
+    try {
+      const { body } = await callPlatformInternal("/internal/device-runtime/verify", {
+        ...runtimeDevicePayload(request),
+        token,
+      });
+      deviceWss.handleUpgrade(request, socket, head, (ws) => {
+        deviceWss.emit("connection", ws, request, body);
+      });
+    } catch {
+      writeUpgradeError(socket, 401, "Device authentication failed");
+    }
     return;
   }
 
   socket.destroy();
 });
 
-wss.on("connection", (client) => {
-  const session = createBrowserSession(client);
+wss.on("connection", (client, _request, auth) => {
+  const session = createBrowserSession(client, auth);
   console.log(JSON.stringify(createRuntimeEvent(session, "session.connected")));
 
   session.transport.sendJson({
     type: "runtime_connected",
     sessionId: session.id,
     transport: session.transport.protocol,
+    agentId: session.agentSnapshot?.id ?? null,
+    agentName: session.agentSnapshot?.name ?? null,
   });
+  configureSession(session, session.agentSnapshot);
 
   client.on("message", (message, isBinary) => {
     if (isBinary) {
@@ -1923,7 +2014,11 @@ wss.on("connection", (client) => {
     }
 
     if (payload.type === "configure") {
-      configureSession(session, payload.agent);
+      sendJson(client, {
+        type: "error",
+        message:
+          "Runtime configuration is API-owned. Mint a new voice session to change agents.",
+      });
     } else if (payload.type === "force_response") {
       session.pipelineRunner.runTurn(session, session.finalSegments.join(" "));
     } else if (payload.type === "reset") {
@@ -1948,7 +2043,7 @@ wss.on("connection", (client) => {
   });
 });
 
-deviceWss.on("connection", (ws, request) => {
+deviceWss.on("connection", (ws, request, auth) => {
   if (!config.deepgramApiKey || !config.openaiApiKey) {
     ws.close(1011, "Missing API keys");
     return;
@@ -1958,6 +2053,7 @@ deviceWss.on("connection", (ws, request) => {
     request.headers["device-id"] || request.headers["client-id"],
     request,
   );
+  applyPlatformDeviceAuth(device, auth);
   const session = createDeviceSession(ws, device, request);
 
   if (device.session?.ws.readyState === WebSocket.OPEN) {
@@ -2003,6 +2099,14 @@ deviceWss.on("connection", (ws, request) => {
       device.state = "offline";
       device.updatedAt = new Date().toISOString();
       logDeviceEvent(device, "Disconnected.");
+      if (device.platformDeviceId) {
+        callPlatformInternal("/internal/device-runtime/state", {
+          deviceId: device.platformDeviceId,
+          availability: "offline",
+        }).catch((error) => {
+          console.error(`[device ${session.id}] state update failed: ${error.message}`);
+        });
+      }
     }
   });
 

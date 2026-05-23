@@ -49,6 +49,12 @@ services:
         value: "true"
       - key: PLATFORM_AUTH_REQUIRED
         value: "true"
+      - key: OPENDOT_RUNTIME_INTERNAL_SECRET
+        sync: false
+      - key: OPENDOT_RUNTIME_PUBLIC_HTTP_URL
+        sync: false
+      - key: OPENDOT_RUNTIME_PUBLIC_WS_URL
+        sync: false
 
   - type: web
     name: opendot-runtime
@@ -63,6 +69,10 @@ services:
         value: production
       - key: RUNTIME_HOST
         value: 0.0.0.0
+      - key: PLATFORM_API_INTERNAL_URL
+        sync: false
+      - key: OPENDOT_RUNTIME_INTERNAL_SECRET
+        sync: false
       - key: DEEPGRAM_API_KEY
         sync: false
       - key: OPENAI_API_KEY

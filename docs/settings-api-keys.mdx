@@ -19,9 +19,9 @@ Compact density tightens page spacing and panel padding across the platform cons
 
 ## API keys
 
-Use **API keys** to create and revoke local prototype keys. Active keys expose a prefix in the `OPENDOT_API_KEY` row.
+Use **SDK API keys** to create and revoke local prototype keys for future external SDK/API access. These keys are not used for browser `/voice` sessions or device pairing.
 
-The current prototype stores user-scoped API key hashes and metadata in PostgreSQL. The full token is only shown when a key is created, so copy it immediately if you need to use it outside the UI. Treat these as local development credentials, not production secrets.
+The current prototype stores user-scoped API key hashes and metadata in PostgreSQL. The full token is only shown when a key is created. Runtime browser sessions use short-lived voice-session tokens, and Dot devices use separate opaque device credentials.
 
 ## Copy and revoke
 

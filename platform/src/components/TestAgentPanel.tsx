@@ -10,6 +10,7 @@ import {
   Send,
   Square,
 } from "lucide-react";
+import { createRuntimeVoiceSession } from "../lib/platformApi";
 import type { VoiceAgent } from "../types";
 
 type TestAgentPanelProps = {
@@ -80,9 +81,6 @@ type ResponseChunk = {
   text: string;
   complete: boolean;
 };
-
-const runtimeUrl =
-  import.meta.env.VITE_RUNTIME_WS_URL || "ws://localhost:8787/voice";
 
 function appendLog(setLog: Dispatch<SetStateAction<LogEvent[]>>, text: string) {
   setLog((current) =>
@@ -391,30 +389,45 @@ export function TestAgentPanel({ agent }: TestAgentPanelProps) {
 
   useEffect(() => {
     if (agent && socketRef.current?.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify({ type: "configure", agent }));
-      appendLog(setLog, `Reconfigured runtime for ${agent.name}.`);
+      appendLog(setLog, `Reconnecting runtime for ${agent.name}.`);
+      socketRef.current.close(1000, "Agent changed");
+      window.setTimeout(() => {
+        connectRuntime();
+      }, 0);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agent]);
 
-  function connectRuntime() {
+  async function connectRuntime() {
     if (!agent) {
       appendLog(setLog, "Create or select an agent before connecting.");
       return;
     }
 
     if (socketRef.current?.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify({ type: "configure", agent }));
+      appendLog(setLog, "Runtime is already connected.");
       return;
     }
 
     setStatus("connecting");
-    const socket = new WebSocket(runtimeUrl);
+    let voiceSession;
+    try {
+      voiceSession = await createRuntimeVoiceSession(agent.id);
+    } catch (error) {
+      setStatus("error");
+      appendLog(
+        setLog,
+        `Could not authorize runtime session: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return;
+    }
+
+    const socket = new WebSocket(voiceSession.url);
     socket.binaryType = "arraybuffer";
     socketRef.current = socket;
 
     socket.addEventListener("open", () => {
-      appendLog(setLog, "Connected to local voice runtime.");
-      socket.send(JSON.stringify({ type: "configure", agent }));
+      appendLog(setLog, "Connected to authenticated voice runtime.");
     });
 
     socket.addEventListener("close", () => {

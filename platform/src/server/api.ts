@@ -1,12 +1,13 @@
 import "./env.js";
 
 import cors from "@fastify/cors";
-import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull } from "drizzle-orm";
 import Fastify from "fastify";
 import {
   createHash,
   randomBytes,
   randomUUID,
+  randomInt,
   scryptSync,
   timingSafeEqual,
 } from "node:crypto";
@@ -24,11 +25,14 @@ import {
   appUsers,
   deploymentDeviceTargets,
   deployments,
+  deviceActivationRequests,
+  deviceCredentials,
   deviceState,
   devices,
   localAuthCredentials,
   pipelineVersions,
   pipelines,
+  runtimeSessionTokens,
   userPreferences,
   type AgentRow,
   type AgentVersionRow,
@@ -36,6 +40,7 @@ import {
   type AppUserRow,
   type DeploymentDeviceTargetRow,
   type DeploymentRow,
+  type DeviceActivationRequestRow,
   type DeviceRow,
   type DeviceStateRow,
   type LocalAuthCredentialRow,
@@ -66,6 +71,13 @@ const defaultUserSettings: UserSettings = {
 const config = {
   host: process.env.PLATFORM_API_HOST || "0.0.0.0",
   port: Number(process.env.PORT || process.env.PLATFORM_API_PORT || 8788),
+  runtimeInternalSecret:
+    process.env.OPENDOT_RUNTIME_INTERNAL_SECRET ||
+    "opendot-local-runtime-internal-secret-change-me",
+  runtimePublicHttpUrl:
+    process.env.OPENDOT_RUNTIME_PUBLIC_HTTP_URL || "http://localhost:8787",
+  runtimePublicVoiceUrl:
+    process.env.OPENDOT_RUNTIME_PUBLIC_WS_URL || "ws://localhost:8787/voice",
 };
 
 type UserContext = {
@@ -86,6 +98,22 @@ type DeviceBinding = {
   target: DeploymentDeviceTargetRow;
   deployment: DeploymentRow;
   agent: AgentRow;
+};
+
+type RuntimeDeviceIdentity = {
+  deviceIdentifier: string;
+  clientId: string;
+  serialNumber: string | null;
+  userAgent: string;
+  ipAddress: string;
+};
+
+type DeviceActivationClaimInput = {
+  code?: string;
+};
+
+type RuntimeVoiceSessionInput = {
+  agentId?: string;
 };
 
 function nowDate() {
@@ -188,6 +216,18 @@ function createScopedSlug(value: string, fallback: string, id: string) {
 
 function createApiToken() {
   return `od_sk_${randomBytes(24).toString("hex")}`;
+}
+
+function createDeviceToken() {
+  return `od_dt_${randomBytes(32).toString("base64url")}`;
+}
+
+function createRuntimeSessionToken() {
+  return `od_vt_${randomBytes(32).toString("base64url")}`;
+}
+
+function createActivationCode() {
+  return String(randomInt(100_000, 1_000_000));
 }
 
 function hashToken(token: string) {
@@ -504,6 +544,34 @@ function hasBearerToken(authorization: string | string[] | undefined) {
   return Boolean(header?.match(/^Bearer\s+.+$/i));
 }
 
+function bearerToken(authorization: string | string[] | undefined) {
+  const header = Array.isArray(authorization) ? authorization[0] : authorization;
+  return header?.match(/^Bearer\s+(.+)$/i)?.[1] ?? null;
+}
+
+function headerValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function timingSafeStringEqual(left: string, right: string) {
+  const leftBuffer = Buffer.from(left);
+  const rightBuffer = Buffer.from(right);
+  return (
+    leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer)
+  );
+}
+
+function ensureRuntimeInternalRequest(secret: string | string[] | undefined) {
+  const providedSecret = headerValue(secret) || "";
+
+  if (
+    !providedSecret ||
+    !timingSafeStringEqual(providedSecret, config.runtimeInternalSecret)
+  ) {
+    throw httpError("Runtime internal authentication failed.", 401);
+  }
+}
+
 async function authSessionFromRequest(authorization: string | string[] | undefined) {
   if (!hasBearerToken(authorization)) {
     throw httpError("An active session is required.", 401);
@@ -562,6 +630,41 @@ async function readAgents(context: UserContext) {
       : null;
     return agentFromRows(agent, agentVersion, pipelineVersion);
   });
+}
+
+async function readAgentForUser(userId: string, agentId: string) {
+  if (!isUuid(agentId)) {
+    return null;
+  }
+
+  const [agent] = await db
+    .select()
+    .from(agents)
+    .where(
+      and(eq(agents.id, agentId), eq(agents.userId, userId), isNull(agents.deletedAt)),
+    )
+    .limit(1);
+
+  if (!agent) {
+    return null;
+  }
+
+  const [agentVersion] = await db
+    .select()
+    .from(agentVersions)
+    .where(eq(agentVersions.agentId, agent.id))
+    .orderBy(desc(agentVersions.versionNumber))
+    .limit(1);
+
+  const [pipelineVersion] = agentVersion?.pipelineVersionId
+    ? await db
+        .select()
+        .from(pipelineVersions)
+        .where(eq(pipelineVersions.id, agentVersion.pipelineVersionId))
+        .limit(1)
+    : [];
+
+  return agentFromRows(agent, agentVersion ?? null, pipelineVersion ?? null);
 }
 
 async function readDevices(context: UserContext) {
@@ -953,6 +1056,581 @@ async function publicDeviceById(context: UserContext, deviceId: string) {
   return allDevices.find((device) => device.id === deviceId) ?? null;
 }
 
+async function publicDeviceByOwnerId(userId: string, deviceId: string) {
+  const context: UserContext = {
+    identity: {
+      id: userId,
+      authProvider: "dev",
+      authSubject: userId,
+      email: "",
+      displayName: "OpenDot user",
+      avatarUrl: null,
+    },
+    user: { id: userId } as AppUserRow,
+    preferences: {} as UserPreferenceRow,
+  };
+
+  return publicDeviceById(context, deviceId);
+}
+
+async function readRuntimeAgentForDevice(deviceId: string) {
+  const [target] = await db
+    .select()
+    .from(deploymentDeviceTargets)
+    .where(
+      and(
+        eq(deploymentDeviceTargets.deviceId, deviceId),
+        eq(deploymentDeviceTargets.status, "active"),
+      ),
+    )
+    .orderBy(desc(deploymentDeviceTargets.updatedAt))
+    .limit(1);
+
+  if (!target) {
+    return null;
+  }
+
+  const [deployment] = await db
+    .select()
+    .from(deployments)
+    .where(eq(deployments.id, target.deploymentId))
+    .limit(1);
+
+  if (!deployment) {
+    return null;
+  }
+
+  const [agentVersion] = await db
+    .select()
+    .from(agentVersions)
+    .where(eq(agentVersions.id, deployment.agentVersionId))
+    .limit(1);
+
+  if (!agentVersion) {
+    return null;
+  }
+
+  const [agent] = await db
+    .select()
+    .from(agents)
+    .where(and(eq(agents.id, agentVersion.agentId), isNull(agents.deletedAt)))
+    .limit(1);
+
+  if (!agent) {
+    return null;
+  }
+
+  const [pipelineVersion] = agentVersion.pipelineVersionId
+    ? await db
+        .select()
+        .from(pipelineVersions)
+        .where(eq(pipelineVersions.id, agentVersion.pipelineVersionId))
+        .limit(1)
+    : [];
+
+  return agentFromRows(agent, agentVersion, pipelineVersion ?? null);
+}
+
+function deviceIdentifierFromBody(body: unknown): RuntimeDeviceIdentity {
+  const input = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+  const deviceIdentifier =
+    optionalTrimmed(input.deviceId) || optionalTrimmed(input.clientId);
+
+  if (!deviceIdentifier) {
+    throw httpError("Device-Id or Client-Id is required.", 400);
+  }
+
+  return {
+    deviceIdentifier,
+    clientId: optionalTrimmed(input.clientId),
+    serialNumber: optionalTrimmed(input.serialNumber) || null,
+    userAgent: optionalTrimmed(input.userAgent),
+    ipAddress: optionalTrimmed(input.ipAddress),
+  };
+}
+
+function serverTimePayload() {
+  return {
+    timestamp: Date.now(),
+    timezone_offset: -new Date().getTimezoneOffset(),
+  };
+}
+
+function websocketUrlFromBody(body: unknown) {
+  const input = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+  if (optionalTrimmed(input.websocketUrl)) {
+    return optionalTrimmed(input.websocketUrl);
+  }
+
+  const runtimeUrl = new URL(config.runtimePublicHttpUrl);
+  runtimeUrl.protocol = runtimeUrl.protocol === "https:" ? "wss:" : "ws:";
+  runtimeUrl.pathname = "/ws";
+  runtimeUrl.search = "";
+  runtimeUrl.hash = "";
+  return runtimeUrl.toString();
+}
+
+function activationMessage() {
+  return "Enter this code in OpenDot to pair your Dot device.";
+}
+
+async function createDeviceActivation(body: unknown) {
+  const identity = deviceIdentifierFromBody(body);
+  const timestamp = nowDate();
+  const expiresAt = new Date(timestamp.getTime() + 5 * 60 * 1000);
+  const code = createActivationCode();
+  const token = createDeviceToken();
+  const challenge = randomBytes(24).toString("base64url");
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(deviceActivationRequests)
+      .set({ status: "expired", updatedAt: timestamp })
+      .where(
+        and(
+          eq(deviceActivationRequests.deviceIdentifier, identity.deviceIdentifier),
+          eq(deviceActivationRequests.status, "pending"),
+        ),
+      );
+
+    await tx.insert(deviceActivationRequests).values({
+      id: randomUUID(),
+      deviceIdentifier: identity.deviceIdentifier,
+      clientId: identity.clientId,
+      serialNumber: identity.serialNumber,
+      userAgent: identity.userAgent,
+      ipAddress: identity.ipAddress,
+      codeHash: hashToken(code),
+      challenge,
+      tokenPrefix: token.slice(0, 14),
+      tokenHash: hashToken(token),
+      status: "pending",
+      claimedByUserId: null,
+      deviceId: null,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      expiresAt,
+      claimedAt: null,
+      completedAt: null,
+    });
+  });
+
+  return {
+    activation: {
+      message: activationMessage(),
+      code,
+      challenge,
+      timeout_ms: expiresAt.getTime() - timestamp.getTime(),
+    },
+    websocket: {
+      url: websocketUrlFromBody(body),
+      token,
+      version: 1,
+    },
+    server_time: serverTimePayload(),
+  };
+}
+
+async function deviceCredentialFromToken(token: string) {
+  const tokenHash = hashToken(token);
+  const [credential] = await db
+    .select()
+    .from(deviceCredentials)
+    .where(
+      and(
+        eq(deviceCredentials.tokenHash, tokenHash),
+        eq(deviceCredentials.status, "active"),
+      ),
+    )
+    .limit(1);
+
+  return credential ?? null;
+}
+
+async function pairedDeviceFromIdentity(identity: RuntimeDeviceIdentity) {
+  const serialNumber = identity.serialNumber || identity.deviceIdentifier;
+  const [device] = await db
+    .select()
+    .from(devices)
+    .where(and(eq(devices.serialNumber, serialNumber), isNull(devices.deletedAt)))
+    .limit(1);
+
+  if (!device) {
+    return null;
+  }
+
+  const [credential] = await db
+    .select()
+    .from(deviceCredentials)
+    .where(
+      and(
+        eq(deviceCredentials.deviceId, device.id),
+        eq(deviceCredentials.status, "active"),
+      ),
+    )
+    .limit(1);
+
+  return credential ? device : null;
+}
+
+async function deviceOtaBootstrap(body: unknown) {
+  const input = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+  const token = bearerToken(stringValue(input.authorization));
+
+  if (!token) {
+    const identity = deviceIdentifierFromBody(body);
+    const pairedDevice = await pairedDeviceFromIdentity(identity);
+
+    if (pairedDevice) {
+      return {
+        websocket: {
+          url: websocketUrlFromBody(body),
+          version: 1,
+        },
+        server_time: serverTimePayload(),
+      };
+    }
+
+    return createDeviceActivation(body);
+  }
+
+  const credential = await deviceCredentialFromToken(token);
+  if (!credential) {
+    return createDeviceActivation(body);
+  }
+
+  const timestamp = nowDate();
+  await db
+    .update(deviceCredentials)
+    .set({ lastUsedAt: timestamp, updatedAt: timestamp })
+    .where(eq(deviceCredentials.id, credential.id));
+
+  return {
+    websocket: {
+      url: websocketUrlFromBody(body),
+      version: 1,
+    },
+    server_time: serverTimePayload(),
+  };
+}
+
+async function completeDeviceActivation(body: unknown) {
+  const input = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+  const challenge = optionalTrimmed(input.challenge);
+  const identity = deviceIdentifierFromBody(body);
+  const [activation] = challenge
+    ? await db
+        .select()
+        .from(deviceActivationRequests)
+        .where(
+          and(
+            eq(deviceActivationRequests.challenge, challenge),
+            gt(deviceActivationRequests.expiresAt, nowDate()),
+          ),
+        )
+        .orderBy(desc(deviceActivationRequests.createdAt))
+        .limit(1)
+    : await db
+        .select()
+        .from(deviceActivationRequests)
+        .where(
+          and(
+            eq(deviceActivationRequests.deviceIdentifier, identity.deviceIdentifier),
+            gt(deviceActivationRequests.expiresAt, nowDate()),
+          ),
+        )
+        .orderBy(desc(deviceActivationRequests.createdAt))
+        .limit(1);
+
+  if (!activation) {
+    throw httpError("Activation request expired or was not found.", 404);
+  }
+
+  if (activation.status === "pending") {
+    return {
+      statusCode: 202,
+      body: { ok: false, status: "pending" },
+    };
+  }
+
+  if (activation.status !== "claimed") {
+    throw httpError("Activation request is no longer active.", 409);
+  }
+
+  const timestamp = nowDate();
+  await db
+    .update(deviceActivationRequests)
+    .set({ status: "completed", completedAt: timestamp, updatedAt: timestamp })
+    .where(eq(deviceActivationRequests.id, activation.id));
+
+  return {
+    statusCode: 200,
+    body: { ok: true, status: "completed" },
+  };
+}
+
+function claimedDeviceInput(
+  activation: DeviceActivationRequestRow,
+): CreateDotDeviceInput {
+  const serialNumber = activation.serialNumber || activation.deviceIdentifier;
+  const compact = serialNumber.replace(/[^a-zA-Z0-9]/g, "");
+  const suffix = compact.slice(-6).toUpperCase();
+
+  return {
+    name: suffix ? `Dot ${suffix}` : "Dot Device",
+    model: "Dot S3",
+    serialNumber,
+    ipAddress: activation.ipAddress,
+    deviceEndpoint: config.runtimePublicHttpUrl,
+  };
+}
+
+async function claimDeviceActivation(
+  context: UserContext,
+  input: DeviceActivationClaimInput,
+) {
+  const code = trimRequired(input.code, "Activation code").replace(/\s+/g, "");
+  const timestamp = nowDate();
+  const [activation] = await db
+    .select()
+    .from(deviceActivationRequests)
+    .where(
+      and(
+        eq(deviceActivationRequests.codeHash, hashToken(code)),
+        eq(deviceActivationRequests.status, "pending"),
+        gt(deviceActivationRequests.expiresAt, timestamp),
+      ),
+    )
+    .orderBy(desc(deviceActivationRequests.createdAt))
+    .limit(1);
+
+  if (!activation) {
+    throw httpError("Activation code was not found or expired.", 404);
+  }
+
+  const deviceInput = claimedDeviceInput(activation);
+  const existingForUser = await findDeviceByExternalId(
+    context,
+    deviceInput.serialNumber,
+    deviceInput.serialNumber,
+  );
+  const [existingForAnotherUser] = await db
+    .select()
+    .from(devices)
+    .where(
+      and(eq(devices.serialNumber, deviceInput.serialNumber), isNull(devices.deletedAt)),
+    )
+    .limit(1);
+
+  if (existingForAnotherUser && existingForAnotherUser.userId !== context.user.id) {
+    throw httpError("This device is already paired to another account.", 409);
+  }
+
+  const device = createDevice(deviceInput);
+  const savedDevice = await saveDevice(context, {
+    ...device,
+    id: existingForUser?.id ?? device.id,
+    availability: "available",
+    lastSeenAt: timestamp.toISOString(),
+    updatedAt: timestamp.toISOString(),
+  });
+  const deviceId = savedDevice?.id ?? existingForUser?.id ?? device.id;
+  await db
+    .update(devices)
+    .set({ hardwareId: activation.deviceIdentifier, updatedAt: timestamp })
+    .where(eq(devices.id, deviceId));
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(deviceCredentials)
+      .set({ status: "revoked", revokedAt: timestamp, updatedAt: timestamp })
+      .where(
+        and(
+          eq(deviceCredentials.deviceId, deviceId),
+          eq(deviceCredentials.status, "active"),
+        ),
+      );
+
+    await tx.insert(deviceCredentials).values({
+      id: randomUUID(),
+      deviceId,
+      prefix: activation.tokenPrefix,
+      tokenHash: activation.tokenHash,
+      status: "active",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      lastUsedAt: null,
+      revokedAt: null,
+    });
+
+    await tx
+      .update(deviceActivationRequests)
+      .set({
+        status: "claimed",
+        claimedByUserId: context.user.id,
+        deviceId,
+        claimedAt: timestamp,
+        updatedAt: timestamp,
+      })
+      .where(eq(deviceActivationRequests.id, activation.id));
+  });
+
+  return publicDeviceById(context, deviceId);
+}
+
+async function verifyDeviceRuntimeToken(body: unknown) {
+  const input = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+  const token = trimRequired(input.token, "Device token");
+  const credential = await deviceCredentialFromToken(token);
+
+  if (!credential) {
+    throw httpError("Device token is invalid.", 401);
+  }
+
+  const [device] = await db
+    .select()
+    .from(devices)
+    .where(and(eq(devices.id, credential.deviceId), isNull(devices.deletedAt)))
+    .limit(1);
+
+  if (!device) {
+    throw httpError("Device is no longer paired.", 401);
+  }
+
+  const timestamp = nowDate();
+  await db.transaction(async (tx) => {
+    await tx
+      .update(deviceCredentials)
+      .set({ lastUsedAt: timestamp, updatedAt: timestamp })
+      .where(eq(deviceCredentials.id, credential.id));
+
+    await tx
+      .insert(deviceState)
+      .values({
+        deviceId: device.id,
+        availability: "available",
+        lastSeenAt: timestamp,
+        ipAddress: optionalTrimmed(input.ipAddress),
+        firmwareVersion: null,
+        runtimeVersion: null,
+        reportedStateJson: {},
+        desiredStateJson: {},
+        updateMode: "idle",
+        updatedAt: timestamp,
+      })
+      .onConflictDoUpdate({
+        target: deviceState.deviceId,
+        set: {
+          availability: "available",
+          lastSeenAt: timestamp,
+          ipAddress: optionalTrimmed(input.ipAddress),
+          updatedAt: timestamp,
+        },
+      });
+  });
+
+  const publicDevice = await publicDeviceByOwnerId(device.userId, device.id);
+
+  if (!publicDevice) {
+    throw httpError("Device is no longer paired.", 401);
+  }
+
+  return {
+    device: publicDevice,
+    agent: await readRuntimeAgentForDevice(device.id),
+  };
+}
+
+async function updateRuntimeDeviceState(body: unknown) {
+  const input = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+  const deviceId = trimRequired(input.deviceId, "Device id");
+  const availabilityValue = availability(input.availability);
+  const timestamp = nowDate();
+
+  if (!isUuid(deviceId)) {
+    throw httpError("Device id must be a UUID.", 400);
+  }
+
+  await db
+    .update(deviceState)
+    .set({
+      availability: availabilityValue,
+      lastSeenAt: timestamp,
+      updatedAt: timestamp,
+    })
+    .where(eq(deviceState.deviceId, deviceId));
+
+  return { ok: true };
+}
+
+async function createRuntimeVoiceSession(
+  context: UserContext,
+  input: RuntimeVoiceSessionInput,
+) {
+  const agentId = trimRequired(input.agentId, "Agent id");
+  const agent = await readAgentForUser(context.user.id, agentId);
+
+  if (!agent) {
+    throw httpError("Agent not found.", 404);
+  }
+
+  const timestamp = nowDate();
+  const expiresAt = new Date(timestamp.getTime() + 60 * 1000);
+  const token = createRuntimeSessionToken();
+  const url = new URL(config.runtimePublicVoiceUrl);
+  url.searchParams.set("voice_token", token);
+
+  await db.insert(runtimeSessionTokens).values({
+    id: randomUUID(),
+    userId: context.user.id,
+    agentId,
+    tokenHash: hashToken(token),
+    status: "active",
+    createdAt: timestamp,
+    expiresAt,
+    usedAt: null,
+  });
+
+  return {
+    voiceSession: {
+      url: url.toString(),
+      expiresAt: expiresAt.toISOString(),
+    },
+  };
+}
+
+async function verifyRuntimeVoiceSession(body: unknown) {
+  const input = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+  const token = trimRequired(input.token, "Voice session token");
+  const timestamp = nowDate();
+  const [sessionToken] = await db
+    .update(runtimeSessionTokens)
+    .set({ status: "used", usedAt: timestamp })
+    .where(
+      and(
+        eq(runtimeSessionTokens.tokenHash, hashToken(token)),
+        eq(runtimeSessionTokens.status, "active"),
+        gt(runtimeSessionTokens.expiresAt, timestamp),
+      ),
+    )
+    .returning();
+
+  if (!sessionToken) {
+    throw httpError("Voice session token is invalid, expired, or already used.", 401);
+  }
+
+  const agent = await readAgentForUser(sessionToken.userId, sessionToken.agentId);
+
+  if (!agent) {
+    throw httpError("Agent not found.", 404);
+  }
+
+  return {
+    userId: sessionToken.userId,
+    agent,
+  };
+}
+
 async function saveDevice(
   context: UserContext,
   device: DotDevice,
@@ -1169,6 +1847,32 @@ server.get("/api/auth/config", async () => ({
   supabaseConfigured: Boolean(process.env.SUPABASE_URL),
 }));
 
+server.post("/api/internal/device-activations/bootstrap", async (request) => {
+  ensureRuntimeInternalRequest(request.headers["x-opendot-runtime-secret"]);
+  return deviceOtaBootstrap(request.body);
+});
+
+server.post("/api/internal/device-activations/activate", async (request, reply) => {
+  ensureRuntimeInternalRequest(request.headers["x-opendot-runtime-secret"]);
+  const result = await completeDeviceActivation(request.body);
+  return reply.code(result.statusCode).send(result.body);
+});
+
+server.post("/api/internal/device-runtime/verify", async (request) => {
+  ensureRuntimeInternalRequest(request.headers["x-opendot-runtime-secret"]);
+  return verifyDeviceRuntimeToken(request.body);
+});
+
+server.post("/api/internal/device-runtime/state", async (request) => {
+  ensureRuntimeInternalRequest(request.headers["x-opendot-runtime-secret"]);
+  return updateRuntimeDeviceState(request.body);
+});
+
+server.post("/api/internal/runtime/voice-sessions/verify", async (request) => {
+  ensureRuntimeInternalRequest(request.headers["x-opendot-runtime-secret"]);
+  return verifyRuntimeVoiceSession(request.body);
+});
+
 server.post("/api/auth/signup", async (request, reply) => {
   const session = await signupWithLocalPassword(request.body);
   return reply.code(201).send(session);
@@ -1249,6 +1953,30 @@ server.delete<{ Params: { id: string } }>("/api/dot-devices/:id", async (request
   await deleteDevice(context, request.params.id);
   return { ok: true };
 });
+
+server.post<{ Body: DeviceActivationClaimInput }>(
+  "/api/device-activations/claim",
+  async (request, reply) => {
+    const context = await contextFromRequest(request.headers.authorization);
+    const device = await claimDeviceActivation(context, request.body ?? {});
+
+    if (!device) {
+      return reply.code(404).send({ error: "Claimed device was not found." });
+    }
+
+    return reply.code(201).send({ device });
+  },
+);
+
+server.post<{ Body: RuntimeVoiceSessionInput }>(
+  "/api/runtime/voice-sessions",
+  async (request, reply) => {
+    const context = await contextFromRequest(request.headers.authorization);
+    return reply
+      .code(201)
+      .send(await createRuntimeVoiceSession(context, request.body ?? {}));
+  },
+);
 
 server.put<{ Body: Partial<UserSettings> }>("/api/settings", async (request) => {
   const context = await contextFromRequest(request.headers.authorization);

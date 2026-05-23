@@ -4,7 +4,9 @@ import type {
   AuthSessionUser,
   CreateAgentInput,
   CreateDotDeviceInput,
+  DeviceActivationClaimInput,
   DotDevice,
+  RuntimeVoiceSession,
   UserApiKey,
   UserSettings,
   VoiceAgent,
@@ -128,10 +130,29 @@ export async function updateDotDevice(device: DotDevice) {
   return body.device;
 }
 
+export async function claimDeviceActivation(input: DeviceActivationClaimInput) {
+  const body = await requestJson<{ device: DotDevice }>("/device-activations/claim", {
+    body: JSON.stringify(input),
+    method: "POST",
+  });
+  return body.device;
+}
+
 export async function deleteDotDevice(deviceId: string) {
   await requestJson<{ ok: true }>(`/dot-devices/${encodeURIComponent(deviceId)}`, {
     method: "DELETE",
   });
+}
+
+export async function createRuntimeVoiceSession(agentId: string) {
+  const body = await requestJson<{ voiceSession: RuntimeVoiceSession }>(
+    "/runtime/voice-sessions",
+    {
+      body: JSON.stringify({ agentId }),
+      method: "POST",
+    },
+  );
+  return body.voiceSession;
 }
 
 export async function updateUserSettings(settings: UserSettings) {

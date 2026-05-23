@@ -29,6 +29,13 @@
       "when": 1779494142636,
       "tag": "0003_prune_oss_core_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1779547214492,
+      "tag": "0004_lyrical_norrin_radd",
+      "breakpoints": true
     }
   ]
 }

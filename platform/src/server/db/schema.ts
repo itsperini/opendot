@@ -230,6 +230,85 @@ export const deviceState = pgTable("device_state", {
   updatedAt: timestamp("updated_at", timestampConfig).notNull(),
 });
 
+export const deviceActivationRequests = pgTable(
+  "device_activation_requests",
+  {
+    id: uuid("id").primaryKey(),
+    deviceIdentifier: text("device_identifier").notNull(),
+    clientId: text("client_id").notNull().default(""),
+    serialNumber: text("serial_number"),
+    userAgent: text("user_agent").notNull().default(""),
+    ipAddress: text("ip_address").notNull().default(""),
+    codeHash: text("code_hash").notNull(),
+    challenge: text("challenge").notNull(),
+    tokenPrefix: text("token_prefix").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    status: text("status").notNull(),
+    claimedByUserId: uuid("claimed_by_user_id").references(() => appUsers.id, {
+      onDelete: "set null",
+    }),
+    deviceId: uuid("device_id").references(() => devices.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", timestampConfig).notNull(),
+    updatedAt: timestamp("updated_at", timestampConfig).notNull(),
+    expiresAt: timestamp("expires_at", timestampConfig).notNull(),
+    claimedAt: timestamp("claimed_at", timestampConfig),
+    completedAt: timestamp("completed_at", timestampConfig),
+  },
+  (table) => [
+    index("device_activation_requests_code_idx").on(table.codeHash),
+    index("device_activation_requests_challenge_idx").on(table.challenge),
+    index("device_activation_requests_device_idx").on(
+      table.deviceIdentifier,
+      table.status,
+    ),
+    index("device_activation_requests_expires_idx").on(table.expiresAt),
+  ],
+);
+
+export const deviceCredentials = pgTable(
+  "device_credentials",
+  {
+    id: uuid("id").primaryKey(),
+    deviceId: uuid("device_id")
+      .notNull()
+      .references(() => devices.id, { onDelete: "cascade" }),
+    prefix: text("prefix").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    status: text("status").notNull(),
+    createdAt: timestamp("created_at", timestampConfig).notNull(),
+    updatedAt: timestamp("updated_at", timestampConfig).notNull(),
+    lastUsedAt: timestamp("last_used_at", timestampConfig),
+    revokedAt: timestamp("revoked_at", timestampConfig),
+  },
+  (table) => [
+    uniqueIndex("device_credentials_token_hash_idx").on(table.tokenHash),
+    index("device_credentials_device_status_idx").on(table.deviceId, table.status),
+  ],
+);
+
+export const runtimeSessionTokens = pgTable(
+  "runtime_session_tokens",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => appUsers.id, { onDelete: "cascade" }),
+    agentId: uuid("agent_id")
+      .notNull()
+      .references(() => agents.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    status: text("status").notNull(),
+    createdAt: timestamp("created_at", timestampConfig).notNull(),
+    expiresAt: timestamp("expires_at", timestampConfig).notNull(),
+    usedAt: timestamp("used_at", timestampConfig),
+  },
+  (table) => [
+    uniqueIndex("runtime_session_tokens_token_hash_idx").on(table.tokenHash),
+    index("runtime_session_tokens_user_created_idx").on(table.userId, table.createdAt),
+    index("runtime_session_tokens_expires_idx").on(table.expiresAt),
+  ],
+);
+
 export const deployments = pgTable(
   "deployments",
   {
@@ -289,6 +368,9 @@ export type PipelineRow = typeof pipelines.$inferSelect;
 export type PipelineVersionRow = typeof pipelineVersions.$inferSelect;
 export type DeviceRow = typeof devices.$inferSelect;
 export type DeviceStateRow = typeof deviceState.$inferSelect;
+export type DeviceActivationRequestRow = typeof deviceActivationRequests.$inferSelect;
+export type DeviceCredentialRow = typeof deviceCredentials.$inferSelect;
+export type RuntimeSessionTokenRow = typeof runtimeSessionTokens.$inferSelect;
 export type DeploymentRow = typeof deployments.$inferSelect;
 export type DeploymentDeviceTargetRow = typeof deploymentDeviceTargets.$inferSelect;
 export type ApiKeyRow = typeof apiKeys.$inferSelect;

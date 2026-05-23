@@ -156,7 +156,7 @@ export function SettingsPage({
           <div className="panel-heading compact">
             <div>
               <p className="eyebrow">SDK</p>
-              <h2>API keys</h2>
+              <h2>SDK API keys</h2>
             </div>
             <KeyRound size={18} />
           </div>
@@ -178,7 +178,7 @@ export function SettingsPage({
           </form>
 
           <div className="sdk-env-row">
-            <span>OPENDOT_API_KEY</span>
+            <span>Future SDK authentication</span>
             <strong>
               {apiKeys.find((key) => key.status === "active")?.prefix ?? "No active key"}
             </strong>

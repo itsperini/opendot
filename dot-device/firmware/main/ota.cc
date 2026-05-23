@@ -64,6 +64,14 @@ std::unique_ptr<Http> Ota::SetupHttp() {
         http->SetHeader("Serial-Number", serial_number_.c_str());
         ESP_LOGI(TAG, "Setup HTTP, User-Agent: %s, Serial-Number: %s", user_agent.c_str(), serial_number_.c_str());
     }
+    Settings websocket_settings("websocket", false);
+    std::string token = websocket_settings.GetString("token");
+    if (!token.empty()) {
+        if (token.find(" ") == std::string::npos) {
+            token = "Bearer " + token;
+        }
+        http->SetHeader("Authorization", token.c_str());
+    }
     http->SetHeader("User-Agent", user_agent);
     http->SetHeader("Accept-Language", Lang::CODE);
     http->SetHeader("Content-Type", "application/json");

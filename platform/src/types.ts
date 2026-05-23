@@ -73,6 +73,15 @@ export type CreateDotDeviceInput = {
   deviceEndpoint: string;
 };
 
+export type DeviceActivationClaimInput = {
+  code: string;
+};
+
+export type RuntimeVoiceSession = {
+  url: string;
+  expiresAt: string;
+};
+
 export type UserSettings = {
   displayName: string;
   email: string;

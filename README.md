@@ -98,8 +98,9 @@ workspace.
 
 The platform database is Supabase-compatible without requiring Supabase locally:
 OpenDot keeps product identity and core data in `app_users`,
-`local_auth_credentials`, `user_preferences`, API keys, versioned agents and
-pipelines, devices, device state, and deployments. When Supabase Auth is
+`local_auth_credentials`, `user_preferences`, SDK API keys, versioned agents and
+pipelines, devices, device activation requests, device credentials, runtime
+session tokens, device state, and deployments. When Supabase Auth is
 configured, `auth.users.id` maps to `app_users.id`; otherwise Compose uses
 OpenDot's local password auth. The local schema stays focused on the product
 surfaces that are active today.
@@ -183,6 +184,10 @@ OPENAI_API_KEY=...
 VITE_PLATFORM_API_URL=https://<opendot-api>.onrender.com/api
 VITE_RUNTIME_HTTP_URL=https://<opendot-runtime>.onrender.com
 VITE_RUNTIME_WS_URL=wss://<opendot-runtime>.onrender.com/voice
+OPENDOT_RUNTIME_INTERNAL_SECRET=<shared api/runtime secret>
+OPENDOT_RUNTIME_PUBLIC_HTTP_URL=https://<opendot-runtime>.onrender.com
+OPENDOT_RUNTIME_PUBLIC_WS_URL=wss://<opendot-runtime>.onrender.com/voice
+PLATFORM_API_INTERNAL_URL=https://<opendot-api>.onrender.com/api
 ```
 
 The Render Blueprint is auth-gated: `PLATFORM_AUTH_REQUIRED=true` and
@@ -190,10 +195,9 @@ The Render Blueprint is auth-gated: `PLATFORM_AUTH_REQUIRED=true` and
 verification, disable email confirmations in the Supabase Auth settings for the
 preview project.
 
-Important: the platform API is auth-gated in this Blueprint, but the current
-voice runtime endpoints are still local-prototype endpoints. Do not expose
-`opendot-runtime` publicly with real provider keys until runtime and device
-endpoint authentication is added.
+The runtime now verifies browser voice-session tokens and device credentials
+with the platform API before accepting `/voice` or `/ws` connections. Keep
+`OPENDOT_RUNTIME_INTERNAL_SECRET` identical on the API and runtime services.
 
 ## Platform Commands
 

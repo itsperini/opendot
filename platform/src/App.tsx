@@ -17,6 +17,7 @@ import {
 import {
   createAgent as createPlatformAgent,
   createDotDevice as createPlatformDotDevice,
+  claimDeviceActivation as claimPlatformDeviceActivation,
   createUserApiKey as createPlatformApiKey,
   deleteDotDevice as deletePlatformDotDevice,
   loadPlatformState,
@@ -186,6 +187,9 @@ export default function App() {
   const createAgentMutation = useMutation({ mutationFn: createPlatformAgent });
   const updateAgentMutation = useMutation({ mutationFn: updatePlatformAgent });
   const createDeviceMutation = useMutation({ mutationFn: createPlatformDotDevice });
+  const claimDeviceActivationMutation = useMutation({
+    mutationFn: claimPlatformDeviceActivation,
+  });
   const updateDeviceMutation = useMutation({ mutationFn: updatePlatformDotDevice });
   const deleteDeviceMutation = useMutation({ mutationFn: deletePlatformDotDevice });
   const updateUserSettingsMutation = useMutation({
@@ -436,6 +440,18 @@ export default function App() {
     }
   }
 
+  async function handleClaimDeviceActivation(code: string) {
+    try {
+      const device = await claimDeviceActivationMutation.mutateAsync({ code });
+      updatePlatformState((state) => withDevice(state, device));
+      setPlatformError(null);
+      return device;
+    } catch (error) {
+      reportPlatformError(error);
+      return null;
+    }
+  }
+
   async function handleUpdateDevice(device: DotDevice) {
     updatePlatformState((state) => withDevice(state, device));
 
@@ -570,6 +586,7 @@ export default function App() {
             agents={normalizedAgents}
             devices={devices}
             selectedAgent={selectedAgent}
+            onClaimDeviceActivation={handleClaimDeviceActivation}
             onCreateDevice={handleCreateDevice}
             onRemoveDevice={handleRemoveDevice}
             onUpdateDevice={handleUpdateDevice}

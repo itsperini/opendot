@@ -5,12 +5,12 @@ description: Environment variables and local runtime behavior for voice sessions
 
 The runtime process handles live voice sessions for the browser and Dot devices.
 
-The current runtime endpoints are intended for local prototype use. They do not
-yet enforce browser session or device authentication at the runtime boundary, so
-avoid exposing the runtime directly on the public internet with real provider
-keys.
+The runtime verifies browser voice-session tokens and device credentials with
+the platform API before accepting `/voice` or `/ws` connections. Keep the
+runtime service behind normal deployment protections and use provider-key quotas
+for public previews.
 
-The platform API stores the OSS OpenDot control plane in PostgreSQL: app users, local auth credentials, user preferences, API keys, versioned agents and pipelines, devices, device state, and deployments.
+The platform API stores the OSS OpenDot control plane in PostgreSQL: app users, local auth credentials, user preferences, SDK API keys, versioned agents and pipelines, devices, device activation requests, device credentials, runtime session tokens, device state, and deployments.
 
 Create the root environment file once:
 
@@ -87,6 +87,23 @@ VITE_RUNTIME_HTTP_URL=http://localhost:8787
 ```
 
 If `VITE_RUNTIME_HTTP_URL` is not set, the frontend derives the HTTP base from `VITE_RUNTIME_WS_URL`.
+
+## Runtime/API trust
+
+The runtime calls internal platform API endpoints to verify `/voice` and `/ws`
+connections and to proxy firmware activation:
+
+```bash
+OPENDOT_RUNTIME_INTERNAL_SECRET=opendot-local-runtime-internal-secret-change-me
+PLATFORM_API_INTERNAL_URL=http://localhost:8788/api
+OPENDOT_RUNTIME_PUBLIC_HTTP_URL=http://localhost:8787
+OPENDOT_RUNTIME_PUBLIC_WS_URL=ws://localhost:8787/voice
+```
+
+Use the same `OPENDOT_RUNTIME_INTERNAL_SECRET` on the platform API and runtime
+services. In hosted deployments, set the public runtime URLs to the externally
+reachable runtime service so browser voice-session tokens and device OTA config
+point at the right host.
 
 ## Turn-close defaults
 

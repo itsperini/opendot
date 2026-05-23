@@ -3,11 +3,11 @@ title: Dot Device
 description: Pair devices, check runtime availability, and bind voice configs.
 ---
 
-Dot Device manages the hardware side of the prototype. It keeps an inventory of paired devices, syncs devices seen by the runtime, and binds the selected voice agent config.
+Dot Device manages the hardware side of the prototype. It keeps an API-owned inventory of paired devices, claims devices with spoken codes, and binds the selected voice agent config.
 
 ## Runtime availability
 
-The page polls the runtime HTTP endpoint for devices. By default it uses:
+The page checks the runtime health endpoint. By default it uses:
 
 ```text
 http://localhost:8787
@@ -17,18 +17,26 @@ The page derives that URL from `VITE_RUNTIME_HTTP_URL` or `VITE_RUNTIME_WS_URL`.
 
 ## Pair a device
 
-Add a device with:
+For firmware devices, use spoken-code pairing:
+
+1. Point the device OTA URL at the OpenDot runtime `/ota/` endpoint.
+2. Let the device speak the activation code.
+3. Enter that code in **Spoken code** and click **Claim code**.
+
+The platform API binds the claimed device to your account and activates the token the device already stored from OTA.
+
+For manual experiments, add a device with:
 
 - **Name**
 - **Serial**
 - **Model**
 - **Device endpoint**
 
-For local demos, `demo://custom-dot` is enough. For a real local runtime device, use the runtime-discovered device row when it appears.
+For local demos, `demo://custom-dot` is enough.
 
 ## Check devices
 
-Use **Refresh** to sync runtime devices and check manually paired devices. Runtime devices are sorted above demo devices.
+Use **Refresh** to check runtime health and manually paired devices.
 
 Availability values:
 
@@ -42,10 +50,4 @@ Availability values:
 2. Select an agent in **Voice Config**.
 3. Click **Bind config**.
 
-For runtime devices, OpenDot sends the agent config to:
-
-```text
-PUT /devices/:serial/config
-```
-
-If the device push fails, the prototype still stores the binding locally so the UI can keep moving.
+OpenDot stores the binding in the platform API. The runtime applies the bound agent config after the device connects with a valid device token.

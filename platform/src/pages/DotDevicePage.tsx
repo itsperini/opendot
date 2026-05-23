@@ -3,6 +3,7 @@ import type { Dispatch, SetStateAction } from "react";
 import {
   CheckCircle2,
   Cpu,
+  Hash,
   Link2,
   Plus,
   Radio,
@@ -20,6 +21,7 @@ type DotDevicePageProps = {
   devices: DotDevice[];
   selectedAgent: VoiceAgent | null;
   onCreateDevice: (input: CreateDotDeviceInput) => Promise<DotDevice | null>;
+  onClaimDeviceActivation: (code: string) => Promise<DotDevice | null>;
   onRemoveDevice: (deviceId: string) => Promise<void>;
   onUpdateDevice: (device: DotDevice) => Promise<DotDevice | null>;
 };
@@ -27,30 +29,6 @@ type DotDevicePageProps = {
 type DeviceLog = {
   id: string;
   text: string;
-};
-
-type RuntimeDeviceEvent = {
-  id: string;
-  text: string;
-  timestamp: string;
-};
-
-type RuntimeDevice = {
-  id: string;
-  name: string;
-  model: string;
-  serialNumber: string;
-  availability: DotDevice["availability"];
-  state: string;
-  ipAddress: string;
-  lastSeenAt: string | null;
-  connectedAt: string | null;
-  updatedAt: string;
-  boundAgentId: string | null;
-  boundAgentName: string | null;
-  boundConfigVersion: string | null;
-  boundAt: string | null;
-  events: RuntimeDeviceEvent[];
 };
 
 function wait(ms: number) {
@@ -133,32 +111,12 @@ const initialDeviceInput: CreateDotDeviceInput = {
   deviceEndpoint: runtimeApiBase,
 };
 
-function runtimeDeviceId(deviceId: string) {
-  return `runtime:${deviceId}`;
-}
-
-function isRuntimeDevice(device: DotDevice) {
-  return (
-    device.id.startsWith("runtime:") ||
-    endpointBase(device.deviceEndpoint) === runtimeApiBase
-  );
-}
-
-function runtimeSerial(device: DotDevice) {
-  return device.id.startsWith("runtime:")
-    ? device.id.slice("runtime:".length)
-    : device.serialNumber;
-}
-
-function runtimeEventText(event: RuntimeDeviceEvent) {
-  return `[${new Date(event.timestamp).toLocaleTimeString()}] ${event.text}`;
-}
-
 export function DotDevicePage({
   agents,
   devices: persistedDevices,
   selectedAgent,
   onCreateDevice,
+  onClaimDeviceActivation,
   onRemoveDevice,
   onUpdateDevice,
 }: DotDevicePageProps) {
@@ -167,9 +125,10 @@ export function DotDevicePage({
   );
   const [deviceInput, setDeviceInput] =
     useState<CreateDotDeviceInput>(initialDeviceInput);
+  const [activationCode, setActivationCode] = useState("");
+  const [claimingActivation, setClaimingActivation] = useState(false);
   const [bindingAgentId, setBindingAgentId] = useState(selectedAgent?.id ?? "");
   const [deviceLog, setDeviceLog] = useState<DeviceLog[]>([]);
-  const [runtimeDevices, setRuntimeDevices] = useState<RuntimeDevice[]>([]);
   const [runtimeStatus, setRuntimeStatus] =
     useState<DotDevice["availability"]>("unknown");
   const [runtimeRefreshing, setRuntimeRefreshing] = useState(false);
@@ -180,52 +139,11 @@ export function DotDevicePage({
     }
   }, [selectedAgent]);
 
-  const persistedDeviceIds = useMemo(
-    () => new Set(persistedDevices.map((device) => device.id)),
-    [persistedDevices],
-  );
-
   const devices = useMemo(() => {
-    const nextDevices = [...persistedDevices];
-
-    for (const runtimeDevice of runtimeDevices) {
-      const id = runtimeDeviceId(runtimeDevice.id);
-      const existingIndex = nextDevices.findIndex(
-        (device) => device.id === id || device.serialNumber === runtimeDevice.id,
-      );
-      const existing = existingIndex === -1 ? null : nextDevices[existingIndex];
-      const merged: DotDevice = {
-        id,
-        name: existing?.name ?? runtimeDevice.name,
-        model: runtimeDevice.model || existing?.model || "Dot S3",
-        serialNumber: runtimeDevice.id,
-        availability: runtimeDevice.availability,
-        ipAddress: runtimeDevice.ipAddress || existing?.ipAddress || "",
-        deviceEndpoint: runtimeApiBase,
-        lastSeenAt: runtimeDevice.lastSeenAt ?? existing?.lastSeenAt ?? null,
-        boundAgentId: runtimeDevice.boundAgentId ?? existing?.boundAgentId ?? null,
-        boundAgentName: runtimeDevice.boundAgentName ?? existing?.boundAgentName ?? null,
-        boundConfigVersion:
-          runtimeDevice.boundConfigVersion ?? existing?.boundConfigVersion ?? null,
-        boundAt: runtimeDevice.boundAt ?? existing?.boundAt ?? null,
-        updateMode: existing?.updateMode ?? "idle",
-        updatedAt:
-          runtimeDevice.updatedAt ?? existing?.updatedAt ?? new Date().toISOString(),
-      };
-
-      if (existingIndex === -1) {
-        nextDevices.push(merged);
-      } else {
-        nextDevices[existingIndex] = merged;
-      }
-    }
-
-    return nextDevices.sort((left, right) => {
-      const leftRuntime = isRuntimeDevice(left) ? 0 : 1;
-      const rightRuntime = isRuntimeDevice(right) ? 0 : 1;
-      return leftRuntime - rightRuntime;
-    });
-  }, [persistedDevices, runtimeDevices]);
+    return [...persistedDevices].sort((left, right) =>
+      left.name.localeCompare(right.name),
+    );
+  }, [persistedDevices]);
 
   useEffect(() => {
     if (selectedDeviceId && devices.some((device) => device.id === selectedDeviceId)) {
@@ -235,82 +153,44 @@ export function DotDevicePage({
     setSelectedDeviceId(devices[0]?.id ?? null);
   }, [devices, selectedDeviceId]);
 
-  const syncRuntimeDevices = useCallback((nextRuntimeDevices: RuntimeDevice[]) => {
-    setSelectedDeviceId((current) => {
-      if (current) {
-        return current;
+  const refreshRuntimeHealth = useCallback(async (logResult = false) => {
+    setRuntimeRefreshing(true);
+    try {
+      const response = await fetch(`${runtimeApiBase}/health`, {
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        throw new Error(`Runtime returned ${response.status}.`);
       }
-      const [firstRuntimeDevice] = nextRuntimeDevices;
-      return firstRuntimeDevice ? runtimeDeviceId(firstRuntimeDevice.id) : null;
-    });
+
+      setRuntimeStatus("available");
+
+      if (logResult) {
+        appendLog(setDeviceLog, "Runtime health check passed.");
+      }
+    } catch (error) {
+      setRuntimeStatus("offline");
+      if (logResult) {
+        appendLog(
+          setDeviceLog,
+          `Runtime unavailable: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    } finally {
+      setRuntimeRefreshing(false);
+    }
   }, []);
 
-  const refreshRuntimeDevices = useCallback(
-    async (logResult = false) => {
-      setRuntimeRefreshing(true);
-      try {
-        const response = await fetch(`${runtimeApiBase}/devices`, {
-          cache: "no-store",
-        });
-
-        if (!response.ok) {
-          throw new Error(`Runtime returned ${response.status}.`);
-        }
-
-        const body = (await response.json()) as { devices?: RuntimeDevice[] };
-        const nextRuntimeDevices = Array.isArray(body.devices) ? body.devices : [];
-        setRuntimeDevices(nextRuntimeDevices);
-        setRuntimeStatus("available");
-        syncRuntimeDevices(nextRuntimeDevices);
-
-        if (logResult) {
-          appendLog(
-            setDeviceLog,
-            `Runtime online. ${nextRuntimeDevices.length} device${nextRuntimeDevices.length === 1 ? "" : "s"} seen.`,
-          );
-        }
-      } catch (error) {
-        setRuntimeStatus("offline");
-        if (logResult) {
-          appendLog(
-            setDeviceLog,
-            `Runtime unavailable: ${error instanceof Error ? error.message : String(error)}`,
-          );
-        }
-      } finally {
-        setRuntimeRefreshing(false);
-      }
-    },
-    [syncRuntimeDevices],
-  );
-
   useEffect(() => {
-    refreshRuntimeDevices(false);
-    const interval = window.setInterval(() => {
-      refreshRuntimeDevices(false);
-    }, 2000);
-
-    return () => window.clearInterval(interval);
-  }, [refreshRuntimeDevices]);
+    refreshRuntimeHealth(false);
+  }, [refreshRuntimeHealth]);
 
   const selectedDevice = useMemo(
     () => devices.find((device) => device.id === selectedDeviceId) ?? null,
     [devices, selectedDeviceId],
   );
   const bindingAgent = agents.find((agent) => agent.id === bindingAgentId) ?? null;
-  const runtimeDeviceById = useMemo(
-    () => new Map(runtimeDevices.map((device) => [device.id, device])),
-    [runtimeDevices],
-  );
-  const selectedRuntimeDevice = useMemo(() => {
-    if (!selectedDevice) {
-      return null;
-    }
-
-    const serial = runtimeSerial(selectedDevice);
-    return runtimeDeviceById.get(serial) ?? null;
-  }, [runtimeDeviceById, selectedDevice]);
-
   function updateDevice(deviceId: string, update: (device: DotDevice) => DotDevice) {
     const device = devices.find((item) => item.id === deviceId);
     if (!device) {
@@ -346,16 +226,30 @@ export function DotDevicePage({
     appendLog(setDeviceLog, `Paired ${device.name}.`);
   }
 
-  function removeDevice(deviceId: string) {
-    const removed = devices.find((device) => device.id === deviceId);
+  async function handleClaimActivation(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const code = activationCode.replace(/\D/g, "");
 
-    if (removed && !persistedDeviceIds.has(deviceId) && isRuntimeDevice(removed)) {
-      appendLog(
-        setDeviceLog,
-        `${removed.name} is discovered from the runtime and will disappear when it disconnects.`,
-      );
+    if (!code) {
       return;
     }
+
+    setClaimingActivation(true);
+    try {
+      const device = await onClaimDeviceActivation(code);
+
+      if (device) {
+        setSelectedDeviceId(device.id);
+        setActivationCode("");
+        appendLog(setDeviceLog, `Claimed ${device.name} with spoken code ${code}.`);
+      }
+    } finally {
+      setClaimingActivation(false);
+    }
+  }
+
+  function removeDevice(deviceId: string) {
+    const removed = devices.find((device) => device.id === deviceId);
 
     onRemoveDevice(deviceId).catch(() => undefined);
     setSelectedDeviceId((current) => {
@@ -380,29 +274,8 @@ export function DotDevicePage({
     }));
 
     let nextAvailability: DotDevice["availability"] = "unknown";
-    let runtimeDevice: RuntimeDevice | null = null;
 
-    if (isRuntimeDevice(device)) {
-      try {
-        const response = await fetch(`${runtimeApiBase}/devices`, {
-          cache: "no-store",
-        });
-        if (!response.ok) {
-          throw new Error(`Runtime returned ${response.status}.`);
-        }
-        const body = (await response.json()) as { devices?: RuntimeDevice[] };
-        const nextRuntimeDevices = Array.isArray(body.devices) ? body.devices : [];
-        runtimeDevice =
-          nextRuntimeDevices.find((item) => item.id === runtimeSerial(device)) ?? null;
-        setRuntimeDevices(nextRuntimeDevices);
-        setRuntimeStatus("available");
-        syncRuntimeDevices(nextRuntimeDevices);
-        nextAvailability = runtimeDevice?.availability ?? "offline";
-      } catch {
-        setRuntimeStatus("offline");
-        nextAvailability = "offline";
-      }
-    } else if (device.deviceEndpoint.startsWith("demo://")) {
+    if (device.deviceEndpoint.startsWith("demo://")) {
       await wait(550);
       nextAvailability = device.deviceEndpoint.includes("lobby")
         ? "offline"
@@ -427,10 +300,8 @@ export function DotDevicePage({
     updateDevice(device.id, (current) => ({
       ...current,
       availability: nextAvailability,
-      ipAddress: runtimeDevice?.ipAddress ?? current.ipAddress,
-      lastSeenAt:
-        runtimeDevice?.lastSeenAt ??
-        (nextAvailability === "available" ? now : current.lastSeenAt),
+      ipAddress: current.ipAddress,
+      lastSeenAt: nextAvailability === "available" ? now : current.lastSeenAt,
       updateMode: "idle",
       updatedAt: now,
     }));
@@ -438,9 +309,9 @@ export function DotDevicePage({
   }
 
   async function checkAllDevices() {
-    await refreshRuntimeDevices(true);
+    await refreshRuntimeHealth(true);
 
-    for (const device of devices.filter((item) => !isRuntimeDevice(item))) {
+    for (const device of devices) {
       await checkAvailability(device);
     }
   }
@@ -458,78 +329,29 @@ export function DotDevicePage({
     }));
     appendLog(setDeviceLog, `Binding ${bindingAgent.name} to ${selectedDevice.name}.`);
 
-    const payload = {
-      deviceId: selectedDevice.id,
-      agent: {
-        id: bindingAgent.id,
-        name: bindingAgent.name,
-        description: bindingAgent.description,
-        updatedAt: bindingAgent.updatedAt,
-        pipeline: bindingAgent.pipeline,
-      },
-    };
-
     try {
-      if (isRuntimeDevice(selectedDevice)) {
-        const response = await fetch(
-          `${runtimeApiBase}/devices/${encodeURIComponent(runtimeSerial(selectedDevice))}/config`,
-          {
-            body: JSON.stringify(payload),
-            headers: { "Content-Type": "application/json" },
-            method: "PUT",
-          },
-        );
-
-        if (!response.ok) {
-          const body = await response.json().catch(() => null);
-          throw new Error(
-            body?.error || `Runtime rejected config with ${response.status}.`,
-          );
-        }
-
-        const body = (await response.json()) as { device?: RuntimeDevice };
-        if (body.device) {
-          setRuntimeDevices((current) => [
-            body.device as RuntimeDevice,
-            ...current.filter((device) => device.id !== body.device?.id),
-          ]);
-          syncRuntimeDevices([
-            body.device as RuntimeDevice,
-            ...runtimeDevices.filter((device) => device.id !== body.device?.id),
-          ]);
-        }
-      } else if (selectedDevice.deviceEndpoint.startsWith("http")) {
-        const response = await fetch(
-          `${endpointBase(selectedDevice.deviceEndpoint)}/config`,
-          {
-            body: JSON.stringify(payload),
-            headers: { "Content-Type": "application/json" },
-            method: "PUT",
-          },
-        );
-
-        if (!response.ok) {
-          throw new Error(`Device rejected config with ${response.status}.`);
-        }
-      } else {
-        await wait(700);
-      }
-
-      appendLog(setDeviceLog, `${selectedDevice.name} accepted the voice config.`);
-    } catch (error) {
-      appendLog(
-        setDeviceLog,
-        `Config stored locally; device push failed: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    } finally {
-      updateDevice(selectedDevice.id, (device) => ({
-        ...device,
+      await onUpdateDevice({
+        ...selectedDevice,
         boundAgentId: bindingAgent.id,
         boundAgentName: bindingAgent.name,
         boundConfigVersion: bindingAgent.updatedAt,
         boundAt: now,
         updateMode: "idle",
         updatedAt: now,
+      });
+      appendLog(
+        setDeviceLog,
+        `${bindingAgent.name} is bound in the platform API. The runtime will apply it on the next authenticated device session.`,
+      );
+    } catch (error) {
+      appendLog(
+        setDeviceLog,
+        `Binding failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      updateDevice(selectedDevice.id, (device) => ({
+        ...device,
+        updateMode: "idle",
+        updatedAt: new Date().toISOString(),
       }));
     }
   }
@@ -572,7 +394,6 @@ export function DotDevicePage({
             {devices.map((device) => {
               const active = device.id === selectedDeviceId;
               const StatusIcon = device.availability === "available" ? Wifi : WifiOff;
-              const runtimeDevice = runtimeDeviceById.get(runtimeSerial(device));
 
               return (
                 <button
@@ -590,15 +411,34 @@ export function DotDevicePage({
                       {device.model} / {device.serialNumber}
                     </small>
                     <em>
-                      {availabilityLabel(device)}
-                      {runtimeDevice?.state ? ` / ${runtimeDevice.state}` : ""} /{" "}
-                      {formatTime(device.lastSeenAt)}
+                      {availabilityLabel(device)} / {formatTime(device.lastSeenAt)}
                     </em>
                   </span>
                 </button>
               );
             })}
           </div>
+
+          <form className="device-form activation-form" onSubmit={handleClaimActivation}>
+            <label>
+              Spoken code
+              <input
+                value={activationCode}
+                inputMode="numeric"
+                onChange={(event) => setActivationCode(event.target.value)}
+                placeholder="123456"
+                required
+              />
+            </label>
+            <button
+              className="primary-button"
+              type="submit"
+              disabled={claimingActivation}
+            >
+              <Hash size={17} />
+              Claim code
+            </button>
+          </form>
 
           <form className="device-form" onSubmit={handleCreateDevice}>
             <label>
@@ -679,8 +519,8 @@ export function DotDevicePage({
                     </strong>
                   </div>
                   <div>
-                    <span>Runtime state</span>
-                    <strong>{selectedRuntimeDevice?.state ?? "Not connected"}</strong>
+                    <span>Auth source</span>
+                    <strong>Platform credential</strong>
                   </div>
                   <div>
                     <span>Model</span>
@@ -778,21 +618,9 @@ export function DotDevicePage({
             </div>
             <ol>
               {deviceLog.length === 0 ? (
-                selectedRuntimeDevice?.events.length ? (
-                  selectedRuntimeDevice.events.map((item) => (
-                    <li key={item.id}>{runtimeEventText(item)}</li>
-                  ))
-                ) : (
-                  <li>Device events will appear here.</li>
-                )
+                <li>Pairing, checks, and binding events will appear here.</li>
               ) : (
-                [
-                  ...(selectedRuntimeDevice?.events ?? []).map((item) => ({
-                    id: item.id,
-                    text: runtimeEventText(item),
-                  })),
-                  ...deviceLog,
-                ].map((item) => <li key={item.id}>{item.text}</li>)
+                deviceLog.map((item) => <li key={item.id}>{item.text}</li>)
               )}
             </ol>
           </section>

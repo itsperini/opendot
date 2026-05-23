@@ -35,7 +35,7 @@ The panel shows interim transcript text, final transcript text, assistant text, 
 
 ## What gets sent to the runtime
 
-When the socket opens, the browser sends the selected agent config. If you edit the selected agent while connected, the browser sends an updated config message.
+Before the socket opens, the console asks the platform API for a short-lived voice-session token for the selected agent. The runtime verifies that token with the platform API and loads the authorized agent config from the API. If you edit or switch agents while connected, the browser reconnects with a newly minted token.
 
 The runtime WebSocket defaults to:
 
@@ -52,7 +52,7 @@ VITE_RUNTIME_WS_URL=ws://localhost:8787/voice
 ## Common checks
 
 - If the page does not load agent data, confirm `pnpm run api` is still running and Postgres is reachable.
-- If **Connect** fails, confirm `pnpm run runtime` is still running.
+- If **Connect** fails, confirm `pnpm run api`, `pnpm run runtime`, and `OPENDOT_RUNTIME_INTERNAL_SECRET` are aligned.
 - If the mic does not start, check browser microphone permissions.
 - If text appears but audio does not play, review the TTS encoding and browser delivery settings.
 - If turns close too quickly, tune VAD endpointing in **Configuration**.

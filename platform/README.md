@@ -78,9 +78,10 @@ Create a local email/password account on the auth page to enter the workspace.
 
 The database schema is portable PostgreSQL with a Supabase Auth bridge. Supabase
 owns authentication when configured, while the OSS core owns `app_users`, local
-auth credentials, user preferences, API keys, versioned agents and pipelines,
-devices, device state, and deployments. The schema stays focused on the product
-surfaces that are active today.
+auth credentials, user preferences, SDK API keys, versioned agents and
+pipelines, devices, device activation requests, device credentials, runtime
+session tokens, device state, and deployments. The schema stays focused on the
+product surfaces that are active today.
 
 ## Inspect The Database
 
@@ -210,6 +211,10 @@ VITE_SUPABASE_ANON_KEY=<supabase anon key>
 VITE_PLATFORM_API_URL=https://<opendot-api>.onrender.com/api
 VITE_RUNTIME_HTTP_URL=https://<opendot-runtime>.onrender.com
 VITE_RUNTIME_WS_URL=wss://<opendot-runtime>.onrender.com/voice
+OPENDOT_RUNTIME_INTERNAL_SECRET=<shared api/runtime secret>
+OPENDOT_RUNTIME_PUBLIC_HTTP_URL=https://<opendot-runtime>.onrender.com
+OPENDOT_RUNTIME_PUBLIC_WS_URL=wss://<opendot-runtime>.onrender.com/voice
+PLATFORM_API_INTERNAL_URL=https://<opendot-api>.onrender.com/api
 DEEPGRAM_API_KEY=...
 OPENAI_API_KEY=...
 ```
@@ -219,7 +224,6 @@ disabled there so Supabase owns Render authentication. Disable email
 confirmations in Supabase Auth for this preview if signup should create an
 active session immediately.
 
-Important: the platform API is auth-gated in this Blueprint, but the current
-voice runtime endpoints are still local-prototype endpoints. Do not expose
-`opendot-runtime` publicly with real provider keys until runtime and device
-endpoint authentication is added.
+The runtime verifies browser voice-session tokens and device credentials with
+the platform API before accepting `/voice` or `/ws` connections. Keep
+`OPENDOT_RUNTIME_INTERNAL_SECRET` identical on the API and runtime services.
