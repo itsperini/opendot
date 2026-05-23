@@ -1,0 +1,135 @@
+---
+title: Dot device
+description: Understand the current Dot firmware, Waveshare reference hardware, and coming open hardware direction.
+---
+
+The Dot device is the hardware target for OpenDot voice agents. Today it is a
+firmware-first prototype that runs on a tested reference development board. The
+longer-term goal is open hardware for a purpose-built Dot device, but the current
+docs should stay honest about what has actually been tested.
+
+<Note>
+  You do not need a physical device to use OpenDot Platform! Start in the web app, make the
+  platform reliable, then bring the same agent to hardware when you are ready.
+</Note>
+
+## Current reference board
+
+OpenDot firmware currently targets the
+[Waveshare ESP32-S3-AUDIO-Board](https://www.waveshare.com/esp32-s3-audio-board.htm).
+This is the board tested so far for the local Dot device flow.
+
+<Frame caption="Current tested reference device: Waveshare ESP32-S3-AUDIO-Board product view. Image source: Waveshare.">
+  <img
+    src="/images/hardware/waveshare-esp32-s3-audio-board.jpg"
+    alt="Waveshare ESP32-S3-AUDIO-Board reference hardware"
+  />
+</Frame>
+
+The board is useful for OpenDot because it puts the important voice-device
+pieces in one small package:
+
+- ESP32-S3R8 MCU with 2.4 GHz Wi-Fi and Bluetooth LE
+- 8 MB PSRAM and 16 MB external flash
+- dual microphones for voice input
+- ES7210 and ES8311 audio path for microphone input and speaker output
+- speaker header and audio enclosure
+- RGB LED ring, buttons, USB-C, TF card slot, battery support, and expansion
+  connectors
+
+<Frame caption="The reference board has the core ingredients OpenDot needs for wake, capture, playback, status, power, and expansion. Image source: Waveshare.">
+  <img
+    src="/images/hardware/waveshare-esp32-s3-audio-board-features.jpg"
+    alt="Feature grid for the Waveshare ESP32-S3-AUDIO-Board"
+  />
+</Frame>
+
+## Firmware shape
+
+The firmware lives in `dot-device/firmware/` and is an ESP-IDF project, not an
+Arduino sketch. It currently handles:
+
+- Wi-Fi provisioning through a temporary `opendot-...` access point
+- OTA bootstrap through `CONFIG_OTA_URL`
+- activation code speech and claim flow through the OpenDot runtime and platform
+  API
+- wake-word behavior
+- WebSocket connection to the runtime
+- microphone capture and speaker playback
+- display and LED status
+
+The active board definition is:
+
+```text
+dot-device/firmware/main/boards/waveshare/esp32-s3-audio-board
+```
+
+The firmware is an OpenDot fork/adaptation of the MIT-licensed
+[78/xiaozhi-esp32](https://github.com/78/xiaozhi-esp32) project. Preserve the
+upstream notice in `dot-device/firmware/LICENSE.xiaozhi` when moving or
+substantially modifying firmware code.
+
+## Runtime relationship
+
+The device does not connect to the browser UI. It connects to the local or hosted
+OpenDot runtime:
+
+```text
+http://<runtime-lan-ip>:8787/ota/
+ws://<runtime-lan-ip>:8787/ws
+```
+
+Activation works like this:
+
+1. Firmware boots and reaches the runtime OTA endpoint.
+2. The runtime proxies activation to the platform API.
+3. The platform API creates or verifies an activation request.
+4. The device speaks a claim code.
+5. The user enters that code in [Dot Device](/dot-device).
+6. The platform stores a device credential.
+7. Future `/ws` sessions authenticate with that credential and load the bound
+   agent configuration.
+
+## Hardware interface reference
+
+The reference board exposes more than OpenDot uses today. The important areas for
+contributors are audio I/O, display, buttons, LEDs, Wi-Fi, power, and runtime
+network reachability.
+
+<Frame caption="Waveshare interface map for the current reference board. Image source: Waveshare.">
+  <img
+    src="/images/hardware/waveshare-esp32-s3-audio-board-interfaces.jpg"
+    alt="Waveshare ESP32-S3-AUDIO-Board interface map"
+  />
+</Frame>
+
+Use this map when checking pin assumptions against firmware board files such as
+`config.h`, but treat OpenDot's firmware source as the contract for the current
+prototype.
+
+## Hardware coming soon
+
+The future open hardware Dot device should keep the same product constraints
+visible:
+
+- reliable near-field and practical far-field capture
+- speaker output that makes TTS testing honest
+- physical status through light, display, or both
+- simple power, battery, and USB debugging paths
+- casing and acoustic choices that do not hide microphone or speaker behavior
+- reproducible firmware flashing and serial diagnostics
+
+Until that hardware exists, the Waveshare board is the reference target for
+firmware bring-up and end-to-end device activation.
+
+## Contributor checklist
+
+When changing device-facing behavior, check both sides of the boundary:
+
+- [Dot Device console](/dot-device) for the console pairing and binding workflow
+- [Platform architecture](/architecture) for OTA, credential, runtime, and
+  data-model ownership
+- `dot-device/firmware/README.md` for ESP-IDF setup, flashing, provisioning, and
+  serial monitoring
+- `dot-device/firmware/main/boards/waveshare/esp32-s3-audio-board/` for the
+  current board definition

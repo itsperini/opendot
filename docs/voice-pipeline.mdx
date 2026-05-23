@@ -1,59 +1,9 @@
 ---
 title: Voice pipeline
-description: Configure the VAD, STT, LLM, and TTS stages that drive an OpenDot agent.
+description: The voice pipeline documentation has moved to Configuration.
 ---
 
-The pipeline page turns each draft agent into an explicit voice runtime config. The platform keeps VAD as its own product stage, even though the runtime maps it to Deepgram live listen options.
+The voice pipeline documentation now lives on [Configuration](/configuration) so
+the docs match the console navigation.
 
-## Default stages
-
-| Stage          | Provider | Default model      | Purpose                                                      |
-| -------------- | -------- | ------------------ | ------------------------------------------------------------ |
-| Voice activity | Deepgram | `endpointing-vad`  | Detect speech boundaries before committing a turn.           |
-| Speech to text | Deepgram | `nova-3`           | Stream user audio into partial and final transcripts.        |
-| Language model | OpenAI   | `gpt-5.4-mini`     | Generate the assistant response from transcript and context. |
-| Text to speech | Deepgram | `aura-2-thalia-en` | Render the assistant response as spoken audio.               |
-
-## Turn detection
-
-The VAD stage controls when a user turn is considered complete.
-
-Important settings:
-
-- **Endpointing**: default `900 ms`
-- **Utterance end**: default `1000 ms`
-- **Turn events**: `vad_events`, `interim_results`, and `speech_final`
-- **Noise floor**: default `2` minimum transcript characters
-- **Return device to wake word**: enabled by default
-
-If turns close too early, increase **Endpointing** or **Utterance end**. If tiny noises trigger turns, raise **Noise floor**.
-
-## Speech recognition
-
-The STT stage controls language, encoding, sample rate, and transcript formatting.
-
-Defaults:
-
-```text
-model: nova-3
-language: en-US
-encoding: linear16
-sample_rate: 16000
-features: smart_format
-```
-
-## LLM response format
-
-The LLM stage includes the voice system prompt and TTS chunking instructions. The runtime expects assistant responses in XML-like chunks:
-
-```xml
-<chunk>First spoken phrase.</chunk><chunk>Next spoken phrase.</chunk>
-```
-
-Each closed chunk can be sent to TTS while the rest of the response is still streaming.
-
-## Text to speech
-
-The TTS stage controls voice, output encoding, sample rate, browser delivery, and chunk style.
-
-Use `Linear16 PCM` with `Direct PCM stream` when you want raw PCM playback in the browser. Other encodings are retained as chunked audio files for playback.
+Use that page for the current VAD, STT, LLM, and TTS stage controls.

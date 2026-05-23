@@ -58,25 +58,43 @@
         "group": "Getting started",
         "icon": "rocket",
         "expanded": true,
+        "pages": ["index", "quickstart"]
+      },
+      {
+        "group": "Understand OpenDot",
+        "icon": "network",
+        "expanded": true,
+        "pages": ["architecture", "device-firmware-hardware"]
+      },
+      {
+        "group": "Console workflow",
+        "icon": "workflow",
+        "expanded": true,
         "pages": [
-          "index",
-          "quickstart",
-          "database-inspection",
+          "login-signup",
+          "agent-studio",
+          "configuration",
+          "browser-test",
+          "dot-device",
+          "settings-api-keys"
+        ]
+      },
+      {
+        "group": "Operate and deploy",
+        "icon": "server",
+        "expanded": true,
+        "pages": [
+          "runtime-configuration",
           "authentication",
+          "database-inspection",
           "render-deployment"
         ]
       },
       {
-        "group": "Build agents",
-        "icon": "bot",
-        "expanded": true,
-        "pages": ["agent-studio", "voice-pipeline", "browser-test"]
-      },
-      {
-        "group": "Devices and runtime",
-        "icon": "cpu",
-        "expanded": true,
-        "pages": ["dot-device", "runtime-configuration", "settings-api-keys"]
+        "group": "Contributing",
+        "icon": "git-pull-request",
+        "expanded": false,
+        "pages": ["contributing", "repo-map"]
       }
     ]
   },

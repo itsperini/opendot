@@ -1,0 +1,146 @@
+---
+title: Platform architecture
+description: Understand the current OpenDot control plane, voice runtime, database, deployment, and device architecture.
+---
+
+OpenDot is a modular monolith plus a separate realtime voice runtime. The
+platform console owns configuration and device binding; the runtime owns live
+audio sessions; PostgreSQL stores durable control-plane state; firmware connects
+over OTA/bootstrap and WebSocket paths.
+
+<Frame caption="OpenDot separates configuration, durable state, runtime sessions, hosted providers, and firmware connections.">
+  <img
+    src="/images/architecture/system-architecture.svg"
+    alt="OpenDot system architecture diagram"
+  />
+</Frame>
+
+## Current system
+
+| Layer         | Current implementation                                                                           | Responsibility                                                                  |
+| ------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| Docs          | Mintlify in `docs/`                                                                              | Product, setup, contribution, and architecture guidance                         |
+| Web console   | React, TypeScript, Vite, TanStack Query                                                          | Agent creation, pipeline tuning, browser testing, device binding, settings      |
+| Platform API  | Fastify, TypeScript, Drizzle                                                                     | Auth, agents, pipelines, devices, deployments, runtime/session tokens           |
+| Database      | PostgreSQL                                                                                       | OpenDot-owned product state and Supabase-compatible auth bridge                 |
+| Voice runtime | Node, WebSocket, Deepgram, OpenAI-compatible LLM calls                                           | Browser and device voice sessions through VAD, STT, LLM, and TTS                |
+| Firmware      | ESP-IDF for [Waveshare ESP32-S3-AUDIO-Board](https://www.waveshare.com/esp32-s3-audio-board.htm) | Wi-Fi provisioning, activation, wake word, audio I/O, display, WebSocket client |
+
+The control boundary is intentional: browser and device clients do not push raw
+agent configuration directly into the runtime. They ask the platform API for an
+authorized session or credential, and the runtime verifies that token with the
+platform API before loading the agent config.
+
+## Platform stack
+
+<CardGroup cols={2}>
+  <Card title="Docs" icon="book-open">
+    Mintlify in `docs/` publishes product, setup, architecture, and contributor guidance.
+  </Card>
+  <Card title="Console" icon="panel-top">
+    React, TypeScript, Vite, TanStack Query, and lucide-react power the browser workflow.
+  </Card>
+  <Card title="Platform API" icon="server">
+    Fastify handles auth, agents, pipelines, device inventory, deployments, and
+    runtime/session tokens.
+  </Card>
+  <Card title="Database" icon="database">
+    PostgreSQL stores OpenDot-owned product state through Drizzle schema and SQL
+    migrations.
+  </Card>
+  <Card title="Voice runtime" icon="radio">
+    Node.js and WebSocket sessions orchestrate VAD, STT, LLM, TTS, browser audio, and
+    device audio.
+  </Card>
+  <Card title="Providers" icon="sparkles">
+    Deepgram backs the starter VAD, STT, and TTS paths. OpenAI-compatible Responses calls
+    back the starter LLM stage.
+  </Card>
+  <Card title="Device firmware" icon="cpu">
+    ESP-IDF firmware targets the [Waveshare
+    ESP32-S3-AUDIO-Board](https://www.waveshare.com/esp32-s3-audio-board.htm) reference
+    device today.
+  </Card>
+  <Card title="Packaging" icon="container">
+    Docker Compose runs local services, while the Render Blueprint maps the same
+    containers to hosted preview services.
+  </Card>
+</CardGroup>
+
+## Local development topology
+
+<Frame caption="Local development can run as a Compose stack or as separate pnpm processes.">
+  <img
+    src="/images/architecture/local-dev-flow.svg"
+    alt="OpenDot local development topology diagram"
+  />
+</Frame>
+
+Docker Compose runs PostgreSQL, migrations, the platform API, the voice runtime,
+and the web console. The pnpm workflow runs the same application surfaces as
+separate local processes. The docs site is separate and previews from `docs/`
+with `mint dev`.
+
+Use [Runtime configuration](/runtime-configuration) when changing environment
+variables or service URLs.
+
+## Voice turn flow
+
+<Frame caption="A voice turn moves through VAD, STT, LLM, TTS, and playback while the runtime keeps timing visible.">
+  <img
+    src="/images/architecture/voice-turn-flow.svg"
+    alt="OpenDot voice turn flow diagram"
+  />
+</Frame>
+
+The pipeline remains explicit even when a provider combines lower-level details:
+
+```text
+audio input -> VAD -> STT -> LLM -> TTS -> audio output
+```
+
+Browser sessions use a short-lived voice-session token minted by the platform
+API. Device sessions use device credentials created during activation. In both
+cases, the runtime verifies the token with the platform API before accepting the
+WebSocket connection.
+
+See [Configuration](/configuration) for stage settings and
+[Browser Test](/browser-test) for the live test loop.
+
+## Device activation and binding
+
+<Frame caption="Device activation starts at OTA bootstrap, then stores device credentials and applies the bound agent config on authenticated sessions.">
+  <img
+    src="/images/architecture/device-activation-flow.svg"
+    alt="OpenDot device activation and binding diagram"
+  />
+</Frame>
+
+Firmware reaches the runtime OTA endpoint first. The runtime proxies activation
+requests to the platform API, the platform creates or verifies a device
+activation request, and the user claims the spoken code in **Dot Device**. After
+claiming, the platform stores an active device credential. Future `/ws`
+connections use that credential, and the runtime loads the currently bound agent
+configuration from the platform API.
+
+See [Dot Device console](/dot-device) for the product flow and the firmware
+README for flashing and LAN setup details. See [Dot device](/device-firmware-hardware)
+for the firmware and hardware reference target.
+
+## Data ownership
+
+<Frame caption="OpenDot-owned PostgreSQL tables keep identity mapping, agents, pipelines, devices, sessions, and deployments durable.">
+  <img
+    src="/images/architecture/data-model-map.svg"
+    alt="OpenDot data model map diagram"
+  />
+</Frame>
+
+PostgreSQL stores OpenDot-owned product data: app users, local auth credentials,
+preferences, SDK API keys, versioned agents and pipelines, devices, activation
+requests, device credentials, runtime session tokens, device state, deployments,
+and deployment device targets. Supabase Auth can provide identity, but OpenDot
+keeps durable product state in its own tables.
+
+When changing persisted platform data, update the Drizzle schema, SQL
+migrations, API types, environment examples, and docs together.

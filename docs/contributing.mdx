@@ -1,0 +1,82 @@
+---
+title: Contributing
+description: Set up OpenDot, choose a contribution area, and run the right checks before opening a pull request.
+---
+
+OpenDot is built around one loop: build a voice agent, tune the VAD/STT/LLM/TTS
+pipeline, bind it to a real device, run a session, and inspect what happened.
+Good contributions usually make one part of that loop easier to understand,
+operate, debug, or extend.
+
+Use this page as the contributor starting point, then jump into the architecture
+and repo map when you need a deeper boundary check.
+
+<CardGroup cols={2}>
+  <Card title="Platform architecture" icon="network" href="/architecture">
+    See how the console, API, database, runtime, providers, and firmware work together.
+  </Card>
+  <Card title="Repo map" icon="folder-tree" href="/repo-map">
+    Find the files and checks that match the part of OpenDot you want to change.
+  </Card>
+</CardGroup>
+
+## Local setup
+
+For the fastest full-stack run, use Docker Compose:
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+Open the console:
+
+```text
+http://localhost:5173
+```
+
+Create a local email/password account, then open **Agent Studio**. Add
+`DEEPGRAM_API_KEY` and `OPENAI_API_KEY` to `.env` before testing real voice
+turns.
+
+For process-by-process development, install the workspace and run the API,
+frontend, and runtime separately:
+
+```bash
+corepack enable
+corepack prepare pnpm@11.1.3 --activate
+pnpm install
+pnpm --filter ./platform run db:migrate
+
+pnpm run api
+pnpm run dev
+pnpm run runtime
+```
+
+See the [Quickstart](/quickstart) for the full setup flow and
+[Database inspection](/database-inspection) for Drizzle Studio.
+
+## Choose an area
+
+| Area          | Start in                                                | Common work                                                      | Minimum check                                           |
+| ------------- | ------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------- |
+| Docs          | `docs/`                                                 | Guides, navigation, diagrams, troubleshooting                    | `mint broken-links` and formatting                      |
+| Platform UI   | `platform/src/pages`, `platform/src/App.tsx`            | Agent Studio, Configuration, Browser Test, Dot Device, Settings  | `pnpm run lint && pnpm run test && pnpm run build`      |
+| Control API   | `platform/src/server/api.ts`                            | Auth, agents, devices, settings, runtime tokens                  | platform checks plus migration review when data changes |
+| Data model    | `platform/src/server/db/schema.ts`, `platform/drizzle/` | PostgreSQL tables, Drizzle schema, migrations                    | migration and platform build checks                     |
+| Voice runtime | `platform/src/server/runtime.js`                        | WebSocket sessions, VAD/STT/LLM/TTS flow, provider calls         | platform checks and live Browser Test when possible     |
+| Firmware      | `dot-device/firmware/`                                  | Wi-Fi, activation, WebSocket audio, display/audio board behavior | `idf.py build` when ESP-IDF is available                |
+| Deployment    | `docker-compose.yml`, `containers/`, `render.yaml`      | Local stack, Render Blueprint, service env contracts             | targeted Compose or Render config review                |
+
+## Before opening a pull request
+
+- Keep the pull request focused on one problem or feature.
+- Update docs when setup, runtime behavior, configuration, device flow, or
+  architecture changes.
+- Include screenshots or short recordings for visible UI changes.
+- Describe browser, runtime, or device testing when touching audio, WebSocket,
+  firmware, activation, or provisioning behavior.
+- Keep secrets out of commits. Use `.env` locally and keep `.env.example` safe.
+
+For repository-wide expectations, also read the root
+[`CONTRIBUTING.md`](https://github.com/itsperini/opendot/blob/main/CONTRIBUTING.md).

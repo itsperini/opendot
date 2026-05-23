@@ -19,22 +19,41 @@ OpenDot brings the control plane, voice runtime, and device layer into one workf
   <Card title="Quickstart" icon="rocket" href="/quickstart">
     Start the web console, run the local voice runtime, and test your first agent.
   </Card>
-  <Card title="Authentication" icon="shield-check" href="/authentication">
-    Use local email/password auth or connect the platform to Supabase Auth.
+  <Card title="Platform architecture" icon="network" href="/architecture">
+    Understand how the console, API, database, runtime, providers, and firmware fit
+    together.
   </Card>
-  <Card title="Tune the pipeline" icon="workflow" href="/voice-pipeline">
-    Configure VAD, STT, LLM, and TTS stages for a selected draft agent.
+  <Card title="Dot device" icon="cpu" href="/device-firmware-hardware">
+    Understand the firmware, current Waveshare reference hardware, and future open
+    hardware direction.
   </Card>
-  <Card title="Configure agents" icon="brain" href="/agent-studio">
-    Prepare prompts, knowledge, model choices, and runtime presets.
+  <Card title="Login and signup" icon="shield-check" href="/login-signup">
+    See how local credentials and Supabase Auth enter the console.
   </Card>
-  <Card title="Inspect live turns" icon="audio-lines" href="/browser-test">
-    Stream microphone audio, inspect transcripts, and replay spoken responses.
+  <Card title="Agent Studio" icon="bot" href="/agent-studio">
+    Create and select the draft agent that anchors the rest of the workflow.
   </Card>
-  <Card title="Deploy to devices" icon="cpu" href="/dot-device">
+  <Card title="Configuration" icon="settings-2" href="/configuration">
+    Tune the explicit VAD, STT, LLM, and TTS stages for the selected agent.
+  </Card>
+  <Card title="Browser Test" icon="audio-lines" href="/browser-test">
+    Connect the runtime, stream microphone audio, inspect transcripts, and replay spoken
+    responses.
+  </Card>
+  <Card title="Dot Device console" icon="cpu" href="/dot-device">
     Pair Dot devices, check runtime availability, and bind voice configs.
   </Card>
 </CardGroup>
+
+## When you need more
+
+Reference pages move deeper into the docs so the first path stays clear:
+
+- [Runtime configuration](/runtime-configuration) for environment variables and service URLs.
+- [Authentication](/authentication) for local auth and Supabase Auth.
+- [Database inspection](/database-inspection) for Drizzle Studio and schema inspection.
+- [Render deployment](/render-deployment) for hosted preview deployment.
+- [Contributing](/contributing) for contribution workflow and checks.
 
 ## Starter pipeline
 

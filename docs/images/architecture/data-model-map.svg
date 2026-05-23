@@ -1,0 +1,122 @@
+<svg width="1600" height="940" viewBox="0 0 1600 940" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="data-model-map-title data-model-map-desc">
+  <title id="data-model-map-title">OpenDot data model map</title>
+  <desc id="data-model-map-desc">Main PostgreSQL schema groups for identity, settings, agents, pipelines, devices, runtime sessions, credentials, and deployments.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0L11 5.5L0 11Z" fill="#6d28d9" />
+    </marker>
+    <style>
+      .bg { fill: #fbf9ff; }
+      .group { fill: #fff; stroke: #e8ddf8; stroke-width: 2; }
+      .group-soft { fill: #f7f5fb; stroke: #e8ddf8; stroke-width: 2; }
+      .title { font-family: Manrope, Arial, sans-serif; font-size: 38px; font-weight: 800; fill: #171321; }
+      .body { font-family: Manrope, Arial, sans-serif; font-size: 15px; font-weight: 500; fill: #625c6f; }
+      .label { font-family: Manrope, Arial, sans-serif; font-size: 20px; font-weight: 900; fill: #171321; }
+      .table { fill: #ede9fe; stroke: #d8c3f7; stroke-width: 1.5; }
+      .table-text { font-family: SFMono-Regular, Consolas, monospace; font-size: 13px; font-weight: 600; fill: #5b21b6; }
+      .line { stroke: #6d28d9; stroke-width: 2.5; marker-end: url(#arrow); }
+      .line-soft { stroke: #a78bfa; stroke-width: 2.2; stroke-dasharray: 8 8; marker-end: url(#arrow); }
+      .chip { fill: #fff; stroke: #d8c3f7; stroke-width: 1.5; }
+      .chip-text { font-family: Manrope, Arial, sans-serif; font-size: 13px; font-weight: 800; fill: #5b21b6; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1600" height="940" />
+  <text class="title" x="80" y="82">PostgreSQL product data map</text>
+  <text class="body" x="80" y="116">OpenDot owns durable product state even when Supabase Auth is used for identity.</text>
+
+  <rect class="group" x="80" y="170" width="295" height="190" rx="8" />
+  <text class="label" x="112" y="214">Identity and profile</text>
+  <rect class="table" x="112" y="244" width="220" height="30" rx="8" />
+  <text class="table-text" x="128" y="264">app_users</text>
+  <rect class="table" x="112" y="286" width="220" height="30" rx="8" />
+  <text class="table-text" x="128" y="306">local_auth_credentials</text>
+  <rect class="table" x="112" y="328" width="220" height="30" rx="8" />
+  <text class="table-text" x="128" y="348">user_preferences</text>
+
+  <rect class="group" x="485" y="170" width="300" height="245" rx="8" />
+  <text class="label" x="517" y="214">Agents and pipelines</text>
+  <rect class="table" x="517" y="244" width="230" height="30" rx="8" />
+  <text class="table-text" x="533" y="264">agents</text>
+  <rect class="table" x="517" y="286" width="230" height="30" rx="8" />
+  <text class="table-text" x="533" y="306">agent_versions</text>
+  <rect class="table" x="517" y="328" width="230" height="30" rx="8" />
+  <text class="table-text" x="533" y="348">pipelines</text>
+  <rect class="table" x="517" y="370" width="230" height="30" rx="8" />
+  <text class="table-text" x="533" y="390">pipeline_versions</text>
+
+  <rect class="group" x="895" y="170" width="300" height="190" rx="8" />
+  <text class="label" x="927" y="214">Runtime sessions</text>
+  <rect class="table" x="927" y="244" width="230" height="30" rx="8" />
+  <text class="table-text" x="943" y="264">runtime_session_tokens</text>
+  <rect class="table" x="927" y="286" width="230" height="30" rx="8" />
+  <text class="table-text" x="943" y="306">device_credentials</text>
+  <rect class="table" x="927" y="328" width="230" height="30" rx="8" />
+  <text class="table-text" x="943" y="348">auth session boundary</text>
+
+  <rect class="group" x="1305" y="170" width="215" height="190" rx="8" />
+  <text class="label" x="1337" y="214">Settings</text>
+  <rect class="table" x="1337" y="244" width="145" height="30" rx="8" />
+  <text class="table-text" x="1353" y="264">api_keys</text>
+  <rect class="table" x="1337" y="286" width="145" height="30" rx="8" />
+  <text class="table-text" x="1353" y="306">preferences</text>
+
+  <rect class="group" x="80" y="545" width="300" height="250" rx="8" />
+  <text class="label" x="112" y="589">Devices</text>
+  <rect class="table" x="112" y="619" width="230" height="30" rx="8" />
+  <text class="table-text" x="128" y="639">devices</text>
+  <rect class="table" x="112" y="661" width="230" height="30" rx="8" />
+  <text class="table-text" x="128" y="681">device_state</text>
+  <rect class="table" x="112" y="703" width="230" height="30" rx="8" />
+  <text class="table-text" x="128" y="723">device_activation_requests</text>
+  <rect class="table" x="112" y="745" width="230" height="30" rx="8" />
+  <text class="table-text" x="128" y="765">device_credentials</text>
+
+  <rect class="group" x="485" y="565" width="300" height="220" rx="8" />
+  <text class="label" x="517" y="609">Deployments</text>
+  <rect class="table" x="517" y="639" width="230" height="30" rx="8" />
+  <text class="table-text" x="533" y="659">deployments</text>
+  <rect class="table" x="517" y="681" width="230" height="30" rx="8" />
+  <text class="table-text" x="533" y="701">deployment_device_targets</text>
+  <text class="body" x="517" y="730">Active target binds one device</text>
+  <text class="body" x="517" y="756">to a versioned config.</text>
+
+  <rect class="group-soft" x="895" y="545" width="300" height="220" rx="8" />
+  <text class="label" x="927" y="589">External identity</text>
+  <rect class="table" x="927" y="619" width="230" height="30" rx="8" />
+  <text class="table-text" x="943" y="639">Supabase auth.users</text>
+  <text class="body" x="927" y="681">JWT sub maps to app_users.id.</text>
+  <text class="body" x="927" y="707">Product state stays in OpenDot</text>
+  <text class="body" x="927" y="733">tables.</text>
+
+  <rect class="group-soft" x="1305" y="545" width="215" height="220" rx="8" />
+  <text class="label" x="1337" y="589">Env contract</text>
+  <rect class="chip" x="1337" y="619" width="145" height="30" rx="8" />
+  <text class="chip-text" x="1353" y="639">.env.example</text>
+  <rect class="chip" x="1337" y="661" width="145" height="30" rx="8" />
+  <text class="chip-text" x="1353" y="681">migrations</text>
+  <text class="body" x="1337" y="722">Keep setup docs</text>
+  <text class="body" x="1337" y="748">aligned with schema changes.</text>
+
+  <path class="line" d="M375 260H475" />
+  <text class="body" x="402" y="242">owns</text>
+  <path class="line" d="M785 260H885" />
+  <text class="body" x="806" y="242">tokens</text>
+  <path class="line-soft" d="M1195 260H1295" />
+  <text class="body" x="1218" y="242">keys</text>
+
+  <path class="line" d="M228 360V535" />
+  <text class="body" x="248" y="454">devices</text>
+  <path class="line" d="M380 655H475" />
+  <text class="body" x="404" y="637">targets</text>
+  <path class="line" d="M635 390V555" />
+  <text class="body" x="655" y="482">versioned config</text>
+
+  <path class="line-soft" d="M895 640H795" />
+  <text class="body" x="810" y="622">maps to</text>
+  <path class="line-soft" d="M1045 360V535" />
+  <text class="body" x="1065" y="454">identity provider</text>
+
+  <rect class="group" x="80" y="835" width="1440" height="58" rx="8" />
+  <text class="body" x="112" y="869">Contributor rule: schema changes should travel with migrations, API/type updates, env example updates when needed, and matching docs.</text>
+</svg>

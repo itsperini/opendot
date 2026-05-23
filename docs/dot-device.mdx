@@ -1,11 +1,27 @@
 ---
-title: Dot Device
+title: Dot Device console
 description: Pair devices, check runtime availability, and bind voice configs.
 ---
 
 Dot Device manages the hardware side of the prototype. It keeps an API-owned inventory of paired devices, claims devices with spoken codes, and binds the selected voice agent config.
 
-## Runtime availability
+<Frame caption="Dot Device manages runtime availability, device inventory, spoken-code pairing, and voice config binding.">
+  <img src="/images/platform/dot-device.png" alt="OpenDot Dot Device screen" />
+</Frame>
+
+For firmware and hardware details behind this console workflow, see
+[Dot device](/device-firmware-hardware).
+
+## What you see in the UI
+
+Dot Device has four main areas:
+
+- **Runtime status and Refresh**: checks whether the runtime HTTP endpoint is reachable.
+- **Inventory**: lists paired devices, spoken-code claim, and manual pairing.
+- **Availability**: shows selected device status and metadata.
+- **Voice Config / Device events**: binds an agent config and records device actions.
+
+## Runtime status and Refresh
 
 The page checks the runtime health endpoint. By default it uses:
 
@@ -15,15 +31,25 @@ http://localhost:8787
 
 The page derives that URL from `VITE_RUNTIME_HTTP_URL` or `VITE_RUNTIME_WS_URL`.
 
-## Pair a device
+Click **Refresh** to check runtime health and each paired device endpoint.
 
-For firmware devices, use spoken-code pairing:
+## Inventory
+
+The inventory list shows each paired device name, model, serial number,
+availability, and last seen time. Selecting a device updates the Availability
+and Voice Config panels.
+
+## Spoken-code pairing
+
+For firmware devices, use spoken-code pairing from the **Spoken code** form:
 
 1. Point the device OTA URL at the OpenDot runtime `/ota/` endpoint.
 2. Let the device speak the activation code.
 3. Enter that code in **Spoken code** and click **Claim code**.
 
 The platform API binds the claimed device to your account and activates the token the device already stored from OTA.
+
+## Manual pairing
 
 For manual experiments, add a device with:
 
@@ -34,9 +60,11 @@ For manual experiments, add a device with:
 
 For local demos, `demo://custom-dot` is enough.
 
-## Check devices
+## Availability
 
-Use **Refresh** to check runtime health and manually paired devices.
+The Availability panel shows the selected device status, auth source, model, IP,
+last seen time, and bound agent. Use **Check** to probe only the selected device
+or **Remove** to delete it from the platform inventory.
 
 Availability values:
 
@@ -44,10 +72,20 @@ Availability values:
 - **Offline**: runtime or endpoint did not respond.
 - **Unknown**: device has not been checked yet.
 
-## Bind a voice config
+## Voice Config
 
 1. Select a device.
 2. Select an agent in **Voice Config**.
 3. Click **Bind config**.
 
 OpenDot stores the binding in the platform API. The runtime applies the bound agent config after the device connects with a valid device token.
+
+Bindings are stored as deployment and deployment-device-target records, so a
+device points at a versioned agent and pipeline config rather than browser-only
+state.
+
+## Device events
+
+The event log records pairing, runtime checks, device checks, binding attempts,
+and binding results. Include it with serial logs when debugging firmware or
+runtime device behavior.

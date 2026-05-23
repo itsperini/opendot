@@ -1,0 +1,105 @@
+---
+title: Configuration
+description: Tune the VAD, STT, LLM, and TTS stages for the selected OpenDot agent.
+---
+
+Configuration is the second page in the console workflow. It takes the selected
+draft agent from **Agent Studio** and turns it into an explicit voice runtime
+configuration.
+
+<Frame caption="Configuration exposes VAD, STT, LLM, and TTS as explicit stage cards.">
+  <img src="/images/platform/configuration.png" alt="OpenDot Configuration screen" />
+</Frame>
+
+The page is intentionally organized around the same four pipeline stages that
+the runtime executes:
+
+```text
+VAD -> STT -> LLM -> TTS
+```
+
+## What you see in the UI
+
+Each stage card has the same shape:
+
+- stage number and icon
+- stage label and purpose
+- provider name
+- model selector
+- stage settings
+- emitted runtime events
+
+If no agent is selected, Configuration shows an empty state. Create or select an
+agent in [Agent Studio](/agent-studio) first.
+
+## Stage 1: Voice activity
+
+| Field                      | Default                                         | Purpose                                                      |
+| -------------------------- | ----------------------------------------------- | ------------------------------------------------------------ |
+| Provider                   | Deepgram                                        | Uses Deepgram live listen options for turn detection.        |
+| Model                      | `endpointing-vad`                               | Keeps VAD visible as a product stage.                        |
+| Endpointing                | `900 ms`                                        | Controls how quickly silence closes a turn.                  |
+| Utterance end              | `1000 ms`                                       | Adds a safer pause for device conversations.                 |
+| Turn events                | `vad_events`, `interim_results`, `speech_final` | Enables runtime feedback and turn close events.              |
+| Noise floor                | `2` characters                                  | Ignores tiny transcript fragments.                           |
+| Return device to wake word | enabled                                         | Lets firmware leave active listening after a completed turn. |
+
+If turns close too early, increase **Endpointing** or **Utterance end**. If
+tiny noises trigger turns, raise **Noise floor**.
+
+## Stage 2: Speech to text
+
+| Field       | Default        | Purpose                                    |
+| ----------- | -------------- | ------------------------------------------ |
+| Provider    | Deepgram       | Streams microphone or device audio to STT. |
+| Model       | `nova-3`       | Default live transcription model.          |
+| Language    | `en-US`        | Recognition language.                      |
+| Encoding    | `linear16`     | Browser runtime audio format.              |
+| Sample rate | `16000`        | Input sample rate sent to the runtime.     |
+| Features    | `smart_format` | Transcript formatting options.             |
+
+The Browser Test panel shows interim and final transcripts from this stage.
+
+## Stage 3: Language model
+
+| Field                         | Default                                        | Purpose                                            |
+| ----------------------------- | ---------------------------------------------- | -------------------------------------------------- |
+| Provider                      | OpenAI                                         | OpenAI-compatible response generation.             |
+| Model                         | `gpt-5.4-mini`                                 | Default starter model.                             |
+| API                           | Responses API                                  | Streaming text generation path.                    |
+| System prompt and chunk rules | voice assistant prompt plus chunk instructions | Shapes the assistant response and TTS chunking.    |
+| Reasoning effort              | configurable                                   | Controls model reasoning behavior where supported. |
+| Verbosity                     | configurable                                   | Controls response density where supported.         |
+
+The runtime expects assistant responses in XML-like chunks:
+
+```xml
+<chunk>First spoken phrase.</chunk><chunk>Next spoken phrase.</chunk>
+```
+
+Each closed chunk can be sent to TTS while the rest of the answer is still
+streaming.
+
+## Stage 4: Text to speech
+
+| Field            | Default             | Purpose                                           |
+| ---------------- | ------------------- | ------------------------------------------------- |
+| Provider         | Deepgram            | Synthesizes assistant text into audio.            |
+| Model            | `aura-2-thalia-en`  | Default starter voice.                            |
+| Encoding         | `mp3`               | Output audio encoding.                            |
+| Sample rate      | `24000`             | Runtime TTS sample rate.                          |
+| Browser delivery | chunked audio files | Browser playback mode.                            |
+| Chunk style      | fast phrases        | Controls how short streamed TTS chunks should be. |
+
+Use `Linear16 PCM` with `Direct PCM stream` when you want raw PCM playback in
+the browser. Other encodings are retained as chunked audio files for playback.
+
+## What gets persisted
+
+Changing Configuration updates the selected agent through the platform API. The
+API writes a new draft agent version and a new draft pipeline version in
+PostgreSQL. The runtime later loads the authorized version when Browser Test
+opens a voice session or a Dot device connects with valid credentials.
+
+See [Platform architecture](/architecture) for the full system boundary and
+[Browser Test](/browser-test) for the next step in the UI workflow.

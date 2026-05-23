@@ -5,6 +5,19 @@ description: Stream microphone audio to the local runtime and inspect live voice
 
 Browser Test is the local loop for validating a voice agent before binding it to hardware.
 
+<Frame caption="Browser Test connects to the runtime, streams microphone audio, and shows transcripts, responses, audio, timing, and logs.">
+  <img src="/images/platform/browser-test.png" alt="OpenDot Browser Test screen" />
+</Frame>
+
+## What you see in the UI
+
+Browser Test has four main areas:
+
+- **Run this agent**: connection and microphone controls.
+- **Live transcript / Assistant**: text and audio for the latest turn.
+- **Audio pipeline**: timing spans for STT, LLM, and TTS work.
+- **Runtime events**: connection, VAD, transcript, assistant, and error logs.
+
 ## Before you connect
 
 Make sure the platform API, web console, and voice runtime are running:
@@ -22,18 +35,51 @@ pnpm run runtime
 
 The platform API and runtime load the root `.env`. Leave `POSTGRES_URI` empty for local defaults, and add provider keys there before testing live audio. The Docker Compose stack wires the local service hostnames for you.
 
-## Run a test turn
+## Run this agent
 
-1. Select an agent.
-2. Open **Browser Test**.
-3. Click **Connect** to open the runtime WebSocket.
-4. Click **Start mic**.
-5. Speak naturally.
-6. Stop speaking and wait for the VAD/STT turn close.
+1. Select an agent in [Agent Studio](/agent-studio).
+2. Review its pipeline in [Configuration](/configuration).
+3. Open **Browser Test**.
+4. Click **Connect** to open an authenticated runtime WebSocket.
+5. Click **Start mic**.
+6. Speak naturally.
+7. Click **Stop mic** and wait for VAD/STT to close the turn.
 
-The panel shows interim transcript text, final transcript text, assistant text, generated TTS chunks, runtime logs, and a timeline for the latest turn.
+Use **Force reply** only when you want the runtime to respond to the current
+final transcript without waiting for normal turn close. Use **Reset** to clear
+the runtime conversation and local panel state.
 
-## What gets sent to the runtime
+## Live transcript and assistant output
+
+The transcript card shows:
+
+- interim speech from the STT stream
+- final user turn text after speech finalization
+
+The assistant card shows:
+
+- clean assistant text
+- optional XML-like response chunks
+- generated TTS chunks and replay controls
+- current audio playback or PCM stream status
+
+When **Show chunks** is enabled, the panel maps assistant `<chunk>` output to
+the generated audio chunks, which makes TTS timing and chunk quality easier to
+debug.
+
+## Audio pipeline timeline
+
+The timeline groups runtime spans into speech input, LLM, and speech output. It
+helps answer whether a slow turn came from STT finalization, LLM generation,
+TTS, or browser playback.
+
+## Runtime event log
+
+The runtime log captures connection state, Deepgram readiness, VAD events,
+final transcripts, assistant text, generated audio chunks, resets, and errors.
+Keep this log in bug reports when voice behavior changes.
+
+## Runtime authorization
 
 Before the socket opens, the console asks the platform API for a short-lived voice-session token for the selected agent. The runtime verifies that token with the platform API and loads the authorized agent config from the API. If you edit or switch agents while connected, the browser reconnects with a newly minted token.
 

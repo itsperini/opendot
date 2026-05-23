@@ -5,25 +5,64 @@ description: Create agents and prepare their runtime configuration.
 
 Agent Studio is the first step in the OpenDot flow. It creates draft voice agents that become the anchor for pipeline tuning, model settings, knowledge configuration, live testing, and hardware binding.
 
-## Create a draft agent
+<Frame caption="Agent Studio creates a draft agent and keeps the selected agent visible for the rest of the workflow.">
+  <img src="/images/platform/agent-studio.png" alt="OpenDot Agent Studio screen" />
+</Frame>
+
+## What you see in the UI
+
+Agent Studio has two panels:
+
+- **Create voice agent**: creates a new draft agent.
+- **Draft agents**: lists persisted agents and switches the selected agent.
+
+The selected agent drives the rest of the console. Configuration edits its
+pipeline, Browser Test authorizes runtime sessions for it, and Dot Device can
+bind it to hardware.
+
+## Create voice agent
 
 Each agent starts with:
 
 - **Agent name**: a short label such as `Lobby guide`
 - **Description**: the job the agent should perform
 
-When you create the agent, OpenDot attaches the default four-stage pipeline:
+When you click **Create draft agent**, OpenDot attaches the default four-stage
+pipeline:
 
 ```text
 VAD -> STT -> LLM -> TTS
 ```
 
-The new agent becomes the selected agent for **Configuration**, **Browser Test**, and **Dot Device**. Today the prototype stores the basic draft locally; the agent model is designed to grow into prompts, knowledge, model choices, and deployment bindings.
+The new agent becomes the selected agent immediately.
 
-## Select an existing agent
+## Draft agents
 
-Use the agent list to switch between drafts. Selecting an agent changes which pipeline is edited, which agent is sent to the runtime, and which config can be bound to a device.
+Use the agent list to switch between drafts. Each row shows the agent name,
+description, and last update time. Selecting a row changes:
 
-## Prototype storage
+- which pipeline is edited in [Configuration](/configuration)
+- which agent the console uses when it asks the platform API for a runtime
+  voice-session token in [Browser Test](/browser-test)
+- which voice config can be bound to a device in [Dot Device](/dot-device)
 
-The current prototype persists agents locally in the browser. Clearing site data resets the draft list.
+## Persistence model
+
+The platform API persists the agent and its default pipeline in PostgreSQL as:
+
+- `agents`
+- `agent_versions`
+- `pipelines`
+- `pipeline_versions`
+
+Editing an agent or its pipeline writes a new draft version. The current
+prototype is still single-workspace, but the data model is already shaped around
+durable agent and pipeline configuration rather than browser-only state.
+
+See [Database inspection](/database-inspection) to inspect the stored rows and
+[Platform architecture](/architecture) for the full control-plane flow.
+
+## Next phase
+
+Open [Configuration](/configuration) to tune the selected agent's VAD, STT, LLM,
+and TTS stages.

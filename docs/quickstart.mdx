@@ -5,7 +5,7 @@ description: Run the platform locally, create a voice agent, and test a turn.
 
 This guide gets the current OpenDot platform, database, API, and local voice runtime running.
 
-## Run with Docker Compose
+## 1. Run with Docker Compose
 
 From the repository root:
 
@@ -14,7 +14,11 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Add provider keys to the root `.env` before testing live voice sessions.
+Add provider keys to the root `.env` before testing live voice sessions. For
+now, only `OPENAI_API_KEY` and `DEEPGRAM_API_KEY` need to be added; the rest can
+stay at the defaults. Create those keys from the
+[Deepgram Console](https://console.deepgram.com/) and the
+[OpenAI platform](https://platform.openai.com/).
 
 Open:
 
@@ -22,69 +26,13 @@ Open:
 http://localhost:5173
 ```
 
-Create a local account on the auth page, then open **Agent Studio**.
+Create a local account on the auth page, then open **Agent Studio**. See
+[Login and signup](/login-signup) for how local credentials and Supabase Auth
+work.
 
 The Compose stack starts PostgreSQL, applies migrations, serves the web console, and exposes the voice runtime at `http://localhost:8787`. The default local run uses OpenDot email/password auth; Supabase Auth can be enabled later with `SUPABASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and a Supabase `POSTGRES_URI`.
 
-## Inspect the database
-
-Start the local database and migration job if the full stack is not already running:
-
-```bash
-docker compose up -d postgres migrate
-```
-
-Then open Drizzle Studio:
-
-```bash
-pnpm --filter ./platform run db:studio
-```
-
-Open `https://local.drizzle.studio` to inspect the PostgreSQL schema and rows, including `app_users`, `local_auth_credentials`, `user_preferences`, SDK API keys, versioned agents/pipelines, devices, device activation requests, device credentials, runtime session tokens, device state, and deployments.
-
-## Run with pnpm
-
-From the repository root:
-
-```bash
-corepack enable
-corepack prepare pnpm@11.1.3 --activate
-pnpm install
-pnpm --filter ./platform run db:migrate
-```
-
-Start the API and web console in separate terminals:
-
-```bash
-# terminal 1
-pnpm run api
-
-# terminal 2
-pnpm run dev
-```
-
-Open the Vite URL printed in the terminal. It is usually:
-
-```text
-http://localhost:5173
-```
-
-## Start the voice runtime for pnpm runs
-
-The browser test needs the voice runtime in another terminal:
-
-```bash
-pnpm run runtime
-```
-
-Add real provider keys to the root `.env` before using the runtime:
-
-```bash
-DEEPGRAM_API_KEY=...
-OPENAI_API_KEY=...
-```
-
-## Create and test an agent
+## 2. Create and test an agent
 
 1. Open **Agent Studio**.
 2. Create a draft agent with a name and description.
@@ -100,7 +48,46 @@ The default pipeline is:
 Deepgram VAD -> Deepgram STT -> OpenAI LLM -> Deepgram TTS
 ```
 
-## Optional device check
+## 3. Optional pnpm workflow
+
+Use this workflow when you want each service in its own terminal.
+
+From the repository root:
+
+```bash
+corepack enable
+corepack prepare pnpm@11.1.3 --activate
+pnpm install
+pnpm --filter ./platform run db:migrate
+```
+
+Start the API, web console, and runtime in separate terminals:
+
+```bash
+# terminal 1
+pnpm run api
+
+# terminal 2
+pnpm run dev
+
+# terminal 3
+pnpm run runtime
+```
+
+Open the Vite URL printed in the terminal. It is usually:
+
+```text
+http://localhost:5173
+```
+
+Add real provider keys to the root `.env` before using the runtime:
+
+```bash
+DEEPGRAM_API_KEY=...
+OPENAI_API_KEY=...
+```
+
+## 4. Optional device check
 
 Open **Dot Device** to claim a spoken device code, refresh runtime availability, and bind the selected agent config to the device.
 
@@ -111,10 +98,10 @@ WebSocket: ws://localhost:8787/voice
 HTTP:      http://localhost:8787
 ```
 
-## Deploy on Render
+## Next steps
 
-The root `render.yaml` Blueprint deploys the same platform shape to Render:
-static web, platform API, voice runtime, and API pre-deploy migrations. Use
-Supabase Postgres for `POSTGRES_URI`, keep `POSTGRES_SSL=true`, and provide the
-public API/runtime URLs for the `VITE_*` build variables in Render. See
-[Render deployment](/render-deployment) for the full variable list.
+- [Platform architecture](/architecture) explains the whole repo and runtime boundary.
+- [Configuration](/configuration) explains the VAD, STT, LLM, and TTS stage controls.
+- [Database inspection](/database-inspection) shows how to inspect PostgreSQL rows with Drizzle Studio.
+- [Authentication](/authentication) covers local email/password auth and Supabase Auth.
+- [Render deployment](/render-deployment) covers hosted preview deployment.

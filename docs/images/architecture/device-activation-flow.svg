@@ -1,0 +1,111 @@
+<svg width="1600" height="940" viewBox="0 0 1600 940" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="device-activation-flow-title device-activation-flow-desc">
+  <title id="device-activation-flow-title">OpenDot device activation and binding flow</title>
+  <desc id="device-activation-flow-desc">Firmware reaches OTA, runtime proxies activation, user claims a spoken code, platform stores a device credential, and runtime verifies device WebSocket connections.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0L11 5.5L0 11Z" fill="#6d28d9" />
+    </marker>
+    <style>
+      .bg { fill: #fbf9ff; }
+      .panel { fill: #fff; stroke: #e8ddf8; stroke-width: 2; }
+      .runtime { fill: #14091f; stroke: #6d28d9; stroke-opacity: .48; stroke-width: 2; }
+      .title { font-family: Manrope, Arial, sans-serif; font-size: 38px; font-weight: 800; fill: #171321; }
+      .label { font-family: Manrope, Arial, sans-serif; font-size: 19px; font-weight: 800; fill: #171321; }
+      .dark-label { font-family: Manrope, Arial, sans-serif; font-size: 19px; font-weight: 800; fill: #fff; }
+      .body { font-family: Manrope, Arial, sans-serif; font-size: 15px; font-weight: 500; fill: #625c6f; }
+      .dark-body { font-family: Manrope, Arial, sans-serif; font-size: 15px; font-weight: 500; fill: #ede9fe; }
+      .mono { font-family: SFMono-Regular, Consolas, monospace; font-size: 13px; font-weight: 600; fill: #5b21b6; }
+      .line { stroke: #6d28d9; stroke-width: 2.5; marker-end: url(#arrow); }
+      .line-soft { stroke: #a78bfa; stroke-width: 2.2; stroke-dasharray: 8 8; marker-end: url(#arrow); }
+      .step { fill: #5b21b6; }
+      .step-text { font-family: Manrope, Arial, sans-serif; font-size: 14px; font-weight: 900; fill: #fff; }
+      .chip { fill: #ede9fe; stroke: #d8c3f7; stroke-width: 1.5; }
+      .chip-text { font-family: Manrope, Arial, sans-serif; font-size: 13px; font-weight: 800; fill: #5b21b6; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1600" height="940" />
+  <text class="title" x="80" y="82">Device activation and binding</text>
+  <text class="body" x="80" y="116">Firmware stores runtime WebSocket settings and a device credential after the user claims the spoken code in Dot Device.</text>
+
+  <rect class="panel" x="80" y="185" width="255" height="140" rx="8" />
+  <circle class="step" cx="112" cy="218" r="16" />
+  <text class="step-text" x="108" y="223">1</text>
+  <text class="label" x="142" y="223">Firmware boots</text>
+  <text class="body" x="112" y="258">Wi-Fi provisioning</text>
+  <text class="body" x="112" y="284">loads CONFIG_OTA_URL</text>
+
+  <rect class="runtime" x="455" y="185" width="255" height="140" rx="8" />
+  <circle class="step" cx="487" cy="218" r="16" />
+  <text class="step-text" x="483" y="223">2</text>
+  <text class="dark-label" x="517" y="223">Runtime OTA</text>
+  <text class="dark-body" x="487" y="258">Receives OTA request</text>
+  <text class="mono" x="487" y="284">POST /ota/</text>
+
+  <rect class="panel" x="830" y="185" width="255" height="140" rx="8" />
+  <circle class="step" cx="862" cy="218" r="16" />
+  <text class="step-text" x="858" y="223">3</text>
+  <text class="label" x="892" y="223">Platform API</text>
+  <text class="body" x="862" y="258">Creates activation request</text>
+  <text class="body" x="862" y="284">returns code and token</text>
+
+  <rect class="panel" x="1205" y="185" width="255" height="140" rx="8" />
+  <circle class="step" cx="1237" cy="218" r="16" />
+  <text class="step-text" x="1233" y="223">4</text>
+  <text class="label" x="1267" y="223">Dot Device UI</text>
+  <text class="body" x="1237" y="258">User enters spoken code</text>
+  <text class="mono" x="1237" y="284">claim code</text>
+
+  <rect class="panel" x="1205" y="540" width="255" height="150" rx="8" />
+  <circle class="step" cx="1237" cy="573" r="16" />
+  <text class="step-text" x="1233" y="578">5</text>
+  <text class="label" x="1267" y="578">Credential stored</text>
+  <text class="body" x="1237" y="614">device_credentials row</text>
+  <text class="body" x="1237" y="640">activation marked claimed</text>
+  <rect class="chip" x="1237" y="653" width="126" height="28" rx="8" />
+  <text class="chip-text" x="1253" y="672">opaque token</text>
+
+  <rect class="panel" x="830" y="540" width="255" height="150" rx="8" />
+  <circle class="step" cx="862" cy="573" r="16" />
+  <text class="step-text" x="858" y="578">6</text>
+  <text class="label" x="892" y="578">Firmware reconnects</text>
+  <text class="body" x="862" y="614">uses stored device token</text>
+  <text class="mono" x="862" y="640">WebSocket /ws</text>
+
+  <rect class="runtime" x="455" y="540" width="255" height="150" rx="8" />
+  <circle class="step" cx="487" cy="573" r="16" />
+  <text class="step-text" x="483" y="578">7</text>
+  <text class="dark-label" x="517" y="578">Runtime verifies</text>
+  <text class="dark-body" x="487" y="614">checks token with API</text>
+  <text class="dark-body" x="487" y="640">accepts device session</text>
+
+  <rect class="panel" x="80" y="540" width="255" height="150" rx="8" />
+  <circle class="step" cx="112" cy="573" r="16" />
+  <text class="step-text" x="108" y="578">8</text>
+  <text class="label" x="142" y="578">Bound config</text>
+  <text class="body" x="112" y="614">Runtime loads active agent</text>
+  <text class="body" x="112" y="640">and pipeline for the</text>
+  <text class="body" x="112" y="666">paired device</text>
+
+  <path class="line" d="M335 255H445" />
+  <text class="mono" x="360" y="236">OTA URL</text>
+  <path class="line" d="M710 255H820" />
+  <text class="mono" x="744" y="236">proxy</text>
+  <path class="line" d="M1085 255H1195" />
+  <text class="mono" x="1110" y="236">spoken code</text>
+
+  <path class="line" d="M1332 325V530" />
+  <text class="mono" x="1352" y="434">claim</text>
+  <path class="line" d="M1205 615H1095" />
+  <text class="mono" x="1122" y="596">token</text>
+  <path class="line" d="M830 615H720" />
+  <text class="mono" x="744" y="596">/ws</text>
+  <path class="line" d="M455 615H345" />
+  <text class="mono" x="370" y="596">config</text>
+
+  <path class="line-soft" d="M585 540V390H957V335" />
+  <text class="mono" x="690" y="374">verify credential + load deployment</text>
+
+  <rect class="panel" x="80" y="805" width="1380" height="58" rx="8" />
+  <text class="body" x="112" y="839">Do not bypass the platform API for binding: devices connect to the runtime, but credentials, state, and active deployment targets are API-owned.</text>
+</svg>

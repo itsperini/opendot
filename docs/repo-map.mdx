@@ -1,0 +1,79 @@
+---
+title: Repo map
+description: Find the OpenDot files, boundaries, and verification commands that match your contribution.
+---
+
+OpenDot keeps the current product surfaces close together while preserving clear
+internal boundaries. Start with the smallest area that matches your change, then
+follow the linked docs when your work crosses into runtime, database, or device
+contracts.
+
+## Top-level layout
+
+| Path                   | What lives there                                                  | Contributor notes                                                              |
+| ---------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `docs/`                | Mintlify docs, docs navigation, logos, diagrams                   | Keep setup docs practical and cross-link changed behavior                      |
+| `platform/`            | React console, Fastify API, voice runtime, Drizzle schema         | Main app surface for agents, pipeline config, browser tests, devices, settings |
+| `dot-device/firmware/` | ESP-IDF firmware for the Dot device prototype                     | Use firmware build guidance before changing device behavior                    |
+| `containers/`          | Dockerfiles and Nginx config for local/deployed platform services | Keep service env contracts aligned with `.env.example` and docs                |
+| `.agents/`             | Shared agent instructions and reusable workflows                  | Update only for durable repo-wide agent guidance                               |
+| `assets/`              | Brand and README assets                                           | Preserve the existing OpenDot mark                                             |
+| Root docs              | `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `ROADMAP.md`       | Keep project framing and contribution guidance consistent                      |
+
+## Platform internals
+
+| Surface                 | Key files                                                            | What to check                                                            |
+| ----------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| UI shell and navigation | `platform/src/App.tsx`, `platform/src/pages/**`                      | Page state, selected agent/device behavior, loading/error states         |
+| API client and cache    | `platform/src/lib/platformApi.ts`, `platform/src/lib/queryClient.ts` | Request shape, auth token behavior, TanStack Query invalidation          |
+| Pipeline defaults       | `platform/src/lib/pipeline.ts`, `platform/src/types.ts`              | VAD/STT/LLM/TTS stage settings and normalization                         |
+| Control API             | `platform/src/server/api.ts`                                         | Auth, agents, devices, settings, deployments, runtime token verification |
+| Database                | `platform/src/server/db/schema.ts`, `platform/drizzle/`              | Schema, migrations, indexes, versioned agent/pipeline data               |
+| Runtime                 | `platform/src/server/runtime.js`                                     | Browser `/voice`, device `/ws`, OTA proxy, VAD/STT/LLM/TTS orchestration |
+
+The platform architecture direction is captured in
+`platform/platform-architecture.md`. The docs architecture summary is at
+[Platform architecture](/architecture).
+
+## Runtime and device contracts
+
+The runtime exposes:
+
+```text
+GET  /health
+POST /ota/
+POST /ota/activate
+WS   /voice
+WS   /ws
+```
+
+The platform API owns:
+
+```text
+/api/auth/*
+/api/platform-state
+/api/agents
+/api/dot-devices
+/api/device-activations/claim
+/api/runtime/voice-sessions
+/api/settings
+/api/api-keys
+/api/internal/*
+```
+
+Treat `/api/internal/*` as runtime-to-platform trust boundaries. They depend on
+`OPENDOT_RUNTIME_INTERNAL_SECRET` and should not become browser-facing APIs.
+
+## Verification by change type
+
+| Change                  | Run                                                                             |
+| ----------------------- | ------------------------------------------------------------------------------- |
+| Docs only               | `pnpm run format:check -- docs` and `mint broken-links` from `docs/`            |
+| Platform UI/API/runtime | `pnpm run lint && pnpm run test && pnpm run build`                              |
+| Database contract       | Platform checks plus migration review and Drizzle Studio inspection when useful |
+| Firmware                | `idf.py build` from `dot-device/firmware/` when ESP-IDF is available            |
+| Root docs               | spelling/link review plus `git diff --check`                                    |
+
+Use [Contributing](/contributing) for the first-time contributor workflow and
+[Runtime configuration](/runtime-configuration) when service URLs or environment
+variables change.

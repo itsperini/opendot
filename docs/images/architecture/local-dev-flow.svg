@@ -1,0 +1,101 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="local-dev-flow-title local-dev-flow-desc">
+  <title id="local-dev-flow-title">OpenDot local development topology</title>
+  <desc id="local-dev-flow-desc">Docker Compose and pnpm local processes with ports and dependencies.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0L11 5.5L0 11Z" fill="#6d28d9" />
+    </marker>
+    <style>
+      .bg { fill: #fbf9ff; }
+      .band { fill: #fff; stroke: #e8ddf8; stroke-width: 2; }
+      .node { fill: #f7f5fb; stroke: #d8c3f7; stroke-width: 2; }
+      .runtime { fill: #14091f; stroke: #6d28d9; stroke-opacity: .48; stroke-width: 2; }
+      .title { font-family: Manrope, Arial, sans-serif; font-size: 38px; font-weight: 800; fill: #171321; }
+      .h2 { font-family: Manrope, Arial, sans-serif; font-size: 23px; font-weight: 800; fill: #171321; }
+      .label { font-family: Manrope, Arial, sans-serif; font-size: 18px; font-weight: 800; fill: #171321; }
+      .dark-label { font-family: Manrope, Arial, sans-serif; font-size: 18px; font-weight: 800; fill: #fff; }
+      .body { font-family: Manrope, Arial, sans-serif; font-size: 14px; font-weight: 500; fill: #625c6f; }
+      .dark-body { font-family: Manrope, Arial, sans-serif; font-size: 14px; font-weight: 500; fill: #ede9fe; }
+      .mono { font-family: SFMono-Regular, Consolas, monospace; font-size: 13px; font-weight: 600; fill: #5b21b6; }
+      .line { stroke: #6d28d9; stroke-width: 2.5; marker-end: url(#arrow); }
+      .line-soft { stroke: #a78bfa; stroke-width: 2.2; stroke-dasharray: 8 8; marker-end: url(#arrow); }
+      .chip { fill: #ede9fe; stroke: #d8c3f7; stroke-width: 1.5; }
+      .chip-text { font-family: Manrope, Arial, sans-serif; font-size: 13px; font-weight: 800; fill: #5b21b6; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1600" height="900" />
+  <text class="title" x="80" y="82">Local development flow</text>
+  <text class="body" x="80" y="116">Run everything with Docker Compose, or run the same surfaces as separate pnpm processes while developing.</text>
+
+  <rect class="band" x="80" y="165" width="1440" height="265" rx="8" />
+  <text class="h2" x="120" y="212">Docker Compose stack</text>
+
+  <rect class="node" x="120" y="255" width="195" height="105" rx="8" />
+  <text class="label" x="146" y="292">postgres</text>
+  <text class="body" x="146" y="320">PostgreSQL 16</text>
+  <text class="mono" x="146" y="344">127.0.0.1:5432</text>
+
+  <rect class="node" x="380" y="255" width="195" height="105" rx="8" />
+  <text class="label" x="406" y="292">migrate</text>
+  <text class="body" x="406" y="320">Drizzle SQL</text>
+  <text class="mono" x="406" y="344">one-shot job</text>
+
+  <rect class="node" x="640" y="255" width="205" height="105" rx="8" />
+  <text class="label" x="666" y="292">platform-api</text>
+  <text class="body" x="666" y="320">Fastify API</text>
+  <text class="mono" x="666" y="344">:8788/api</text>
+
+  <rect class="runtime" x="910" y="255" width="215" height="105" rx="8" />
+  <text class="dark-label" x="936" y="292">voice-runtime</text>
+  <text class="dark-body" x="936" y="320">WebSocket audio</text>
+  <text class="mono" x="936" y="344">:8787</text>
+
+  <rect class="node" x="1190" y="255" width="205" height="105" rx="8" />
+  <text class="label" x="1216" y="292">web</text>
+  <text class="body" x="1216" y="320">Vite production build</text>
+  <text class="mono" x="1216" y="344">localhost:5173</text>
+
+  <path class="line" d="M315 308H370" />
+  <path class="line" d="M575 308H630" />
+  <path class="line" d="M845 308H900" />
+  <path class="line" d="M1125 308H1180" />
+  <rect class="chip" x="120" y="380" width="238" height="30" rx="8" />
+  <text class="chip-text" x="138" y="400">docker compose up --build</text>
+
+  <rect class="band" x="80" y="485" width="1440" height="285" rx="8" />
+  <text class="h2" x="120" y="532">Process-by-process pnpm workflow</text>
+
+  <rect class="node" x="120" y="575" width="230" height="105" rx="8" />
+  <text class="label" x="146" y="612">database</text>
+  <text class="body" x="146" y="640">local Postgres or POSTGRES_URI</text>
+  <text class="mono" x="146" y="664">db:migrate</text>
+
+  <rect class="node" x="430" y="575" width="230" height="105" rx="8" />
+  <text class="label" x="456" y="612">pnpm run api</text>
+  <text class="body" x="456" y="640">loads root .env</text>
+  <text class="mono" x="456" y="664">:8788/api</text>
+
+  <rect class="runtime" x="740" y="575" width="230" height="105" rx="8" />
+  <text class="dark-label" x="766" y="612">pnpm run runtime</text>
+  <text class="dark-body" x="766" y="640">/voice, /ws, /ota</text>
+  <text class="mono" x="766" y="664">:8787</text>
+
+  <rect class="node" x="1050" y="575" width="230" height="105" rx="8" />
+  <text class="label" x="1076" y="612">pnpm run dev</text>
+  <text class="body" x="1076" y="640">Vite console</text>
+  <text class="mono" x="1076" y="664">localhost:5173</text>
+
+  <rect class="node" x="1350" y="575" width="130" height="105" rx="8" />
+  <text class="label" x="1376" y="612">docs</text>
+  <text class="body" x="1376" y="640">Mintlify</text>
+  <text class="mono" x="1376" y="664">mint dev</text>
+
+  <path class="line" d="M350 628H420" />
+  <path class="line" d="M660 628H730" />
+  <path class="line" d="M970 628H1040" />
+  <path class="line-soft" d="M1280 628H1340" />
+
+  <rect class="chip" x="120" y="714" width="354" height="30" rx="8" />
+  <text class="chip-text" x="138" y="734">provider keys only needed for live voice turns</text>
+</svg>
