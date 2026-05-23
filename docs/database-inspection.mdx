@@ -31,7 +31,7 @@ Open:
 https://local.drizzle.studio
 ```
 
-Drizzle Studio reads `platform/drizzle.config.ts`, loads the root `.env`, and connects through `POSTGRES_URI` when set or the local Postgres defaults when it is empty. Use it to inspect the platform control schema: `app_users`, `local_auth_credentials`, organizations, memberships, projects, environments, scoped API keys, versioned agents and pipelines, devices, deployments, sessions, events, and audit logs.
+Drizzle Studio reads `platform/drizzle.config.ts`, loads the root `.env`, and connects through `POSTGRES_URI` when set or the local Postgres defaults when it is empty. Use it to inspect the OSS core schema: `app_users`, `local_auth_credentials`, `user_preferences`, API keys, versioned agents and pipelines, devices, device state, and deployments.
 
 ## Connection defaults
 
@@ -48,7 +48,7 @@ For Supabase, set `POSTGRES_URI` to the Supabase Postgres connection string and 
 POSTGRES_SSL=true
 ```
 
-OpenDot keeps product authorization in its own tables even when Supabase Auth is used. In Supabase-backed deployments, `auth.users.id` maps to `app_users.id`; memberships, roles, devices, agents, and deployments remain OpenDot-owned data.
+OpenDot keeps product data in its own tables even when Supabase Auth is used. In Supabase-backed deployments, `auth.users.id` maps to `app_users.id`; devices, agents, pipelines, deployments, settings, and API keys remain OpenDot-owned data.
 
 ## Stop inspection services
 

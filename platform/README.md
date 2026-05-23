@@ -76,10 +76,10 @@ at `http://localhost:8787` for browser WebSocket sessions and local devices.
 Create a local email/password account on the auth page to enter the workspace.
 
 The database schema is portable PostgreSQL with a Supabase Auth bridge. Supabase
-owns authentication when configured, while OpenDot owns `app_users`,
-organizations, memberships, projects, environments, local auth credentials, API
-keys, agents, pipeline versions, devices, deployments, sessions, events, and
-audit logs.
+owns authentication when configured, while the OSS core owns `app_users`, local
+auth credentials, user preferences, API keys, versioned agents and pipelines,
+devices, device state, and deployments. The schema stays focused on the product
+surfaces that are active today.
 
 ## Inspect The Database
 

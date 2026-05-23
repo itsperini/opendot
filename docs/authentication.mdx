@@ -27,8 +27,8 @@ VITE_SUPABASE_ANON_KEY=
 ```
 
 Signup creates an `app_users` row, a hashed password row in
-`local_auth_credentials`, and the default workspace/project/environment through
-the platform API. Passwords are never stored as plaintext.
+`local_auth_credentials`, and the default user preferences through the platform
+API. Passwords are never stored as plaintext.
 
 Change `OPENDOT_SESSION_SECRET` before using local auth on any shared or public
 deployment.
@@ -47,7 +47,9 @@ OPENDOT_LOCAL_AUTH_DISABLED=true
 
 The browser signs in with Supabase and sends the Supabase JWT to the OpenDot
 API. The API validates the token, maps `auth.users.id` to `app_users.id`, and
-keeps product permissions in OpenDot membership tables.
+keeps durable product data in OpenDot-owned tables. The OSS core is
+single-workspace and does not put authorization-critical product state in
+Supabase `user_metadata`.
 
 For the current preview flow without email verification, disable email
 confirmations in Supabase Auth settings. The forgot-password, Google, and GitHub

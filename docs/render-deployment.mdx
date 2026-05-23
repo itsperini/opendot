@@ -21,9 +21,9 @@ POSTGRES_URI=<supabase postgres connection string>
 POSTGRES_SSL=true
 ```
 
-OpenDot still owns product data in `app_users`, organizations, memberships,
-projects, devices, agents, deployments, sessions, and API keys. Supabase Auth
-owns sign-in without making `auth.users` the product permissions table.
+OpenDot still owns product data in `app_users`, user preferences, API keys,
+agents, pipelines, devices, device state, and deployments. Supabase Auth owns
+sign-in without making `auth.users` the product data table.
 
 ## Required Render values
 

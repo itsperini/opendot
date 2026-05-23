@@ -97,10 +97,12 @@ opens on the auth page; create a local email/password account to enter the
 workspace.
 
 The platform database is Supabase-compatible without requiring Supabase locally:
-OpenDot keeps product identity and authorization in `app_users`,
-`organizations`, memberships, projects, environments, local auth credentials,
-and scoped platform tables. When Supabase Auth is configured, `auth.users.id`
-maps to `app_users.id`; otherwise Compose uses OpenDot's local password auth.
+OpenDot keeps product identity and core data in `app_users`,
+`local_auth_credentials`, `user_preferences`, API keys, versioned agents and
+pipelines, devices, device state, and deployments. When Supabase Auth is
+configured, `auth.users.id` maps to `app_users.id`; otherwise Compose uses
+OpenDot's local password auth. The local schema stays focused on the product
+surfaces that are active today.
 
 Inspect the local database with Drizzle Studio:
 

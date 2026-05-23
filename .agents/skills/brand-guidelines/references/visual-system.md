@@ -26,7 +26,7 @@ should feel:
 - technical but approachable
 - product-first and operational
 - precise, quiet, and physically grounded
-- open-source credible, not enterprise-generic
+- open-source credible, not generic SaaS
 - built for agents that leave the browser and bind to real hardware
 
 Use concrete nouns from the product loop: build, tune, bind, run, operate,

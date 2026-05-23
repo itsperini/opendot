@@ -5,7 +5,7 @@ description: Environment variables and local runtime behavior for voice sessions
 
 The runtime process handles live voice sessions for the browser and Dot devices.
 
-The platform API stores the OpenDot control plane in PostgreSQL: app users, organizations, memberships, projects, environments, scoped API keys, versioned agents and pipelines, device state, deployments, sessions, events, and audit logs.
+The platform API stores the OSS OpenDot control plane in PostgreSQL: app users, local auth credentials, user preferences, API keys, versioned agents and pipelines, devices, device state, and deployments.
 
 Create the root environment file once:
 
@@ -29,7 +29,7 @@ OPENDOT_LOCAL_AUTH_DISABLED=true
 
 `SUPABASE_URL` enables JWKS verification for current Supabase signing keys. Set `SUPABASE_JWT_SECRET` only if the project still uses legacy HS256 JWT signing.
 
-When a Bearer token is provided, the API maps the Supabase JWT `sub` to `app_users.id`; product permissions still come from OpenDot membership tables, not Supabase `user_metadata`. For local Compose without Supabase, leave `OPENDOT_LOCAL_AUTH_DISABLED=false` and use the OpenDot auth page.
+When a Bearer token is provided, the API maps the Supabase JWT `sub` to `app_users.id`. The OSS core is intentionally single-workspace and does not rely on Supabase `user_metadata` for authorization-critical product state. For local Compose without Supabase, leave `OPENDOT_LOCAL_AUTH_DISABLED=false` and use the OpenDot auth page.
 
 ## Database inspection
 

@@ -19,7 +19,7 @@ Initial scope:
 OpenDot should be built as three connected planes, not as one large monolithic webapp.
 
 1. Control plane
-   - Organizations, users, roles, projects, environments, rooms, devices, agents, pipelines, deployments, and audit logs.
+   - OSS core: users, preferences, API keys, devices, agents, pipelines, and deployments.
    - Mostly request/response CRUD and transactional workflows.
    - Primary interface for builders and operators.
 
@@ -52,8 +52,8 @@ Recommended:
 Why:
 
 - The platform is a logged-in operations console, not a public content site. A Vite SPA keeps the frontend simple, fast, and easy to host.
-- TanStack Query is the right default for server state: agents, devices, rooms, sessions, deployments, and logs.
-- TanStack Router gives type-safe routing and URL state for filters, selected environments, active tabs, and debugger views.
+- TanStack Query is the right default for server state: agents, devices, sessions, deployments, and logs.
+- TanStack Router gives type-safe routing and URL state for filters, selected resources, active tabs, and debugger views.
 - React Flow is the right fit for a visual pipeline builder such as `VAD -> STT -> LLM -> Tools -> TTS`.
 - shadcn/Radix keeps the product UI consistent without committing to a heavy design system too early.
 
@@ -93,9 +93,10 @@ Drizzle vs Prisma:
 
 Current platform schema choice:
 
-- Use Drizzle with PostgreSQL for the durable control plane: app users, organizations, memberships, projects, environments, scoped API keys, versioned agents and pipelines, devices, deployments, sessions, events, artifacts, and audit logs.
-- Keep the schema Supabase-compatible without making Supabase mandatory. Supabase Auth can own authentication, while OpenDot keeps `app_users` and product authorization tables in the public app schema.
+- Use Drizzle with PostgreSQL for the durable OSS control plane: app users, local auth credentials, user preferences, API keys, versioned agents and pipelines, devices, device state, and deployments.
+- Keep the OSS schema single-workspace and Supabase-compatible without making Supabase mandatory. Supabase Auth can own authentication, while OpenDot keeps `app_users` and product data in the public app schema.
 - Map Supabase `auth.users.id` to `app_users.id` when Supabase Auth is configured; in local Compose runs, use OpenDot local email/password auth backed by hashed credentials so plain PostgreSQL remains self-hostable.
+- Keep the current schema intentionally small and aligned with the product surfaces that are active today.
 - Keep the Drizzle schema in `platform/src/server/db/schema.ts` and migrations in `platform/drizzle/`.
 - Use Drizzle Studio via `cd platform && npm run db:studio` for local schema and data inspection at `https://local.drizzle.studio`.
 
@@ -197,7 +198,7 @@ Use MQTT for:
 - Heartbeats.
 - Diagnostics.
 
-Do not let the platform webapp publish directly to privileged MQTT topics. The browser should call the control API or realtime gateway; backend services enforce org/RBAC/device permissions and then publish the command.
+Do not let the platform webapp publish directly to privileged MQTT topics. The browser should call the control API or realtime gateway; backend services enforce user/device permissions before publishing the command.
 
 ### Internal Event Bus
 
@@ -288,36 +289,26 @@ Use `pnpm` workspaces or Turborepo if the repo becomes large. Keep service bound
 
 ## Core Data Model
 
-Initial tables/entities:
+OSS core tables/entities:
 
-- `organizations`
-- `users`
-- `memberships`
-- `roles`
-- `projects`
-- `environments`
-- `sites`
-- `rooms`
-- `devices`
-- `device_credentials`
-- `device_state`
+- `app_users`
+- `local_auth_credentials`
+- `user_preferences`
+- `api_keys`
 - `agents`
 - `agent_versions`
-- `knowledge_sources`
-- `tools`
 - `pipelines`
 - `pipeline_versions`
+- `devices`
+- `device_state`
 - `deployments`
-- `sessions`
-- `session_events`
-- `session_artifacts`
-- `audit_logs`
+- `deployment_device_targets`
 
 Important principle:
 
 - Agents and pipelines should be versioned.
-- A session should reference immutable snapshots: `agent_version_id`, `pipeline_version_id`, `device_id`, `environment_id`.
-- Do not let a session point only to mutable "current agent config", or debugging historical sessions becomes painful.
+- A deployment should reference immutable snapshots: `agent_version_id`, `pipeline_version_id`, and `device_id`.
+- Do not let runtime history point only to mutable "current agent config", or debugging historical runs becomes painful.
 
 ## HTTP API Shape
 
@@ -327,34 +318,25 @@ Example routes:
 
 ```text
 GET    /v1/me
-GET    /v1/orgs/:orgId
-GET    /v1/orgs/:orgId/environments
+GET    /v1/platform-state
+PUT    /v1/settings
 
-GET    /v1/orgs/:orgId/rooms
-POST   /v1/orgs/:orgId/rooms
-PATCH  /v1/orgs/:orgId/rooms/:roomId
+GET    /v1/devices
+POST   /v1/devices
+GET    /v1/devices/:deviceId
+POST   /v1/devices/:deviceId/commands
 
-GET    /v1/orgs/:orgId/devices
-POST   /v1/orgs/:orgId/devices
-GET    /v1/orgs/:orgId/devices/:deviceId
-POST   /v1/orgs/:orgId/devices/:deviceId/commands
+GET    /v1/agents
+POST   /v1/agents
+GET    /v1/agents/:agentId
+POST   /v1/agents/:agentId/versions
 
-GET    /v1/orgs/:orgId/agents
-POST   /v1/orgs/:orgId/agents
-GET    /v1/orgs/:orgId/agents/:agentId
-POST   /v1/orgs/:orgId/agents/:agentId/versions
+GET    /v1/pipelines
+POST   /v1/pipelines
+POST   /v1/pipelines/:pipelineId/versions
 
-GET    /v1/orgs/:orgId/pipelines
-POST   /v1/orgs/:orgId/pipelines
-POST   /v1/orgs/:orgId/pipelines/:pipelineId/versions
-
-POST   /v1/orgs/:orgId/deployments
-GET    /v1/orgs/:orgId/deployments/:deploymentId
-
-POST   /v1/orgs/:orgId/sessions
-GET    /v1/orgs/:orgId/sessions
-GET    /v1/orgs/:orgId/sessions/:sessionId
-GET    /v1/orgs/:orgId/sessions/:sessionId/events
+POST   /v1/deployments
+GET    /v1/deployments/:deploymentId
 ```
 
 Use OpenAPI for:
@@ -474,15 +456,12 @@ OpenAPI covers HTTP. AsyncAPI covers messaging and event-driven behavior. OpenDo
 Recommended:
 
 - Supabase-compatible auth bridge for the near-term platform.
-- Keep the OpenDot API as the authorization boundary: browsers send a Supabase Bearer token when signed in, the API verifies it, resolves `app_users`, and checks memberships/roles.
-- Keep internal authorization in OpenDot tables regardless of auth provider. Do not put security-sensitive roles or org permissions in Supabase `user_metadata`.
+- Keep the OpenDot API as the authorization boundary: browsers send a Supabase Bearer token when signed in, the API verifies it, resolves `app_users`, and scopes OSS data to the current user.
+- Keep product state in OpenDot-owned tables regardless of auth provider. Do not put authorization-critical product state in Supabase `user_metadata`.
 
 Core authorization model:
 
-- Organization membership.
-- Role-based access control.
-- Environment-level permissions.
-- Device-level command permissions.
+- OSS core: authenticated user owns agents, devices, deployments, settings, and API keys in a single workspace.
 - Audit logging for privileged operations.
 
 Device identity:
@@ -539,7 +518,7 @@ The UI should separate:
 - Draft pipeline editing.
 - Test runs.
 - Published versions.
-- Deployments to environments/devices.
+- Deployments to devices.
 
 Do not deploy mutable drafts to devices. Deploy immutable pipeline and agent versions.
 
@@ -600,14 +579,13 @@ Keep deployment boring at the start. The hard part is the protocol/runtime produ
 ## MVP Build Order
 
 1. Platform foundation
-   - Auth, orgs, projects, environments.
+   - Auth, app users, user preferences, and single-workspace data scoping.
    - Postgres schema and migrations.
    - Fastify API with OpenAPI.
    - React app shell with routing, layouts, and auth.
 
 2. Device registry
-   - Rooms/sites/devices.
-   - Device credentials.
+   - Devices.
    - Device status model.
    - Simulated device.
 

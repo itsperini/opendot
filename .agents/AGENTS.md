@@ -115,6 +115,8 @@ answer.
   concepts even when an implementation provider combines details internally.
 - Treat hardware as a first-class target. Device binding, local runtime behavior,
   and firmware constraints should stay visible in design decisions.
+- Treat the current platform schema as a focused single-workspace core unless a
+  task explicitly changes that product scope.
 - When a change touches persisted platform data, update the database contract in
   the same change: Drizzle schema, SQL migrations, relevant API types, env
   examples, and docs. Run the migration/build checks that match the touched

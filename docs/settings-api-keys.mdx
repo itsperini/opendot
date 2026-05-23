@@ -3,7 +3,7 @@ title: Settings and API keys
 description: Manage workspace preferences and prototype SDK keys.
 ---
 
-Settings holds user-level preferences and prototype SDK keys for OpenDot. In the database, profile state is split across `app_users`, `organizations`, and `user_preferences` so Supabase Auth can provide identity without owning OpenDot product authorization.
+Settings holds user-level preferences and prototype SDK keys for OpenDot. In the database, profile state is split across `app_users` and `user_preferences` so Supabase Auth can provide identity without owning OpenDot product data.
 
 ## Workspace preferences
 
@@ -21,7 +21,7 @@ Compact density tightens page spacing and panel padding across the platform cons
 
 Use **API keys** to create and revoke local prototype keys. Active keys expose a prefix in the `OPENDOT_API_KEY` row.
 
-The current prototype stores organization-scoped API key hashes and metadata in PostgreSQL. The full token is only shown when a key is created, so copy it immediately if you need to use it outside the UI. Treat these as local development credentials, not production secrets.
+The current prototype stores user-scoped API key hashes and metadata in PostgreSQL. The full token is only shown when a key is created, so copy it immediately if you need to use it outside the UI. Treat these as local development credentials, not production secrets.
 
 ## Copy and revoke
 

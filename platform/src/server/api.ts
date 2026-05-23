@@ -24,16 +24,11 @@ import {
   appUsers,
   deploymentDeviceTargets,
   deployments,
-  deviceAssignments,
   deviceState,
   devices,
-  environments,
   localAuthCredentials,
-  organizationMemberships,
-  organizations,
   pipelineVersions,
   pipelines,
-  projects,
   userPreferences,
   type AgentRow,
   type AgentVersionRow,
@@ -44,7 +39,6 @@ import {
   type DeviceRow,
   type DeviceStateRow,
   type LocalAuthCredentialRow,
-  type OrganizationRow,
   type PipelineVersionRow,
   type UserPreferenceRow,
 } from "./db/schema.js";
@@ -61,13 +55,6 @@ import type {
   VoiceAgent,
 } from "../types.js";
 
-const DEFAULT_ORG_ID =
-  process.env.OPENDOT_DEV_ORG_ID || "00000000-0000-4000-8000-000000000101";
-const DEFAULT_PROJECT_ID =
-  process.env.OPENDOT_DEV_PROJECT_ID || "00000000-0000-4000-8000-000000000201";
-const DEFAULT_ENVIRONMENT_ID =
-  process.env.OPENDOT_DEV_ENVIRONMENT_ID || "00000000-0000-4000-8000-000000000301";
-
 const defaultUserSettings: UserSettings = {
   displayName: "Marco",
   email: "",
@@ -81,12 +68,9 @@ const config = {
   port: Number(process.env.PORT || process.env.PLATFORM_API_PORT || 8788),
 };
 
-type WorkspaceContext = {
+type UserContext = {
   identity: AuthIdentity;
   user: AppUserRow;
-  organization: OrganizationRow;
-  project: typeof projects.$inferSelect;
-  environment: typeof environments.$inferSelect;
   preferences: UserPreferenceRow;
 };
 
@@ -130,20 +114,6 @@ function isUuid(value: string | null | undefined) {
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
     ),
   );
-}
-
-function deterministicUuid(scope: string, value: string) {
-  const bytes = Buffer.from(
-    createHash("sha256").update(`${scope}:${value}`).digest("hex"),
-    "hex",
-  );
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  const hex = bytes.subarray(0, 16).toString("hex");
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(
-    16,
-    20,
-  )}-${hex.slice(20)}`;
 }
 
 function stringValue(value: unknown, fallback = "") {
@@ -276,25 +246,24 @@ function apiKeyFromRow(row: ApiKeyRow, token: string | null = null): UserApiKey 
 
 function settingsFromRows(
   user: AppUserRow,
-  organization: OrganizationRow,
   preferences: UserPreferenceRow,
 ): UserSettings {
   return {
     displayName: user.displayName || defaultUserSettings.displayName,
     email: user.email || defaultUserSettings.email,
-    workspaceName: organization.name || defaultUserSettings.workspaceName,
+    workspaceName: preferences.workspaceName || defaultUserSettings.workspaceName,
     timezone: preferences.timezone || defaultUserSettings.timezone,
     compactMode: preferences.compactMode,
   };
 }
 
-function authUserFromWorkspace(workspace: WorkspaceContext): AuthSessionUser {
+function authUserFromContext(context: UserContext): AuthSessionUser {
   return {
-    id: workspace.user.id,
-    authProvider: workspace.identity.authProvider,
-    email: workspace.user.email,
-    displayName: workspace.user.displayName,
-    avatarUrl: workspace.user.avatarUrl,
+    id: context.user.id,
+    authProvider: context.identity.authProvider,
+    email: context.user.email,
+    displayName: context.user.displayName,
+    avatarUrl: context.user.avatarUrl,
   };
 }
 
@@ -314,11 +283,11 @@ function localIdentityFromRows(
 
 async function createAuthSession(identity: AuthIdentity) {
   const accessToken = await createLocalSessionToken(identity);
-  const workspace = await ensureWorkspace(identity);
+  const context = await ensureUserContext(identity);
 
   return {
     accessToken,
-    user: authUserFromWorkspace(workspace),
+    user: authUserFromContext(context),
   };
 }
 
@@ -470,20 +439,8 @@ async function loginWithLocalPassword(body: unknown) {
   return createAuthSession(localIdentityFromRows(user, credential));
 }
 
-async function ensureWorkspace(identity: AuthIdentity): Promise<WorkspaceContext> {
+async function ensureUserContext(identity: AuthIdentity): Promise<UserContext> {
   const timestamp = nowDate();
-  const organizationId =
-    identity.authProvider === "dev"
-      ? DEFAULT_ORG_ID
-      : deterministicUuid("organization", identity.id);
-  const projectId =
-    identity.authProvider === "dev"
-      ? DEFAULT_PROJECT_ID
-      : deterministicUuid("project", organizationId);
-  const environmentId =
-    identity.authProvider === "dev"
-      ? DEFAULT_ENVIRONMENT_ID
-      : deterministicUuid("environment", projectId);
 
   await db
     .insert(appUsers)
@@ -509,122 +466,11 @@ async function ensureWorkspace(identity: AuthIdentity): Promise<WorkspaceContext
       },
     });
 
-  const [existingMembership] = await db
-    .select()
-    .from(organizationMemberships)
-    .where(
-      and(
-        eq(organizationMemberships.userId, identity.id),
-        eq(organizationMemberships.status, "active"),
-      ),
-    )
-    .limit(1);
-
-  const resolvedOrganizationId = existingMembership?.organizationId ?? organizationId;
-
-  if (!existingMembership) {
-    await db
-      .insert(organizations)
-      .values({
-        id: resolvedOrganizationId,
-        slug:
-          identity.authProvider === "dev"
-            ? "opendot-lab"
-            : `workspace-${identity.id.slice(0, 8)}`,
-        name: defaultUserSettings.workspaceName,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        deletedAt: null,
-      })
-      .onConflictDoNothing();
-
-    await db
-      .insert(organizationMemberships)
-      .values({
-        id: randomUUID(),
-        organizationId: resolvedOrganizationId,
-        userId: identity.id,
-        role: "owner",
-        status: "active",
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      })
-      .onConflictDoNothing();
-  }
-
-  const [organization] = await db
-    .select()
-    .from(organizations)
-    .where(eq(organizations.id, resolvedOrganizationId))
-    .limit(1);
-
-  if (!organization) {
-    throw new Error("Organization could not be resolved.");
-  }
-
-  const [existingProject] = await db
-    .select()
-    .from(projects)
-    .where(
-      and(
-        eq(projects.organizationId, organization.id),
-        eq(projects.slug, "default"),
-        isNull(projects.deletedAt),
-      ),
-    )
-    .limit(1);
-
-  const resolvedProject =
-    existingProject ??
-    (
-      await db
-        .insert(projects)
-        .values({
-          id: projectId,
-          organizationId: organization.id,
-          slug: "default",
-          name: "Default project",
-          createdAt: timestamp,
-          updatedAt: timestamp,
-          deletedAt: null,
-        })
-        .returning()
-    )[0];
-
-  const [existingEnvironment] = await db
-    .select()
-    .from(environments)
-    .where(
-      and(
-        eq(environments.projectId, resolvedProject.id),
-        eq(environments.key, "local"),
-        isNull(environments.deletedAt),
-      ),
-    )
-    .limit(1);
-
-  const resolvedEnvironment =
-    existingEnvironment ??
-    (
-      await db
-        .insert(environments)
-        .values({
-          id: environmentId,
-          projectId: resolvedProject.id,
-          key: "local",
-          name: "Local",
-          kind: "local",
-          createdAt: timestamp,
-          updatedAt: timestamp,
-          deletedAt: null,
-        })
-        .returning()
-    )[0];
-
   const [preferences] = await db
     .insert(userPreferences)
     .values({
       userId: identity.id,
+      workspaceName: defaultUserSettings.workspaceName,
       timezone: defaultUserSettings.timezone,
       compactMode: defaultUserSettings.compactMode,
       createdAt: timestamp,
@@ -647,17 +493,14 @@ async function ensureWorkspace(identity: AuthIdentity): Promise<WorkspaceContext
   return {
     identity,
     user,
-    organization,
-    project: resolvedProject,
-    environment: resolvedEnvironment,
     preferences,
   };
 }
 
-async function workspaceFromRequest(
+async function contextFromRequest(
   authorization: string | string[] | undefined,
 ) {
-  return ensureWorkspace(await resolveAuthIdentity(authorization));
+  return ensureUserContext(await resolveAuthIdentity(authorization));
 }
 
 function hasBearerToken(authorization: string | string[] | undefined) {
@@ -672,8 +515,8 @@ async function authSessionFromRequest(
     throw httpError("An active session is required.", 401);
   }
 
-  const workspace = await workspaceFromRequest(authorization);
-  return { user: authUserFromWorkspace(workspace) };
+  const context = await contextFromRequest(authorization);
+  return { user: authUserFromContext(context) };
 }
 
 async function latestAgentVersions(agentIds: string[]) {
@@ -718,14 +561,13 @@ async function latestPipelineVersions(pipelineIds: string[]) {
   return latest;
 }
 
-async function readAgents(workspace: WorkspaceContext) {
+async function readAgents(context: UserContext) {
   const agentRows = await db
     .select()
     .from(agents)
     .where(
       and(
-        eq(agents.organizationId, workspace.organization.id),
-        eq(agents.projectId, workspace.project.id),
+        eq(agents.userId, context.user.id),
         isNull(agents.deletedAt),
       ),
     )
@@ -756,13 +598,13 @@ async function readAgents(workspace: WorkspaceContext) {
   });
 }
 
-async function readDevices(workspace: WorkspaceContext) {
+async function readDevices(context: UserContext) {
   const deviceRows = await db
     .select()
     .from(devices)
     .where(
       and(
-        eq(devices.organizationId, workspace.organization.id),
+        eq(devices.userId, context.user.id),
         isNull(devices.deletedAt),
       ),
     )
@@ -839,30 +681,26 @@ async function readDevices(workspace: WorkspaceContext) {
   });
 }
 
-async function readPlatformState(workspace: WorkspaceContext) {
+async function readPlatformState(context: UserContext) {
   const [agentRows, deviceRows, apiKeyRows] = await Promise.all([
-    readAgents(workspace),
-    readDevices(workspace),
+    readAgents(context),
+    readDevices(context),
     db
       .select()
       .from(apiKeys)
-      .where(eq(apiKeys.organizationId, workspace.organization.id))
+      .where(eq(apiKeys.userId, context.user.id))
       .orderBy(desc(apiKeys.createdAt)),
   ]);
 
   return {
     agents: agentRows,
     devices: deviceRows,
-    userSettings: settingsFromRows(
-      workspace.user,
-      workspace.organization,
-      workspace.preferences,
-    ),
+    userSettings: settingsFromRows(context.user, context.preferences),
     apiKeys: apiKeyRows.map((row) => apiKeyFromRow(row)),
   };
 }
 
-async function createAgent(workspace: WorkspaceContext, input: CreateAgentInput) {
+async function createAgent(context: UserContext, input: CreateAgentInput) {
   const timestamp = nowDate();
   const agentId = randomUUID();
   const pipelineId = randomUUID();
@@ -876,8 +714,7 @@ async function createAgent(workspace: WorkspaceContext, input: CreateAgentInput)
   await db.transaction(async (tx) => {
     await tx.insert(pipelines).values({
       id: pipelineId,
-      organizationId: workspace.organization.id,
-      projectId: workspace.project.id,
+      userId: context.user.id,
       slug: `${agentSlug}-pipeline`,
       name: `${name} pipeline`,
       description: "",
@@ -893,15 +730,14 @@ async function createAgent(workspace: WorkspaceContext, input: CreateAgentInput)
       status: "draft",
       manifestJson: { stages: pipeline },
       latencyBudgetMs: pipelineLatencyBudget(pipeline),
-      createdByUserId: workspace.user.id,
+      createdByUserId: context.user.id,
       createdAt: timestamp,
       publishedAt: null,
     });
 
     await tx.insert(agents).values({
       id: agentId,
-      organizationId: workspace.organization.id,
-      projectId: workspace.project.id,
+      userId: context.user.id,
       pipelineId,
       slug: agentSlug,
       name,
@@ -919,7 +755,7 @@ async function createAgent(workspace: WorkspaceContext, input: CreateAgentInput)
       versionNumber: 1,
       status: "draft",
       manifestJson: { name, description, status: "draft" },
-      createdByUserId: workspace.user.id,
+      createdByUserId: context.user.id,
       createdAt: timestamp,
       publishedAt: null,
     });
@@ -937,7 +773,7 @@ async function createAgent(workspace: WorkspaceContext, input: CreateAgentInput)
 }
 
 async function updateAgent(
-  workspace: WorkspaceContext,
+  context: UserContext,
   agentId: string,
   body: Partial<VoiceAgent>,
 ) {
@@ -951,8 +787,7 @@ async function updateAgent(
     .where(
       and(
         eq(agents.id, agentId),
-        eq(agents.organizationId, workspace.organization.id),
-        eq(agents.projectId, workspace.project.id),
+        eq(agents.userId, context.user.id),
         isNull(agents.deletedAt),
       ),
     )
@@ -999,8 +834,7 @@ async function updateAgent(
     if (!row.pipelineId) {
       await tx.insert(pipelines).values({
         id: pipelineId,
-        organizationId: workspace.organization.id,
-        projectId: workspace.project.id,
+        userId: context.user.id,
         slug: `${row.slug}-pipeline`,
         name: `${name} pipeline`,
         description: "",
@@ -1022,7 +856,7 @@ async function updateAgent(
       status: "draft",
       manifestJson: { stages: pipeline },
       latencyBudgetMs: pipelineLatencyBudget(pipeline),
-      createdByUserId: workspace.user.id,
+      createdByUserId: context.user.id,
       createdAt: timestamp,
       publishedAt: null,
     });
@@ -1045,7 +879,7 @@ async function updateAgent(
       versionNumber: nextAgentVersion,
       status: "draft",
       manifestJson: { name, description, status: "draft" },
-      createdByUserId: workspace.user.id,
+      createdByUserId: context.user.id,
       createdAt: timestamp,
       publishedAt: null,
     });
@@ -1119,7 +953,7 @@ function mergeDevice(
 }
 
 async function findDeviceByExternalId(
-  workspace: WorkspaceContext,
+  context: UserContext,
   id: string,
   serialNumber: string | null = null,
 ) {
@@ -1130,7 +964,7 @@ async function findDeviceByExternalId(
       .where(
         and(
           eq(devices.id, id),
-          eq(devices.organizationId, workspace.organization.id),
+          eq(devices.userId, context.user.id),
           isNull(devices.deletedAt),
         ),
       )
@@ -1144,7 +978,7 @@ async function findDeviceByExternalId(
     .from(devices)
     .where(
       and(
-        eq(devices.organizationId, workspace.organization.id),
+        eq(devices.userId, context.user.id),
         eq(devices.serialNumber, serial),
         isNull(devices.deletedAt),
       ),
@@ -1154,13 +988,13 @@ async function findDeviceByExternalId(
   return row ?? null;
 }
 
-async function publicDeviceById(workspace: WorkspaceContext, deviceId: string) {
-  const allDevices = await readDevices(workspace);
+async function publicDeviceById(context: UserContext, deviceId: string) {
+  const allDevices = await readDevices(context);
   return allDevices.find((device) => device.id === deviceId) ?? null;
 }
 
 async function saveDevice(
-  workspace: WorkspaceContext,
+  context: UserContext,
   device: DotDevice,
   existing: DotDevice | null = null,
 ) {
@@ -1172,7 +1006,7 @@ async function saveDevice(
       .insert(devices)
       .values({
         id: device.id,
-        organizationId: workspace.organization.id,
+        userId: context.user.id,
         serialNumber: device.serialNumber,
         hardwareId: null,
         model: device.model,
@@ -1221,15 +1055,6 @@ async function saveDevice(
         },
       });
 
-    if (!existing) {
-      await tx.insert(deviceAssignments).values({
-        id: randomUUID(),
-        deviceId: device.id,
-        environmentId: workspace.environment.id,
-        assignedAt: updatedAt,
-        removedAt: null,
-      });
-    }
   });
 
   const bindingChanged =
@@ -1238,16 +1063,16 @@ async function saveDevice(
     device.boundAt !== existing?.boundAt;
 
   if (bindingChanged && device.boundAgentId) {
-    await bindDeviceToAgent(workspace, device, device.boundAgentId);
+    await bindDeviceToAgent(context, device, device.boundAgentId);
   } else if (bindingChanged && existing?.boundAgentId && !device.boundAgentId) {
     await unbindDevice(device.id);
   }
 
-  return publicDeviceById(workspace, device.id);
+  return publicDeviceById(context, device.id);
 }
 
 async function bindDeviceToAgent(
-  workspace: WorkspaceContext,
+  context: UserContext,
   device: DotDevice,
   agentId: string,
 ) {
@@ -1261,8 +1086,7 @@ async function bindDeviceToAgent(
     .where(
       and(
         eq(agents.id, agentId),
-        eq(agents.organizationId, workspace.organization.id),
-        eq(agents.projectId, workspace.project.id),
+        eq(agents.userId, context.user.id),
         isNull(agents.deletedAt),
       ),
     )
@@ -1301,15 +1125,12 @@ async function bindDeviceToAgent(
 
     await tx.insert(deployments).values({
       id: deploymentId,
-      organizationId: workspace.organization.id,
-      projectId: workspace.project.id,
-      environmentId: workspace.environment.id,
+      userId: context.user.id,
       agentVersionId: latestAgentVersion.id,
       pipelineVersionId,
       name: `${agent.name} -> ${device.name}`,
       status: "active",
       rolloutStrategyJson: { kind: "single-device" },
-      createdByUserId: workspace.user.id,
       createdAt: timestamp,
       activatedAt: timestamp,
       supersededAt: null,
@@ -1343,8 +1164,8 @@ async function unbindDevice(deviceId: string) {
     );
 }
 
-async function deleteDevice(workspace: WorkspaceContext, id: string) {
-  const row = await findDeviceByExternalId(workspace, id);
+async function deleteDevice(context: UserContext, id: string) {
+  const row = await findDeviceByExternalId(context, id);
   if (!row) {
     return;
   }
@@ -1355,15 +1176,6 @@ async function deleteDevice(workspace: WorkspaceContext, id: string) {
       .update(devices)
       .set({ status: "removed", deletedAt: timestamp, updatedAt: timestamp })
       .where(eq(devices.id, row.id));
-    await tx
-      .update(deviceAssignments)
-      .set({ removedAt: timestamp })
-      .where(
-        and(
-          eq(deviceAssignments.deviceId, row.id),
-          isNull(deviceAssignments.removedAt),
-        ),
-      );
     await tx
       .update(deploymentDeviceTargets)
       .set({ status: "removed", updatedAt: timestamp })
@@ -1414,21 +1226,21 @@ server.get("/api/auth/session", async (request) => {
 server.post("/api/auth/logout", async () => ({ ok: true }));
 
 server.get("/api/platform-state", async (request) => {
-  const workspace = await workspaceFromRequest(request.headers.authorization);
-  return readPlatformState(workspace);
+  const context = await contextFromRequest(request.headers.authorization);
+  return readPlatformState(context);
 });
 
 server.post<{ Body: CreateAgentInput }>("/api/agents", async (request, reply) => {
-  const workspace = await workspaceFromRequest(request.headers.authorization);
-  const agent = await createAgent(workspace, request.body ?? ({} as CreateAgentInput));
+  const context = await contextFromRequest(request.headers.authorization);
+  const agent = await createAgent(context, request.body ?? ({} as CreateAgentInput));
   return reply.code(201).send({ agent });
 });
 
 server.put<{ Params: { id: string }; Body: Partial<VoiceAgent> }>(
   "/api/agents/:id",
   async (request, reply) => {
-    const workspace = await workspaceFromRequest(request.headers.authorization);
-    const agent = await updateAgent(workspace, request.params.id, request.body ?? {});
+    const context = await contextFromRequest(request.headers.authorization);
+    const agent = await updateAgent(context, request.params.id, request.body ?? {});
 
     if (!agent) {
       return reply.code(404).send({ error: "Agent not found." });
@@ -1439,49 +1251,45 @@ server.put<{ Params: { id: string }; Body: Partial<VoiceAgent> }>(
 );
 
 server.get("/api/dot-devices", async (request) => {
-  const workspace = await workspaceFromRequest(request.headers.authorization);
-  return { devices: await readDevices(workspace) };
+  const context = await contextFromRequest(request.headers.authorization);
+  return { devices: await readDevices(context) };
 });
 
 server.post<{ Body: CreateDotDeviceInput }>("/api/dot-devices", async (request, reply) => {
-  const workspace = await workspaceFromRequest(request.headers.authorization);
+  const context = await contextFromRequest(request.headers.authorization);
   const device = createDevice(request.body ?? ({} as CreateDotDeviceInput));
-  const savedDevice = await saveDevice(workspace, device);
+  const savedDevice = await saveDevice(context, device);
   return reply.code(201).send({ device: savedDevice ?? device });
 });
 
 server.put<{ Params: { id: string }; Body: Partial<DotDevice> }>(
   "/api/dot-devices/:id",
   async (request) => {
-    const workspace = await workspaceFromRequest(request.headers.authorization);
+    const context = await contextFromRequest(request.headers.authorization);
     const body = request.body ?? {};
     const existingRow = await findDeviceByExternalId(
-      workspace,
+      context,
       request.params.id,
       body.serialNumber ?? null,
     );
-    const existing = existingRow ? await publicDeviceById(workspace, existingRow.id) : null;
+    const existing = existingRow ? await publicDeviceById(context, existingRow.id) : null;
     const deviceId = existing?.id ?? (isUuid(request.params.id) ? request.params.id : randomUUID());
     const device = mergeDevice(deviceId, existing, body);
-    const savedDevice = await saveDevice(workspace, device, existing);
+    const savedDevice = await saveDevice(context, device, existing);
 
     return { device: savedDevice ?? device };
   },
 );
 
 server.delete<{ Params: { id: string } }>("/api/dot-devices/:id", async (request) => {
-  const workspace = await workspaceFromRequest(request.headers.authorization);
-  await deleteDevice(workspace, request.params.id);
+  const context = await contextFromRequest(request.headers.authorization);
+  await deleteDevice(context, request.params.id);
   return { ok: true };
 });
 
 server.put<{ Body: Partial<UserSettings> }>("/api/settings", async (request) => {
-  const workspace = await workspaceFromRequest(request.headers.authorization);
-  const current = settingsFromRows(
-    workspace.user,
-    workspace.organization,
-    workspace.preferences,
-  );
+  const context = await contextFromRequest(request.headers.authorization);
+  const current = settingsFromRows(context.user, context.preferences);
   const body = request.body ?? {};
   const timestamp = nowDate();
   const next: UserSettings = {
@@ -1503,18 +1311,12 @@ server.put<{ Body: Partial<UserSettings> }>("/api/settings", async (request) => 
         email: next.email,
         updatedAt: timestamp,
       })
-      .where(eq(appUsers.id, workspace.user.id));
-    await tx
-      .update(organizations)
-      .set({
-        name: next.workspaceName,
-        updatedAt: timestamp,
-      })
-      .where(eq(organizations.id, workspace.organization.id));
+      .where(eq(appUsers.id, context.user.id));
     await tx
       .insert(userPreferences)
       .values({
-        userId: workspace.user.id,
+        userId: context.user.id,
+        workspaceName: next.workspaceName,
         timezone: next.timezone,
         compactMode: next.compactMode,
         createdAt: timestamp,
@@ -1523,6 +1325,7 @@ server.put<{ Body: Partial<UserSettings> }>("/api/settings", async (request) => 
       .onConflictDoUpdate({
         target: userPreferences.userId,
         set: {
+          workspaceName: next.workspaceName,
           timezone: next.timezone,
           compactMode: next.compactMode,
           updatedAt: timestamp,
@@ -1534,20 +1337,16 @@ server.put<{ Body: Partial<UserSettings> }>("/api/settings", async (request) => 
 });
 
 server.post<{ Body: { name?: string } }>("/api/api-keys", async (request, reply) => {
-  const workspace = await workspaceFromRequest(request.headers.authorization);
+  const context = await contextFromRequest(request.headers.authorization);
   const token = createApiToken();
   const timestamp = nowDate();
   const row = {
     id: randomUUID(),
-    organizationId: workspace.organization.id,
-    projectId: workspace.project.id,
-    environmentId: workspace.environment.id,
+    userId: context.user.id,
     name: trimRequired(request.body?.name, "Key name"),
     tokenHash: hashToken(token),
     prefix: token.slice(0, 14),
-    scopes: ["platform:read", "platform:write"],
     status: "active",
-    createdByUserId: workspace.user.id,
     createdAt: timestamp,
     updatedAt: timestamp,
     lastUsedAt: null,
@@ -1560,7 +1359,7 @@ server.post<{ Body: { name?: string } }>("/api/api-keys", async (request, reply)
 });
 
 server.post<{ Params: { id: string } }>("/api/api-keys/:id/revoke", async (request) => {
-  const workspace = await workspaceFromRequest(request.headers.authorization);
+  const context = await contextFromRequest(request.headers.authorization);
 
   if (!isUuid(request.params.id)) {
     return { apiKey: null };
@@ -1573,7 +1372,7 @@ server.post<{ Params: { id: string } }>("/api/api-keys/:id/revoke", async (reque
     .where(
       and(
         eq(apiKeys.id, request.params.id),
-        eq(apiKeys.organizationId, workspace.organization.id),
+        eq(apiKeys.userId, context.user.id),
         eq(apiKeys.status, "active"),
       ),
     );
@@ -1583,7 +1382,7 @@ server.post<{ Params: { id: string } }>("/api/api-keys/:id/revoke", async (reque
     .where(
       and(
         eq(apiKeys.id, request.params.id),
-        eq(apiKeys.organizationId, workspace.organization.id),
+        eq(apiKeys.userId, context.user.id),
       ),
     )
     .limit(1);
