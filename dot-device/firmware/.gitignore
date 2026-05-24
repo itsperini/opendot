@@ -1,5 +1,9 @@
 tmp/
 components/
+!components/
+components/*
+!components/78__esp-wifi-connect/
+!components/78__esp-wifi-connect/**
 managed_components/
 build/
 dist/

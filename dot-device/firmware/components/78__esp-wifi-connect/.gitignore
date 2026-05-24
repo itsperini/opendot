@@ -1,0 +1,7 @@
+dist/
+_codeql_detected_source_root
+*.bak
+.component_hash
+CHECKSUMS.json
+
+.idea/
