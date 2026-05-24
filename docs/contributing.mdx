@@ -3,15 +3,23 @@ title: Contributing
 description: Set up OpenDot, choose a contribution area, and run the right checks before opening a pull request.
 ---
 
-OpenDot is built around one loop: build a voice agent, tune the VAD/STT/LLM/TTS
-pipeline, bind it to a real device, run a session, and inspect what happened.
-Good contributions usually make one part of that loop easier to understand,
-operate, debug, or extend.
+OpenDot is built around one loop: build a voice agent, tune the
+VAD/STT/ASR/LLM/TTS pipeline, bind it to a real device, run a session, and
+inspect what happened. Good contributions usually make one part of that loop
+easier to understand, operate, debug, or extend.
 
-Use this page as the contributor starting point, then jump into the architecture
-and repo map when you need a deeper boundary check.
+Use this page for setup and pull request expectations. Use Contribution areas
+as the canonical map for choosing a track.
 
 <CardGroup cols={2}>
+  <Card title="Contribution areas" icon="git-pull-request" href="/contribution-areas">
+    Choose a track and see current maturity, project briefs, verification, and starting
+    points.
+  </Card>
+  <Card title="Roadmap" icon="map" href="/roadmap">
+    See current, next, and later priorities across voice, platform, transport, device,
+    hardware, firmware, docs, and tooling.
+  </Card>
   <Card title="Platform architecture" icon="network" href="/architecture">
     See how the console, API, database, runtime, providers, and firmware work together.
   </Card>
@@ -58,15 +66,20 @@ See the [Quickstart](/quickstart) for the full setup flow and
 
 ## Choose an area
 
-| Area          | Start in                                                | Common work                                                      | Minimum check                                           |
-| ------------- | ------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------- |
-| Docs          | `docs/`                                                 | Guides, navigation, diagrams, troubleshooting                    | `mint broken-links` and formatting                      |
-| Platform UI   | `platform/src/pages`, `platform/src/App.tsx`            | Agent Studio, Configuration, Browser Test, Dot Device, Settings  | `pnpm run lint && pnpm run test && pnpm run build`      |
-| Control API   | `platform/src/server/api.ts`                            | Auth, agents, devices, settings, runtime tokens                  | platform checks plus migration review when data changes |
-| Data model    | `platform/src/server/db/schema.ts`, `platform/drizzle/` | PostgreSQL tables, Drizzle schema, migrations                    | migration and platform build checks                     |
-| Voice runtime | `platform/src/server/runtime.js`                        | WebSocket sessions, VAD/STT/LLM/TTS flow, provider calls         | platform checks and live Browser Test when possible     |
-| Firmware      | `dot-device/firmware/`                                  | Wi-Fi, activation, WebSocket audio, display/audio board behavior | `idf.py build` when ESP-IDF is available                |
-| Deployment    | `docker-compose.yml`, `containers/`, `render.yaml`      | Local stack, Render Blueprint, service env contracts             | targeted Compose or Render config review                |
+| Track                                | Common work                                                                                       | Minimum check                                           |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Voice Pipeline & Providers           | VAD, STT/ASR, LLM, TTS, realtime APIs, provider adapters, stage contracts                         | Platform checks plus live Browser Test when possible    |
+| Voice Agents & Harnesses             | Prompts, knowledge, tools, local model harnesses, evals, framework integration categories         | Platform checks and docs when behavior changes          |
+| Platform Control Plane               | Agent Studio, Configuration, Browser Test, Dot Device, Settings, runtime diagnostics UX           | `pnpm run lint && pnpm run test && pnpm run build`      |
+| Platform Backend & Data              | Fastify API, auth, Drizzle/Postgres schema, runtime tokens, settings, deployments                 | Platform checks plus migration review when data changes |
+| Media Transport                      | WebSocket audio/data sessions, runtime protocols, future WebRTC/SFU-style adapters                | Platform checks plus manual runtime testing             |
+| Device Communication & Fleet         | Device presence, state, commands, telemetry, diagnostics, OTA metadata                            | Platform/runtime checks and device notes when relevant  |
+| Dot Hardware                         | CAD, enclosure, acoustics, PCB, BOM, fixtures, reference constraints                              | Hardware/source review and docs checks                  |
+| Dot Firmware & Edge                  | ESP-IDF drivers, provisioning, wake/audio/display, exploratory MicroPython and inference research | `idf.py build` when ESP-IDF is available                |
+| Docs, Tooling & Developer Experience | Setup docs, diagrams, examples, CI, templates, contributor workflow                               | Formatting and link checks                              |
+
+See [Contribution areas](/contribution-areas) for the detailed map, project
+briefs, and starting files for each track.
 
 ## Before opening a pull request
 

@@ -60,19 +60,27 @@ Deepgram VAD -> Deepgram STT -> OpenAI LLM -> Deepgram TTS
 
 The runtime is structured around replaceable stages so future work can move more of the stack to local and self-hosted models.
 
-## Repository Layout
+## Start contributing
+
+OpenDot needs contributors across the full voice-agent stack: pipeline stages,
+agent harnesses, control-plane UX, backend data contracts, realtime media,
+device communication, hardware, firmware, docs, and tooling. The canonical
+contributor map lives in the docs.
+
+<p align="center">
+  <img src="docs/images/architecture/contribution-map.png" alt="OpenDot contribution map" width="92%" />
+</p>
+
+The project loop is:
 
 ```text
-.
-|-- docs/                  # Mintlify documentation site
-|-- dot-device/firmware/   # ESP-IDF firmware for the Dot device prototype
-|-- platform/              # React platform UI and local voice runtime
-|-- CONTRIBUTING.md        # Contributor guide
-|-- NOTICE                 # Third-party and firmware license notices
-|-- ROADMAP.md             # Product and engineering roadmap
-|-- SECURITY.md            # Vulnerability reporting policy
-`-- LICENSE                # AGPLv3 license
+build -> tune -> bind -> run -> review
 ```
+
+Good first contributions usually improve one track and one reviewable outcome.
+Start with [Contribution areas](docs/contribution-areas.mdx), then use
+[Contributing](CONTRIBUTING.md) for PR expectations and [Roadmap](ROADMAP.md)
+for the current, next, and later priorities.
 
 ## Quickstart
 
@@ -244,22 +252,29 @@ See `dot-device/firmware/README.md` for board setup, flashing, provisioning, and
 
 ## Roadmap
 
-OpenDot is moving toward an open, provider-pluggable platform for voice agents on real devices. Major roadmap themes include:
+OpenDot is moving toward an open, provider-pluggable platform for voice agents
+on real devices. The roadmap is organized by maturity:
 
-- stable agent and pipeline configuration
-- knowledge and model configuration for agents
-- local and self-hosted model support
-- stronger device fleet management
-- production-ready runtime packaging
-- observability, replay, and evaluation tooling
+- **Current:** make the local browser, runtime, provider, and Dot device loop
+  reliable.
+- **Next:** modularize providers, agents, runtime events, backend contracts, and
+  device diagnostics.
+- **Later:** open paths for local models, WebRTC-style media, MQTT-style device
+  communication, open Dot hardware, and exploratory edge inference.
 
-See [ROADMAP.md](ROADMAP.md) for the current roadmap.
+See [ROADMAP.md](ROADMAP.md) for the concise root roadmap and
+[docs/roadmap.mdx](docs/roadmap.mdx) for the canonical docs roadmap.
 
 ## Contributing
 
-OpenDot is being built as a serious open source infrastructure project. Contributions are welcome across the platform UI, voice runtime, firmware, docs, testing, and design.
+OpenDot is being built as a serious open source infrastructure project.
+Contributions are welcome across voice pipeline, agents, platform control plane,
+backend/data, media transport, device communication, hardware, firmware, docs,
+and tooling.
 
-Start with [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+Start with [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request and
+use [docs/contribution-areas.mdx](docs/contribution-areas.mdx) to choose a
+track.
 
 ## Security
 

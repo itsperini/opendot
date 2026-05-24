@@ -1,0 +1,123 @@
+<svg width="1600" height="1040" viewBox="0 0 1600 1040" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="contribution-map-title contribution-map-desc">
+  <title id="contribution-map-title">OpenDot contribution map</title>
+  <desc id="contribution-map-desc">Contribution tracks arranged around the OpenDot build, tune, bind, run, and review loop.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0L7 3.5L0 7Z" fill="#6d28d9" />
+    </marker>
+    <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#2e1065" flood-opacity="0.09" />
+    </filter>
+    <style>
+      .bg { fill: #fbf9ff; }
+      .panel { fill: #fff; stroke: #e8ddf8; stroke-width: 2; filter: url(#soft-shadow); }
+      .panel-soft { fill: #f7f5fb; stroke: #e8ddf8; stroke-width: 2; }
+      .dark { fill: #14091f; stroke: #6d28d9; stroke-opacity: .52; stroke-width: 2; }
+      .title { font-family: Manrope, Arial, sans-serif; font-size: 40px; font-weight: 800; fill: #171321; }
+      .subtitle { font-family: Manrope, Arial, sans-serif; font-size: 18px; font-weight: 500; fill: #625c6f; }
+      .label { font-family: Manrope, Arial, sans-serif; font-size: 22px; font-weight: 800; fill: #171321; }
+      .small-label { font-family: Manrope, Arial, sans-serif; font-size: 17px; font-weight: 800; fill: #171321; }
+      .body { font-family: Manrope, Arial, sans-serif; font-size: 14px; font-weight: 500; fill: #625c6f; }
+      .dark-label { font-family: Manrope, Arial, sans-serif; font-size: 22px; font-weight: 800; fill: #fff; }
+      .dark-body { font-family: Manrope, Arial, sans-serif; font-size: 14px; font-weight: 600; fill: #ede9fe; }
+      .chip { fill: #ede9fe; stroke: #d8c3f7; stroke-width: 1.5; }
+      .chip-text { font-family: Manrope, Arial, sans-serif; font-size: 12px; font-weight: 800; fill: #5b21b6; }
+      .line { stroke: #6d28d9; stroke-width: 2; marker-end: url(#arrow); }
+      .line-soft { stroke: #a78bfa; stroke-width: 2; stroke-dasharray: 8 8; }
+      .mono { font-family: SFMono-Regular, Consolas, monospace; font-size: 13px; font-weight: 700; fill: #5b21b6; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1600" height="1040" />
+  <text class="title" x="80" y="82">OpenDot contribution map</text>
+  <text class="subtitle" x="80" y="116">Pick a track that improves the same real-device voice-agent loop: build, tune, bind, run, and review.</text>
+
+  <rect class="dark" x="385" y="225" width="830" height="300" rx="8" />
+  <text class="dark-label" x="430" y="275">Core product loop</text>
+  <text class="dark-body" x="430" y="307">Contributors improve one step without hiding the voice pipeline or hardware boundary.</text>
+
+  <rect class="chip" x="445" y="365" width="110" height="48" rx="8" />
+  <text class="chip-text" x="482" y="394">Build</text>
+  <rect class="chip" x="595" y="365" width="110" height="48" rx="8" />
+  <text class="chip-text" x="633" y="394">Tune</text>
+  <rect class="chip" x="745" y="365" width="110" height="48" rx="8" />
+  <text class="chip-text" x="783" y="394">Bind</text>
+  <rect class="chip" x="895" y="365" width="110" height="48" rx="8" />
+  <text class="chip-text" x="934" y="394">Run</text>
+  <rect class="chip" x="1045" y="365" width="110" height="48" rx="8" />
+  <text class="chip-text" x="1075" y="394">Review</text>
+
+  <path class="line" d="M555 389H585" />
+  <path class="line" d="M705 389H735" />
+  <path class="line" d="M855 389H885" />
+  <path class="line" d="M1005 389H1035" />
+  <text class="mono" x="430" y="475">agent config -> pipeline stages -> device binding -> session history</text>
+
+  <rect class="panel" x="80" y="170" width="280" height="150" rx="8" />
+  <text class="label" x="112" y="214">Voice Pipeline</text>
+  <text class="body" x="112" y="246">VAD, STT/ASR, LLM, TTS,</text>
+  <text class="body" x="112" y="270">realtime APIs, providers,</text>
+  <text class="body" x="112" y="294">stage contracts</text>
+
+  <rect class="panel" x="80" y="370" width="280" height="150" rx="8" />
+  <text class="label" x="112" y="414">Voice Agents</text>
+  <text class="body" x="112" y="446">Prompts, knowledge, tools,</text>
+  <text class="body" x="112" y="470">local model harnesses,</text>
+  <text class="body" x="112" y="494">evals and frameworks</text>
+
+  <rect class="panel" x="80" y="570" width="280" height="150" rx="8" />
+  <text class="label" x="112" y="614">Control Plane</text>
+  <text class="body" x="112" y="646">Console workflows for</text>
+  <text class="body" x="112" y="670">agents, config, tests,</text>
+  <text class="body" x="112" y="694">devices and diagnostics</text>
+
+  <rect class="panel" x="80" y="770" width="280" height="150" rx="8" />
+  <text class="label" x="112" y="814">Backend &amp; Data</text>
+  <text class="body" x="112" y="846">Fastify, auth, Drizzle,</text>
+  <text class="body" x="112" y="870">Postgres, tokens, settings,</text>
+  <text class="body" x="112" y="894">deployments and contracts</text>
+
+  <rect class="panel" x="1240" y="170" width="280" height="150" rx="8" />
+  <text class="label" x="1272" y="214">Media Transport</text>
+  <text class="body" x="1272" y="246">Current WebSocket audio</text>
+  <text class="body" x="1272" y="270">and data sessions, future</text>
+  <text class="body" x="1272" y="294">WebRTC/SFU adapters</text>
+
+  <rect class="panel" x="1240" y="370" width="280" height="150" rx="8" />
+  <text class="label" x="1272" y="414">Device Fleet</text>
+  <text class="body" x="1272" y="446">Future presence, commands,</text>
+  <text class="body" x="1272" y="470">telemetry, diagnostics,</text>
+  <text class="body" x="1272" y="494">OTA metadata</text>
+
+  <rect class="panel" x="1240" y="570" width="280" height="150" rx="8" />
+  <text class="label" x="1272" y="614">Dot Hardware</text>
+  <text class="body" x="1272" y="646">CAD, enclosure, acoustics,</text>
+  <text class="body" x="1272" y="670">PCB, BOM, fixtures and</text>
+  <text class="body" x="1272" y="694">reference constraints</text>
+
+  <rect class="panel" x="1240" y="770" width="280" height="150" rx="8" />
+  <text class="label" x="1272" y="814">Firmware &amp; Edge</text>
+  <text class="body" x="1272" y="846">ESP-IDF drivers, wake,</text>
+  <text class="body" x="1272" y="870">audio, display, exploratory</text>
+  <text class="body" x="1272" y="894">MicroPython and inference</text>
+
+  <rect class="panel-soft" x="440" y="645" width="720" height="170" rx="8" />
+  <text class="small-label" x="476" y="690">Docs, tooling, and developer experience</text>
+  <text class="body" x="476" y="724">Setup guides, diagrams, examples, templates, CI, issue routing,</text>
+  <text class="body" x="476" y="748">verification commands, and contributor workflow keep all tracks usable.</text>
+  <rect class="chip" x="476" y="774" width="122" height="30" rx="8" />
+  <text class="chip-text" x="495" y="794">docs canonical</text>
+  <rect class="chip" x="612" y="774" width="104" height="30" rx="8" />
+  <text class="chip-text" x="634" y="794">root links</text>
+  <rect class="chip" x="730" y="774" width="136" height="30" rx="8" />
+  <text class="chip-text" x="749" y="794">GitHub intake</text>
+
+  <path class="line-soft" d="M360 245H385" />
+  <path class="line-soft" d="M360 445H385" />
+  <path class="line-soft" d="M360 645H440" />
+  <path class="line-soft" d="M360 845H440" />
+  <path class="line-soft" d="M1215 245H1240" />
+  <path class="line-soft" d="M1215 445H1240" />
+  <path class="line-soft" d="M1160 645H1240" />
+  <path class="line-soft" d="M1160 845H1240" />
+</svg>

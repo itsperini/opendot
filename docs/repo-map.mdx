@@ -8,6 +8,10 @@ internal boundaries. Start with the smallest area that matches your change, then
 follow the linked docs when your work crosses into runtime, database, or device
 contracts.
 
+Use [Contribution areas](/contribution-areas) to choose the track and maturity
+level first. Use this page after that when you need files, boundaries, and
+verification commands.
+
 ## Top-level layout
 
 | Path                   | What lives there                                                  | Contributor notes                                                              |
@@ -74,6 +78,7 @@ Treat `/api/internal/*` as runtime-to-platform trust boundaries. They depend on
 | Firmware                | `idf.py build` from `dot-device/firmware/` when ESP-IDF is available            |
 | Root docs               | spelling/link review plus `git diff --check`                                    |
 
-Use [Contributing](/contributing) for the first-time contributor workflow and
+Use [Contributing](/contributing) for the first-time contributor workflow,
+[Roadmap](/roadmap) for sequencing, and
 [Runtime configuration](/runtime-configuration) when service URLs or environment
 variables change.

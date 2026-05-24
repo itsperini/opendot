@@ -2,106 +2,76 @@
 
 OpenDot is the open platform for voice agents on real devices.
 
-The roadmap is organized around one product loop: build and tune the voice pipeline, configure agents with knowledge and models, bind them to hardware, and operate sessions in the cloud, local network, or on-device.
+The roadmap is organized around one product loop:
 
-This roadmap is intentionally directional. Priorities may change as the platform, runtime, and device stack mature.
+```text
+build -> tune -> bind -> run -> review
+```
+
+The canonical detailed roadmap lives in [`docs/roadmap.mdx`](docs/roadmap.mdx).
+This root file is the concise entry point for contributors and maintainers.
 
 ## North Star
 
-OpenDot should make it practical to run a full voice agent pipeline wherever the agent needs to live:
+OpenDot should make it practical to run a full voice agent pipeline wherever the
+agent needs to live:
 
 ```text
-audio input -> VAD -> STT -> LLM -> TTS -> audio output
+audio input -> VAD -> STT/ASR -> LLM -> TTS -> audio output
 ```
 
-The platform should expose each stage clearly, make it easy to test and compare configurations, attach knowledge and model choices to agents, and keep the path open for hosted, local-network, and on-device runtimes.
+The platform should expose each stage clearly, make it easy to test and compare
+configurations, attach knowledge and model choices to agents, bind those agents
+to hardware, and keep the path open for cloud, local-network, bare-metal, and
+on-device runtimes.
 
-## Current Milestone: Local Prototype
+## Current
 
-The current milestone is a complete local loop:
+Current work should make the local prototype reliable:
 
-- Create draft agents in the platform UI.
-- Configure VAD, STT, LLM, and TTS stages.
-- Prepare agent prompts, model settings, and runtime presets.
-- Persist local draft agents and device state.
-- Run browser microphone tests through the local voice runtime.
-- Stream assistant text and TTS chunks back to the browser.
-- Pair Dot devices and bind selected voice configurations.
-- Connect ESP32-S3 firmware to the local runtime over WebSocket.
+- Create and select draft agents in the platform console.
+- Configure VAD, STT/ASR, LLM, and TTS stages.
+- Test microphone turns in Browser Test through the local runtime.
+- Pair Dot devices, claim activation codes, and bind selected agent configs.
+- Keep Fastify, Drizzle, PostgreSQL, and runtime token boundaries clear.
+- Run ESP-IDF firmware on the Waveshare ESP32-S3-AUDIO-Board reference target.
+- Keep setup docs, diagrams, and verification commands accurate.
 
-## Near Term
+## Next
 
-### Platform
+Next work should make OpenDot easier to extend:
 
-- Improve agent creation, editing, duplication, and deletion flows.
-- Add knowledge and model configuration surfaces for agents.
-- Add stronger validation for pipeline settings.
-- Add configuration import/export for agents and runtime presets.
-- Improve Browser Test transcript, timing, and audio replay tooling.
-- Add clearer empty, loading, disconnected, and error states.
+- Split voice provider integrations behind clearer adapter boundaries.
+- Improve stage validation, turn handling, interruptions, and runtime events.
+- Add stronger agent configuration, knowledge/model surfaces, harnesses, and
+  eval fixtures.
+- Improve Agent Studio, Browser Test timing/replay, device status, and runtime
+  diagnostics UX.
+- Harden backend validation, API contracts, runtime tokens, device credentials,
+  settings, deployments, and migrations.
+- Improve device diagnostics, activation, OTA metadata, reconnect behavior, and
+  firmware logs.
+- Convert reference-board learnings into open hardware requirements.
+- Expand troubleshooting, diagrams, examples, CI checks, and contributor
+  onboarding.
 
-### Runtime
+## Later
 
-- Stabilize the local WebSocket protocol for browser and device clients.
-- Split provider integrations behind explicit adapter boundaries.
-- Improve turn detection, interruption handling, and end-of-turn behavior.
-- Add structured runtime events for debugging and replay.
-- Make runtime configuration easier to inspect and override.
+Later work should open deeper deployment and hardware paths:
 
-### Device
-
-- Harden Wi-Fi provisioning and activation flows.
-- Improve device logs and diagnostics in the platform UI.
-- Add clearer runtime availability and binding status.
-- Improve OTA/config endpoint behavior for local network changes.
-
-### Documentation
-
-- Expand quickstart and troubleshooting material.
-- Add architecture diagrams for platform, runtime, and device flows.
-- Document provider keys, environment variables, and local network setup.
-- Add firmware setup notes for supported boards.
-
-## Mid Term
-
-### Provider and Model Flexibility
-
-- Add more STT, LLM, and TTS providers.
-- Add local model adapters where practical.
-- Support OpenAI-compatible local inference servers.
-- Support provider presets and per-agent provider selection.
-- Add benchmark and evaluation tools for latency, quality, and cost.
-
-### Observability
-
-- Add per-turn traces across VAD, STT, LLM, TTS, and playback.
-- Record timing, token usage, audio chunk metadata, and error events.
-- Add replay tools for debugging failed or low-quality turns.
-- Add exportable session artifacts for reproducible bug reports.
-
-### Configuration and State
-
-- Move beyond browser local storage for serious project state.
-- Add workspace-level agent, device, and environment management.
-- Add versioned pipeline configurations.
-- Add safer secrets handling for local and deployed runtimes.
-
-### Deployment
-
-- Package the runtime for cloud, local network, and bare-metal deployments.
-- Add Docker and systemd deployment examples.
-- Document reverse proxy, TLS, and local network patterns.
-- Add health checks and process supervision guidance.
-
-## Long Term
-
-- Fully local voice pipelines using self-hosted VAD, STT, LLM, and TTS.
-- Bare-metal runtime deployments with predictable latency.
-- Multi-device and fleet management.
-- Policy, permissions, and audit logs for teams.
-- Production-grade OTA and device lifecycle management.
-- Evaluation harnesses for regression testing agent behavior.
-- Plugin architecture for providers, device classes, and custom tools.
+- Fully local or self-hosted VAD, STT/ASR, LLM, and TTS options.
+- Realtime media transports such as WebRTC/SFU-style paths when WebSocket audio
+  becomes limiting.
+- MQTT-style device presence, desired/reported state, commands, telemetry,
+  diagnostics, OTA metadata, and multi-device coordination.
+- Purpose-built open Dot hardware with CAD, PCB, BOM, fixtures, acoustic notes,
+  and repeatable firmware flashing.
+- Exploratory MicroPython runtime and on-device inference research with honest
+  memory, latency, model-size, and firmware-impact constraints.
+- Session history, replay artifacts, eval harnesses, and reproducible bug
+  reports across pipeline stages and devices.
+- Production deployment guidance for cloud, local-network, and bare-metal
+  runtime targets.
 
 ## Not Yet Goals
 
@@ -109,14 +79,19 @@ These are important, but not the immediate focus:
 
 - hosted multi-tenant SaaS infrastructure
 - marketplace workflows
-- enterprise SSO and billing
-- broad hardware support before the core runtime and device path stabilize
+- enterprise SSO, billing, and procurement
+- broad hardware support before the runtime, firmware, and reference-device path
+  stabilize
+- a named integration matrix before provider, framework, and transport
+  categories are stable enough to maintain
 
 ## Contributing to the Roadmap
 
 Roadmap discussions are welcome. The most useful proposals include:
 
-- the user or operator problem being solved
-- the affected layer: platform, runtime, firmware, docs, or deployment
-- how it fits the real-device, cloud, local-network, or on-device direction
+- the user, operator, or contributor problem being solved
+- the affected contribution area from
+  [`docs/contribution-areas.mdx`](docs/contribution-areas.mdx)
+- how it fits the real-device, cloud, local-network, bare-metal, or on-device
+  direction
 - a small first milestone that can be reviewed and tested

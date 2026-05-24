@@ -1,0 +1,260 @@
+---
+title: Contribution areas
+description: Choose where to contribute to OpenDot across the voice pipeline, agents, platform, transports, devices, firmware, hardware, docs, and tooling.
+---
+
+OpenDot is an open platform for voice agents on real devices. Contributions are
+most useful when they improve one part of the product loop:
+
+```text
+build -> tune -> bind -> run -> review
+```
+
+Use this page to choose a contribution track, understand what exists today, and
+pick a project shape that can be reviewed without turning into a rewrite.
+
+<Frame caption="Contribution tracks wrap the same build, tune, bind, run, and review loop.">
+  <img
+    src="/images/architecture/contribution-map.svg"
+    alt="OpenDot contribution map diagram"
+  />
+</Frame>
+
+<Note>
+  The docs are the canonical contributor map. Root files such as `README.md`,
+  `CONTRIBUTING.md`, and `ROADMAP.md` summarize this page and point back here.
+</Note>
+
+## Track map
+
+| Track                                | Purpose                                                                                                           | Current maturity        |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| Voice Pipeline & Providers           | Make VAD, STT/ASR, LLM, TTS, and provider adapters explicit and replaceable.                                      | Current plus next work  |
+| Voice Agents & Harnesses             | Improve prompts, knowledge, tools, local model harnesses, evals, and framework integration categories.            | Early next work         |
+| Platform Control Plane               | Build the console workflows for agents, configuration, Browser Test, devices, and runtime diagnostics.            | Current work            |
+| Platform Backend & Data              | Own Fastify APIs, auth, Drizzle/Postgres schema, runtime tokens, settings, deployments, and API contracts.        | Current work            |
+| Media Transport                      | Evolve browser/device audio and data sessions from current WebSockets toward future realtime media options.       | Current plus later work |
+| Device Communication & Fleet         | Add reliable presence, commands, telemetry, diagnostics, OTA metadata, and multi-device communication over time.  | Later work              |
+| Dot Hardware                         | Design open hardware paths from reference-board constraints toward CAD, acoustics, PCB, BOM, and fixtures.        | Later work              |
+| Dot Firmware & Edge                  | Improve ESP-IDF drivers, provisioning, wake/audio/display, and research MicroPython or on-device inference later. | Current plus later work |
+| Docs, Tooling & Developer Experience | Make setup, diagrams, examples, CI, templates, and contribution flow easier.                                      | Current work            |
+
+## Voice Pipeline & Providers
+
+**Purpose:** Keep VAD, STT/ASR, LLM, and TTS visible as separate stages while
+making hosted providers, self-hosted services, and local models easier to swap.
+
+**Current state:** The starter runtime uses Deepgram for VAD, STT, and TTS, and
+OpenAI-compatible calls for the LLM stage. The console exposes the stage model
+through Configuration, and the runtime keeps provider calls inside the live voice
+session path.
+
+**Good first directions:** Improve stage validation, document provider keys,
+clarify provider-neutral settings, add test fixtures for pipeline defaults, or
+make error states easier to diagnose in Browser Test.
+
+| Size   | Project brief                                                                          | Verification                                           |
+| ------ | -------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Small  | Clarify one stage setting in docs and show how it affects a live turn.                 | Docs formatting plus a Browser Test note when relevant |
+| Medium | Add or harden a provider adapter boundary without changing the product model.          | `pnpm run lint && pnpm run test && pnpm run build`     |
+| Large  | Add a provider category behind a stable stage contract with docs and failure handling. | Platform checks plus live voice testing when possible  |
+
+**Start in:** [Configuration](/configuration), [Browser Test](/browser-test),
+`platform/src/lib/pipeline.ts`, `platform/src/types.ts`, and
+`platform/src/server/runtime.js`.
+
+## Voice Agents & Harnesses
+
+**Purpose:** Make agent behavior portable and testable through prompts,
+knowledge, tools, model settings, local model harnesses, evals, and
+agent-framework integration categories.
+
+**Current state:** Agent Studio and Configuration provide the first draft-agent
+workflow. Knowledge, tools, local AI/ML harnesses, and formal evals are future
+surfaces rather than mature subsystems.
+
+**Good first directions:** Improve agent copy and empty states, document prompt
+and model expectations, propose eval fixtures, or sketch integration boundaries
+that do not bind OpenDot to one framework.
+
+| Size   | Project brief                                                                             | Verification                                   |
+| ------ | ----------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| Small  | Improve the first-agent path with clearer docs or UI text around prompt/model choices.    | Docs or platform checks based on files touched |
+| Medium | Add a focused harness for comparing agent responses against sample turns.                 | Platform tests and build                       |
+| Large  | Design an agent-framework adapter category with lifecycle, config, and eval expectations. | Architecture review, docs, and targeted tests  |
+
+**Start in:** [Agent Studio](/agent-studio), [Configuration](/configuration),
+[Platform architecture](/architecture), and `platform/src/pages`.
+
+## Platform Control Plane
+
+**Purpose:** Make the web console the place where contributors and operators can
+create agents, tune pipelines, test sessions, bind devices, and see what is
+happening.
+
+**Current state:** The React/Vite console covers login, Agent Studio,
+Configuration, Browser Test, Dot Device, and Settings. The current opportunity is
+to make these workflows more durable, inspectable, and helpful.
+
+**Good first directions:** Improve loading and error states, add clearer
+pipeline summaries, polish device binding feedback, or make Browser Test timing
+and replay more useful.
+
+| Size   | Project brief                                                                             | Verification                                          |
+| ------ | ----------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Small  | Fix a focused UX state such as empty, disconnected, loading, or failed runtime.           | `pnpm run lint && pnpm run test && pnpm run build`    |
+| Medium | Improve a full console workflow such as agent duplication or device binding status.       | Platform checks plus screenshots or a short recording |
+| Large  | Add a runtime diagnostics surface for session history without changing runtime protocols. | Platform checks, docs, and manual runtime testing     |
+
+**Start in:** [Agent Studio](/agent-studio), [Browser Test](/browser-test),
+[Dot Device](/dot-device), and `platform/src/pages`.
+
+## Platform Backend & Data
+
+**Purpose:** Keep the control API, auth, database schema, runtime credentials,
+settings, deployments, and API contracts boring, explicit, and safe to evolve.
+
+**Current state:** Fastify, Drizzle, and PostgreSQL own durable product state.
+The runtime asks the platform API to verify browser voice-session tokens and
+device credentials before accepting live connections.
+
+**Good first directions:** Add request validation, improve auth/device errors,
+document internal trust boundaries, or keep migrations and env examples aligned
+when data contracts change.
+
+| Size   | Project brief                                                                        | Verification                                       |
+| ------ | ------------------------------------------------------------------------------------ | -------------------------------------------------- |
+| Small  | Improve one API error path or validation message with tests.                         | Platform tests and build                           |
+| Medium | Add a typed request/response contract for one backend surface.                       | `pnpm run lint && pnpm run test && pnpm run build` |
+| Large  | Evolve a persisted data contract with schema, migration, API, env, and docs updates. | Platform checks plus migration review              |
+
+**Start in:** [Authentication](/authentication), [Database inspection](/database-inspection),
+`platform/src/server/api.ts`, `platform/src/server/db/schema.ts`, and
+`platform/drizzle`.
+
+## Media Transport
+
+**Purpose:** Carry realtime audio, text, and session events between browsers,
+devices, and the runtime while preserving the voice pipeline product model.
+
+**Current state:** Browser sessions use `/voice` WebSocket connections. Dot
+devices use `/ws` WebSocket connections. WebRTC, SFU-style media infrastructure,
+and realtime API integrations are future transport adapters, not rewrites of the
+control plane.
+
+**Good first directions:** Document current message flows, improve connection
+diagnostics, add structured runtime events, or benchmark WebSocket audio limits.
+
+| Size   | Project brief                                                                             | Verification                                           |
+| ------ | ----------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Small  | Clarify one browser or device WebSocket flow in docs.                                     | Docs formatting and link checks                        |
+| Medium | Add runtime event logging for connection, turn, or transport failures.                    | Platform checks plus Browser Test                      |
+| Large  | Prototype a transport adapter shape that keeps pipeline and credential boundaries intact. | Architecture review, tests, and manual runtime testing |
+
+**Start in:** [Platform architecture](/architecture), [Runtime configuration](/runtime-configuration),
+`platform/src/server/runtime.js`, and `platform/platform-architecture.md`.
+
+## Device Communication & Fleet
+
+**Purpose:** Move beyond live session sockets toward reliable device presence,
+desired/reported state, commands, telemetry, diagnostics, OTA metadata, and
+multi-device coordination.
+
+**Current state:** Device communication is currently tied to activation, OTA
+bootstrap, runtime WebSocket sessions, platform device state, and console
+binding. MQTT-style fleet communication is a later track once the device
+lifecycle needs it.
+
+**Good first directions:** Make current device state easier to inspect, document
+activation failure modes, or specify the future state/command contract before
+introducing a broker.
+
+| Size   | Project brief                                                                         | Verification                                    |
+| ------ | ------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| Small  | Improve docs around activation codes, LAN reachability, or device state.              | Docs formatting and link checks                 |
+| Medium | Add clearer device diagnostics in the platform without adding a new protocol.         | Platform checks and manual device/runtime notes |
+| Large  | Design the MQTT-style presence and command model with local-first broker assumptions. | Architecture review and docs                    |
+
+**Start in:** [Dot Device](/dot-device), [Dot device](/device-firmware-hardware),
+[Platform architecture](/architecture), and `platform/src/server/api.ts`.
+
+## Dot Hardware
+
+**Purpose:** Turn real-device constraints into open hardware work: CAD,
+enclosure, acoustics, microphone and speaker placement, PCB, BOM, fixtures, and
+manufacturability.
+
+**Current state:** OpenDot currently targets the Waveshare ESP32-S3-AUDIO-Board
+as the tested reference board. Purpose-built Dot hardware is a future open
+hardware direction.
+
+**Good first directions:** Capture reference-board constraints, document acoustic
+tradeoffs, create hardware requirement notes, or prepare contribution criteria
+for future CAD and PCB files.
+
+| Size   | Project brief                                                                             | Verification                            |
+| ------ | ----------------------------------------------------------------------------------------- | --------------------------------------- |
+| Small  | Improve the hardware docs with one concrete board, audio, power, or enclosure constraint. | Docs formatting and source review       |
+| Medium | Draft an open hardware requirements page that firmware and industrial design can share.   | Docs review and architecture alignment  |
+| Large  | Add initial CAD/PCB contribution structure once source hardware files exist.              | Hardware review plus source-file checks |
+
+**Start in:** [Dot device](/device-firmware-hardware) and
+`dot-device/firmware/main/boards/waveshare/esp32-s3-audio-board`.
+
+## Dot Firmware & Edge
+
+**Purpose:** Improve the ESP-IDF firmware that runs on current hardware while
+keeping a later path open for MicroPython runtime exploration and on-device
+inference research.
+
+**Current state:** Firmware is an ESP-IDF project for the Waveshare ESP32-S3
+audio board. It handles Wi-Fi provisioning, OTA bootstrap, activation, wake-word
+flow, audio I/O, display, LEDs, and WebSocket runtime connection. MicroPython and
+on-device inference are exploratory later tracks, not current architecture.
+
+**Good first directions:** Improve serial diagnostics, harden provisioning,
+document board configuration, fix driver assumptions, or make runtime endpoint
+setup less error-prone.
+
+| Size   | Project brief                                                                                         | Verification                             |
+| ------ | ----------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| Small  | Clarify one firmware setup, flashing, or serial-monitoring step.                                      | Docs review and `git diff --check`       |
+| Medium | Improve provisioning, logs, board config, or WebSocket reconnect behavior.                            | `idf.py build` when ESP-IDF is available |
+| Large  | Research an edge runtime or on-device inference path with memory, latency, and firmware impact notes. | Firmware build plus architecture docs    |
+
+**Start in:** [Dot device](/device-firmware-hardware),
+`dot-device/firmware/README.md`, and `dot-device/firmware/main`.
+
+## Docs, Tooling & Developer Experience
+
+**Purpose:** Make it easy for contributors to understand the product loop, run
+the stack, choose a track, and open focused pull requests.
+
+**Current state:** Docs live in Mintlify, root docs introduce the project, CI
+runs formatting/lint/test/build for the platform, and GitHub templates route
+bugs and feature requests.
+
+**Good first directions:** Improve quickstart, troubleshooting, diagrams, issue
+templates, examples, local scripts, or verification guidance.
+
+| Size   | Project brief                                                            | Verification                      |
+| ------ | ------------------------------------------------------------------------ | --------------------------------- |
+| Small  | Fix stale setup text, broken links, or unclear contributor instructions. | Formatting and link checks        |
+| Medium | Add a focused guide or diagram for one workflow.                         | Docs preview or link checks       |
+| Large  | Improve contributor tooling or CI without changing product behavior.     | `pnpm run ci` and workflow review |
+
+**Start in:** [Contributing](/contributing), [Repo map](/repo-map), `docs/`,
+`.github/`, and root docs.
+
+## Picking a first pull request
+
+- Choose one track and one user-visible outcome.
+- Prefer a change that can be reviewed with one primary command or one manual
+  workflow.
+- Link the affected docs page when your change alters setup, configuration,
+  runtime behavior, device behavior, or architecture.
+- Keep provider, protocol, and hardware proposals category-level unless the
+  implementation already exists in the repository.
+
+For the higher-level sequencing, see the [Roadmap](/roadmap). For file-level
+orientation, see the [Repo map](/repo-map).

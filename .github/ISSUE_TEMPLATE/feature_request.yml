@@ -17,13 +17,17 @@ body:
       required: true
   - type: dropdown
     attributes:
-      label: Affected area
+      label: Contribution track
       options:
-        - Platform UI
-        - Voice runtime
-        - Dot device firmware
-        - Docs
-        - Tooling or CI
+        - Voice Pipeline & Providers
+        - Voice Agents & Harnesses
+        - Platform Control Plane
+        - Platform Backend & Data
+        - Media Transport
+        - Device Communication & Fleet
+        - Dot Hardware
+        - Dot Firmware & Edge
+        - Docs, Tooling & Developer Experience
         - Other
     validations:
       required: true

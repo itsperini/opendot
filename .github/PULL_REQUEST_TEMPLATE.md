@@ -2,6 +2,10 @@
 
 <!-- Summarize the change and why it matters. -->
 
+## Contribution Track
+
+<!-- Pick one primary track: Voice Pipeline & Providers, Voice Agents & Harnesses, Platform Control Plane, Platform Backend & Data, Media Transport, Device Communication & Fleet, Dot Hardware, Dot Firmware & Edge, or Docs, Tooling & Developer Experience. -->
+
 ## Release Notes
 
 <!-- PR titles must use Conventional Commits because squash merges feed semantic-release. Target develop for normal PRs. -->

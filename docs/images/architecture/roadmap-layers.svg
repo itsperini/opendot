@@ -1,0 +1,92 @@
+<svg width="1600" height="1040" viewBox="0 0 1600 1040" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="roadmap-layers-title roadmap-layers-desc">
+  <title id="roadmap-layers-title">OpenDot roadmap layers</title>
+  <desc id="roadmap-layers-desc">Current, next, and later layers for the OpenDot voice-agent platform roadmap.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0L11 5.5L0 11Z" fill="#6d28d9" />
+    </marker>
+    <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#2e1065" flood-opacity="0.09" />
+    </filter>
+    <style>
+      .bg { fill: #fbf9ff; }
+      .panel { fill: #fff; stroke: #e8ddf8; stroke-width: 2; filter: url(#soft-shadow); }
+      .panel-soft { fill: #f7f5fb; stroke: #e8ddf8; stroke-width: 2; }
+      .dark { fill: #14091f; stroke: #6d28d9; stroke-opacity: .52; stroke-width: 2; }
+      .title { font-family: Manrope, Arial, sans-serif; font-size: 40px; font-weight: 800; fill: #171321; }
+      .subtitle { font-family: Manrope, Arial, sans-serif; font-size: 18px; font-weight: 500; fill: #625c6f; }
+      .label { font-family: Manrope, Arial, sans-serif; font-size: 23px; font-weight: 800; fill: #171321; }
+      .dark-label { font-family: Manrope, Arial, sans-serif; font-size: 23px; font-weight: 800; fill: #fff; }
+      .body { font-family: Manrope, Arial, sans-serif; font-size: 14px; font-weight: 500; fill: #625c6f; }
+      .dark-body { font-family: Manrope, Arial, sans-serif; font-size: 14px; font-weight: 600; fill: #ede9fe; }
+      .chip { fill: #ede9fe; stroke: #d8c3f7; stroke-width: 1.5; }
+      .chip-text { font-family: Manrope, Arial, sans-serif; font-size: 12px; font-weight: 800; fill: #5b21b6; }
+      .line { stroke: #6d28d9; stroke-width: 2.5; marker-end: url(#arrow); }
+      .line-soft { stroke: #a78bfa; stroke-width: 2.1; stroke-dasharray: 8 8; marker-end: url(#arrow); }
+      .mono { font-family: SFMono-Regular, Consolas, monospace; font-size: 13px; font-weight: 700; fill: #5b21b6; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1600" height="1040" />
+  <text class="title" x="80" y="82">OpenDot roadmap layers</text>
+  <text class="subtitle" x="80" y="116">Current work stabilizes the local loop. Next work modularizes the platform. Later work opens fleet, hardware, and edge paths.</text>
+
+  <rect class="dark" x="105" y="210" width="410" height="615" rx="8" />
+  <text class="dark-label" x="145" y="260">Current</text>
+  <text class="dark-body" x="145" y="292">Complete local prototype</text>
+  <rect class="chip" x="145" y="340" width="120" height="34" rx="8" />
+  <text class="chip-text" x="168" y="362">Agent drafts</text>
+  <rect class="chip" x="282" y="340" width="136" height="34" rx="8" />
+  <text class="chip-text" x="302" y="362">Pipeline stages</text>
+  <rect class="chip" x="145" y="396" width="136" height="34" rx="8" />
+  <text class="chip-text" x="168" y="418">Browser Test</text>
+  <rect class="chip" x="298" y="396" width="142" height="34" rx="8" />
+  <text class="chip-text" x="320" y="418">Device binding</text>
+  <text class="dark-body" x="145" y="492">Fastify API verifies runtime tokens</text>
+  <text class="dark-body" x="145" y="520">PostgreSQL stores product state</text>
+  <text class="dark-body" x="145" y="548">Runtime owns live WebSocket sessions</text>
+  <text class="dark-body" x="145" y="576">Firmware runs on ESP32-S3 reference board</text>
+  <text class="mono" x="145" y="680">Deepgram -> OpenAI-compatible -> Deepgram</text>
+
+  <rect class="panel" x="595" y="210" width="410" height="615" rx="8" />
+  <text class="label" x="635" y="260">Next</text>
+  <text class="body" x="635" y="292">Make the prototype easier to extend</text>
+  <rect class="panel-soft" x="635" y="338" width="300" height="70" rx="8" />
+  <text class="body" x="660" y="367">Provider adapter boundaries</text>
+  <text class="body" x="660" y="391">and clearer stage validation</text>
+  <rect class="panel-soft" x="635" y="430" width="300" height="70" rx="8" />
+  <text class="body" x="660" y="459">Agent knowledge, model config,</text>
+  <text class="body" x="660" y="483">harnesses and eval fixtures</text>
+  <rect class="panel-soft" x="635" y="522" width="300" height="70" rx="8" />
+  <text class="body" x="660" y="551">Structured runtime events,</text>
+  <text class="body" x="660" y="575">timing, replay and diagnostics</text>
+  <rect class="panel-soft" x="635" y="614" width="300" height="70" rx="8" />
+  <text class="body" x="660" y="643">Device state, firmware logs,</text>
+  <text class="body" x="660" y="667">OTA and activation hardening</text>
+  <text class="mono" x="635" y="744">modular monolith -> clear adapters</text>
+
+  <rect class="panel" x="1085" y="210" width="410" height="615" rx="8" />
+  <text class="label" x="1125" y="260">Later</text>
+  <text class="body" x="1125" y="292">Open hardware, fleet, and edge paths</text>
+  <rect class="panel-soft" x="1125" y="338" width="300" height="70" rx="8" />
+  <text class="body" x="1150" y="367">Self-hosted and local VAD,</text>
+  <text class="body" x="1150" y="391">STT/ASR, LLM and TTS models</text>
+  <rect class="panel-soft" x="1125" y="430" width="300" height="70" rx="8" />
+  <text class="body" x="1150" y="459">WebRTC/SFU-style media and</text>
+  <text class="body" x="1150" y="483">MQTT-style device communication</text>
+  <rect class="panel-soft" x="1125" y="522" width="300" height="70" rx="8" />
+  <text class="body" x="1150" y="551">Open Dot hardware: CAD, PCB,</text>
+  <text class="body" x="1150" y="575">BOM, acoustics and fixtures</text>
+  <rect class="panel-soft" x="1125" y="614" width="300" height="70" rx="8" />
+  <text class="body" x="1150" y="643">Exploratory MicroPython and</text>
+  <text class="body" x="1150" y="667">on-device inference research</text>
+  <text class="mono" x="1125" y="744">cloud + local network + bare metal + edge</text>
+
+  <path class="line" d="M515 518H585" />
+  <path class="line" d="M1005 518H1075" />
+  <path class="line-soft" d="M310 825V910H1290V835" />
+  <text class="mono" x="565" y="910">The product model stays stable: build -> tune -> bind -> run -> review</text>
+
+  <rect class="panel-soft" x="260" y="880" width="1080" height="78" rx="8" />
+  <text class="body" x="300" y="924">Roadmap proposals should name the contribution area, the user problem, the deployment target, and the smallest testable milestone.</text>
+</svg>

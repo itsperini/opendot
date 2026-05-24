@@ -1,23 +1,46 @@
 # Contributing to OpenDot
 
-Thanks for taking the time to contribute. OpenDot is the open platform for voice agents on real devices, and good contributions can come from many directions: product thinking, platform UI, realtime runtime work, firmware, documentation, tests, examples, and issue triage.
+Thanks for taking the time to contribute. OpenDot is the open platform for voice
+agents on real devices. The best contributions improve one part of the loop:
+
+```text
+build -> tune -> bind -> run -> review
+```
+
+The canonical contributor map lives in
+[`docs/contribution-areas.mdx`](docs/contribution-areas.mdx). Use this root file
+for setup, pull request expectations, and the checks maintainers expect.
 
 ## Project Principles
 
-- **Real devices first**: agent configuration should connect cleanly to hardware, sessions, and deployment targets.
-- **Pipeline transparency**: VAD, STT, LLM, and TTS should be visible, tunable, and replaceable.
-- **Agent context matters**: prompts, knowledge, models, and runtime presets should be understandable and portable.
-- **Flexible operation**: cloud, local-network, and on-device sessions should share a coherent product model.
-- **Small, reviewable changes**: prefer focused pull requests over broad rewrites.
+- **Real devices first:** agent configuration should connect cleanly to hardware,
+  sessions, and deployment targets.
+- **Pipeline transparency:** VAD, STT/ASR, LLM, and TTS should stay visible,
+  tunable, and replaceable.
+- **Agent context matters:** prompts, knowledge, models, tools, and runtime
+  presets should be understandable and portable.
+- **Flexible operation:** cloud, local-network, bare-metal, and on-device paths
+  should share a coherent product model.
+- **Small, reviewable changes:** prefer focused pull requests over broad
+  rewrites.
 
-## Ways to Contribute
+## Contribution Tracks
 
-- Fix bugs in the platform UI or local runtime.
-- Improve provider adapters, audio handling, streaming behavior, or runtime configuration.
-- Improve ESP-IDF firmware setup, provisioning, device activation, or diagnostics.
-- Add documentation, diagrams, examples, and troubleshooting notes.
-- Improve type safety, validation, testing, and release hygiene.
-- Open issues that clearly describe expected behavior, actual behavior, and reproduction steps.
+| Track                                | Good contributions                                                                                | Minimum checks                                                 |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Voice Pipeline & Providers           | VAD, STT/ASR, LLM, TTS, realtime APIs, provider adapters, modular stage contracts                 | Platform checks plus live Browser Test when possible           |
+| Voice Agents & Harnesses             | Prompts, knowledge, tools, local model harnesses, evals, framework integration categories         | Platform checks and docs when behavior changes                 |
+| Platform Control Plane               | Agent Studio, Configuration, Browser Test, Dot Device, Settings, runtime diagnostics UX           | `pnpm run lint && pnpm run test && pnpm run build`             |
+| Platform Backend & Data              | Fastify API, auth, Drizzle/Postgres schema, runtime tokens, settings, deployments, API contracts  | Platform checks plus migration review when data changes        |
+| Media Transport                      | WebSocket audio/data sessions, runtime session protocols, future WebRTC/SFU-style adapters        | Platform checks plus manual runtime testing                    |
+| Device Communication & Fleet         | Device presence, desired/reported state, commands, telemetry, diagnostics, OTA metadata           | Platform/runtime checks and device notes when relevant         |
+| Dot Hardware                         | CAD, enclosure, acoustics, PCB, BOM, fixtures, manufacturability, reference constraints           | Hardware/source review and docs checks                         |
+| Dot Firmware & Edge                  | ESP-IDF drivers, provisioning, wake/audio/display, exploratory MicroPython and inference research | `idf.py build` when ESP-IDF is available                       |
+| Docs, Tooling & Developer Experience | Setup docs, diagrams, examples, CI, templates, contributor workflow                               | `pnpm run format:check -- docs` and link checks when available |
+
+MicroPython runtime work and on-device inference are exploratory later tracks,
+not current firmware architecture. Keep proposals honest about memory, latency,
+model size, and firmware impact.
 
 ## Development Setup
 
@@ -32,15 +55,11 @@ corepack prepare pnpm@11.1.3 --activate
 pnpm install
 ```
 
-Start the web console:
+Run the web console, API, and runtime as separate processes:
 
 ```bash
+pnpm run api
 pnpm run dev
-```
-
-Start the local voice runtime in a second terminal:
-
-```bash
 pnpm run runtime
 ```
 
@@ -51,37 +70,30 @@ DEEPGRAM_API_KEY=...
 OPENAI_API_KEY=...
 ```
 
-## Project Structure
+For the fastest full-stack local run, Docker Compose is also available:
 
-```text
-docs/                  Mintlify documentation
-dot-device/firmware/   ESP-IDF firmware for the Dot device prototype
-platform/              React platform UI and local voice runtime
+```bash
+docker compose up --build
 ```
+
+Open the console at `http://localhost:5173`.
 
 ## Before Opening a Pull Request
 
-Run the checks that match your change:
+- Target `develop` for normal pull requests. `main` is the stable release
+  branch and receives promotion PRs from `develop`.
+- Use a Conventional Commit PR title. Squash merges use the PR title as the
+  commit semantic-release reads.
+- Choose one contribution track and one user-visible or operator-visible
+  outcome.
+- Update docs when setup, runtime behavior, configuration, device flow, or
+  architecture changes.
+- Include screenshots or short recordings for visible UI changes.
+- Describe browser, runtime, firmware, or device testing when touching audio,
+  WebSocket, activation, provisioning, firmware, or hardware behavior.
+- Keep secrets out of commits. Use `.env` locally and keep `.env.example` safe.
 
-```bash
-pnpm run ci
-```
-
-For docs changes:
-
-```bash
-cd docs
-mint broken-links
-```
-
-For firmware changes, build with the ESP-IDF environment described in `dot-device/firmware/README.md`.
-
-Target the `develop` branch for normal pull requests. `main` is the stable
-release branch; maintainers promote `develop` to `main` when the next release is
-ready.
-
-Use a Conventional Commit pull request title because squash merges use the PR
-title as the commit that semantic-release reads:
+Examples:
 
 ```text
 feat(platform): add device pairing status
@@ -89,19 +101,22 @@ fix(runtime): close stale voice sessions
 docs: clarify firmware setup
 ```
 
-Release-impacting types are `feat`, `fix`, and `perf`. `docs`, `chore`, `ci`,
-`test`, `style`, `refactor`, and `build` do not create a release unless the
-commit is intentionally marked as breaking with `!` or a `BREAKING CHANGE:`
-footer.
+Run the checks that match your change:
 
-## Pull Request Guidelines
+```bash
+pnpm run ci
+```
 
-- Keep the pull request focused on one problem or feature.
-- Include a concise description of the change and why it matters.
-- Add screenshots or short recordings for visible UI changes.
-- Describe runtime or device testing when audio, WebSocket, firmware, or provisioning behavior changes.
-- Update docs when behavior, setup, configuration, or user workflows change.
-- Avoid unrelated formatting churn and broad refactors in feature PRs.
+For docs changes, also run Mintlify link validation from `docs/` when the CLI is
+available:
+
+```bash
+cd docs
+mint broken-links
+```
+
+For firmware changes, build with the ESP-IDF environment described in
+`dot-device/firmware/README.md`.
 
 ## Release Flow
 
@@ -123,30 +138,41 @@ The release flow is:
 
 The initial release package is source plus release notes only. Docker images,
 npm packages, firmware binaries, and firmware OTA version syncing are deferred
-until those distribution channels are intentionally added. Firmware source
-changes can still affect the OpenDot version when they add, fix, or break user
-behavior.
+until those distribution channels are intentionally added.
 
-## Coding Guidelines
+## Public Alpha Release Checklist
 
-- Follow the style already present in the touched files.
-- Prefer explicit, readable control flow over clever abstractions.
-- Keep runtime configuration names clear and documented.
-- Keep provider-specific behavior behind replaceable boundaries where possible.
-- Treat firmware and runtime logs as user-facing diagnostics: make them useful.
+Before a public alpha release, maintainers should confirm:
+
+- `v0.1.0` remains as published history; do not move pushed release tags.
+- The release ships source and GitHub Release notes only.
+- No Docker images, npm packages, firmware binaries, or OTA channel are implied.
+- Local platform checks pass with Node 24: `pnpm run ci`.
+- Dependency audit has no known moderate-or-higher vulnerabilities:
+  `pnpm audit --audit-level moderate`.
+- Docs links pass with `cd docs && mint broken-links`.
+- `docker compose config --quiet` passes.
+- GitHub issue template YAML and checked-in SVG diagrams parse.
+- Firmware builds with ESP-IDF 5.5.2 from `dot-device/firmware`.
+- Firmware logs do not print Wi-Fi passwords, provider keys, runtime secrets, or
+  device credentials.
+- Browser Test completes one full spoken turn with real provider keys before
+  release notes claim the live voice loop works.
 
 ## Documentation Guidelines
 
 - Write docs for someone setting up the project for the first time.
 - Prefer concrete commands and expected outputs over vague descriptions.
 - Keep prototype limitations visible instead of hiding them.
-- Update `README.md`, `docs/`, or firmware notes when the contribution changes setup or architecture.
+- Keep the docs canonical and link root files back to them when the detail grows.
+- Update `README.md`, `docs/`, or firmware notes when a contribution changes
+  setup or architecture.
 
 ## Reporting Bugs
 
 When opening a bug report, include:
 
-- the affected area: platform, runtime, docs, or firmware
+- the affected contribution track
 - your operating system and relevant tool versions
 - steps to reproduce
 - expected behavior
@@ -155,4 +181,5 @@ When opening a bug report, include:
 
 ## Security Issues
 
-Do not open public issues for vulnerabilities. Follow the process in [SECURITY.md](SECURITY.md).
+Do not open public issues for vulnerabilities. Follow the process in
+[SECURITY.md](SECURITY.md).
