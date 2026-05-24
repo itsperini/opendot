@@ -1,11 +1,15 @@
 import { FormEvent, useState } from "react";
 import { CheckCircle2, Copy, KeyRound, LogOut, Settings2, Trash2 } from "lucide-react";
-import type { UserApiKey, UserSettings } from "../types";
+import { PageHeader } from "../layout/PageHeader";
+import type { UserApiKey, UserSettings, VoiceAgent } from "../types";
 
 type SettingsPageProps = {
+  agents: VoiceAgent[];
   apiKeys: UserApiKey[];
+  selectedAgentId: string | null;
   settings: UserSettings;
   onCreateApiKey: (name: string) => void;
+  onSelectAgent: (agentId: string) => void;
   onRevokeApiKey: (keyId: string) => void;
   onSignOut: () => void;
   onSettingChange: <Key extends keyof UserSettings>(
@@ -40,9 +44,12 @@ function maskToken(token: string | null) {
 }
 
 export function SettingsPage({
+  agents,
   apiKeys,
+  selectedAgentId,
   settings,
   onCreateApiKey,
+  onSelectAgent,
   onRevokeApiKey,
   onSignOut,
   onSettingChange,
@@ -77,14 +84,16 @@ export function SettingsPage({
 
   return (
     <section className="page-section" aria-labelledby="settings-title">
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">Settings</p>
-          <h2 id="settings-title">User settings</h2>
-        </div>
-      </div>
+      <PageHeader
+        agents={agents}
+        eyebrow="Settings"
+        selectedAgentId={selectedAgentId}
+        title="Workspace"
+        titleId="settings-title"
+        onSelectAgent={onSelectAgent}
+      />
 
-      <div className="settings-page-grid">
+      <div className="page-body settings-page-grid">
         <section className="panel user-settings-panel">
           <div className="panel-heading compact">
             <div>

@@ -1,6 +1,6 @@
 ---
 title: Quickstart
-description: Run the platform locally, create a voice agent, and test a turn.
+description: Run the platform locally, create an agent identity, and test a turn.
 ---
 
 This guide gets the current OpenDot platform, database, API, and local voice runtime running.
@@ -32,10 +32,10 @@ work.
 
 The Compose stack starts PostgreSQL, applies migrations, serves the web console, and exposes the voice runtime at `http://localhost:8787`. The default local run uses OpenDot email/password auth; Supabase Auth can be enabled later with `SUPABASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and a Supabase `POSTGRES_URI`.
 
-## 2. Create and test an agent
+## 2. Create and test an identity
 
 1. Open **Agent Studio**.
-2. Create a draft agent with a name and description.
+2. Create an agent identity with a name and description.
 3. Open **Configuration** and review the default pipeline.
 4. Open **Browser Test**.
 5. Click **Connect**.
@@ -45,7 +45,7 @@ The Compose stack starts PostgreSQL, applies migrations, serves the web console,
 The default pipeline is:
 
 ```text
-Deepgram VAD -> Deepgram STT -> OpenAI LLM -> Deepgram TTS
+Deepgram VAD -> Deepgram STT -> OpenAI-compatible LLM -> Deepgram TTS
 ```
 
 ## 3. Optional pnpm workflow
@@ -85,11 +85,14 @@ Add real provider keys to the root `.env` before using the runtime:
 ```bash
 DEEPGRAM_API_KEY=...
 OPENAI_API_KEY=...
+OPENAI_BASE_URL=
+OPENAI_MODEL=gpt-5.1
 ```
 
 ## 4. Optional device check
 
-Open **Dot Device** to claim a spoken device code, refresh runtime availability, and bind the selected agent config to the device.
+Open **Dot Device** to claim a spoken device code, refresh runtime availability,
+and bind the active identity config to the device.
 
 The default runtime endpoints are:
 

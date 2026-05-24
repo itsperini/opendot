@@ -737,8 +737,8 @@ export function TestAgentPanel({ agent }: TestAgentPanelProps) {
     <section className="panel test-panel" aria-labelledby="test-agent-title">
       <div className="panel-heading compact">
         <div>
-          <p className="eyebrow">Browser Test</p>
-          <h2 id="test-agent-title">Run this agent</h2>
+          <p className="eyebrow">Runtime</p>
+          <h2 id="test-agent-title">Session controls</h2>
         </div>
         <span className={`runtime-status ${status}`}>{status}</span>
       </div>

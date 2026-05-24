@@ -1,6 +1,11 @@
 export type PipelineStageId = "vad" | "stt" | "llm" | "tts";
 
-export type StageSettingValue = string | number | boolean | string[];
+export type StageSettingValue =
+  | string
+  | number
+  | boolean
+  | string[]
+  | Record<string, string>;
 
 export type StageOption = {
   label: string;
@@ -13,7 +18,20 @@ export type StageSetting = {
   label: string;
   value: StageSettingValue;
   unit?: string;
-  control: "select" | "multi-select" | "switch" | "textarea";
+  placeholder?: string;
+  min?: number;
+  max?: number;
+  maxItems?: number;
+  step?: number;
+  control:
+    | "select"
+    | "multi-select"
+    | "multi-text"
+    | "switch"
+    | "textarea"
+    | "text"
+    | "number"
+    | "key-value-list";
   options?: StageOption[];
 };
 
@@ -23,6 +41,7 @@ export type PipelineStage = {
   provider: string;
   model: string;
   modelOptions: StageOption[];
+  allowCustomModel?: boolean;
   purpose: string;
   latencyTargetMs: number;
   settings: StageSetting[];

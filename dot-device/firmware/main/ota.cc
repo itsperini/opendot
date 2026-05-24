@@ -459,7 +459,7 @@ std::string Ota::GetActivationPayload() {
     cJSON_free(json_str);
     cJSON_Delete(payload);
 
-    ESP_LOGI(TAG, "Activation payload: %s", json.c_str());
+    ESP_LOGI(TAG, "Activation payload prepared");
     return json;
 }
 

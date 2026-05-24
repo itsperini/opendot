@@ -16,7 +16,8 @@ const config = {
     "opendot-local-runtime-internal-secret-change-me",
   deepgramApiKey: process.env.DEEPGRAM_API_KEY,
   openaiApiKey: process.env.OPENAI_API_KEY,
-  openaiModel: process.env.OPENAI_MODEL || "gpt-5.4-mini",
+  openaiBaseUrl: process.env.OPENAI_BASE_URL || "",
+  openaiModel: process.env.OPENAI_MODEL || "gpt-5.1",
   systemPrompt:
     process.env.OPENDOT_SYSTEM_PROMPT ||
     "You are a concise voice assistant. Answer naturally in one or two short spoken paragraphs.",
@@ -373,6 +374,37 @@ function booleanSetting(stage, key, fallback) {
   return Boolean(value);
 }
 
+function numberSetting(stage, key, fallback) {
+  const value = setting(stage, key, fallback);
+  const numericValue = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(numericValue) ? numericValue : fallback;
+}
+
+function stringListSetting(stage, key, fallback = []) {
+  const value = setting(stage, key, fallback);
+  if (!Array.isArray(value)) {
+    return fallback;
+  }
+
+  return value
+    .map(String)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function recordSetting(stage, key, fallback = {}) {
+  const value = setting(stage, key, fallback);
+  if (!value || Array.isArray(value) || typeof value !== "object") {
+    return fallback;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .map(([entryKey, entryValue]) => [entryKey.trim(), String(entryValue)])
+      .filter(([entryKey]) => entryKey.length > 0),
+  );
+}
+
 function stage(agent, id) {
   return agent?.pipeline?.find((item) => item.id === id);
 }
@@ -421,9 +453,22 @@ function normalizeAgentConfig(agent) {
     listen,
     llm: {
       model: llm?.model || config.openaiModel,
-      reasoning_effort: String(setting(llm, "reasoning_effort", "none")),
-      verbosity: String(setting(llm, "verbosity", "low")),
+      api: normalizeOpenAIApi(setting(llm, "api", "responses")),
+      apiKeyName: stringSetting(llm, "api_key_name", "").trim() || "OPENAI_API_KEY",
+      baseUrl: stringSetting(llm, "base_url", "").trim() || config.openaiBaseUrl,
+      temperature: numberSetting(llm, "temperature", 1),
+      maxOutputTokens: stringSetting(llm, "max_output_tokens", "").trim(),
+      reasoning_effort: String(setting(llm, "reasoning_effort", "default")),
+      verbosity: String(setting(llm, "verbosity", "default")),
       stream: selectedFeature(llm, "stream", true, "response_features"),
+      stopSequences: stringListSetting(llm, "stop_sequences", []).slice(0, 4),
+      seed: stringSetting(llm, "seed", "").trim(),
+      jsonMode: booleanSetting(llm, "json_mode", false),
+      extraHeaders: recordSetting(llm, "extra_headers", {}),
+      timeoutSeconds: numberSetting(llm, "timeout_s", 70),
+      maxRetries: numberSetting(llm, "max_retries", 2),
+      requestsPerSecond: numberSetting(llm, "requests_per_second", 50),
+      extraParameters: stringSetting(llm, "extra_parameters", "{}").trim() || "{}",
     },
     tts: {
       model: tts?.model || config.ttsModel,
@@ -696,6 +741,20 @@ function responseInputMessage(message) {
   };
 }
 
+function chatInputMessage(message) {
+  return {
+    role: message.role,
+    content: message.content,
+  };
+}
+
+function chatInstructionsMessage(runtimeConfig) {
+  return {
+    role: "system",
+    content: responseInstructions(runtimeConfig),
+  };
+}
+
 function elapsedMs(turn, at = Date.now()) {
   return Math.max(0, at - turn.startedAt);
 }
@@ -717,6 +776,349 @@ function sendTimeline(session, turn, payload) {
   });
 }
 
+const defaultOpenAIBaseUrl = "https://api.openai.com/v1";
+let openaiRateLimitQueue = Promise.resolve();
+let lastOpenAIRequestAt = 0;
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function normalizeOpenAIBaseUrl(baseUrl) {
+  return (String(baseUrl || "").trim() || defaultOpenAIBaseUrl).replace(/\/+$/, "");
+}
+
+function normalizeOpenAIApi(api) {
+  const normalized = String(api || "responses")
+    .trim()
+    .toLowerCase();
+  if (["chat", "chat-completions", "chat_completions"].includes(normalized)) {
+    return "chat_completions";
+  }
+  return "responses";
+}
+
+function openAIResponseUrl(llmConfig) {
+  const baseUrl = normalizeOpenAIBaseUrl(llmConfig.baseUrl);
+  return baseUrl.endsWith("/responses") ? baseUrl : `${baseUrl}/responses`;
+}
+
+function openAIChatCompletionsUrl(llmConfig) {
+  const baseUrl = normalizeOpenAIBaseUrl(llmConfig.baseUrl);
+  return baseUrl.endsWith("/chat/completions") ? baseUrl : `${baseUrl}/chat/completions`;
+}
+
+function openAIApiKey(llmConfig) {
+  const apiKeyName = String(llmConfig.apiKeyName || "OPENAI_API_KEY").trim();
+  return apiKeyName ? process.env[apiKeyName] || "" : "";
+}
+
+function usesDefaultOpenAIEndpoint(llmConfig) {
+  return normalizeOpenAIBaseUrl(llmConfig.baseUrl) === defaultOpenAIBaseUrl;
+}
+
+function hasRequiredLlmCredentials(runtimeConfig) {
+  const llmConfig = runtimeConfig?.llm || {};
+  return !usesDefaultOpenAIEndpoint(llmConfig) || Boolean(openAIApiKey(llmConfig));
+}
+
+function openAIHeaders(llmConfig) {
+  const headers = {
+    "Content-Type": "application/json",
+    ...llmConfig.extraHeaders,
+  };
+  const apiKey = openAIApiKey(llmConfig);
+
+  if (apiKey && !headers.Authorization && !headers.authorization) {
+    headers.Authorization = `Bearer ${apiKey}`;
+  }
+
+  return headers;
+}
+
+function parseJsonObject(value, label) {
+  try {
+    const parsed = JSON.parse(String(value || "{}"));
+    if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") {
+      throw new Error(`${label} must be a JSON object.`);
+    }
+    return parsed;
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error(`${label} must be valid JSON.`);
+    }
+    throw error;
+  }
+}
+
+function optionalInteger(value, label) {
+  const trimmed = String(value ?? "").trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const numericValue = Number(trimmed);
+  if (!Number.isInteger(numericValue)) {
+    throw new Error(`${label} must be an integer.`);
+  }
+  return numericValue;
+}
+
+function openAITextConfig(llmConfig) {
+  const text = {};
+  const verbosity = String(llmConfig.verbosity || "default");
+
+  if (verbosity !== "default") {
+    text.verbosity = verbosity;
+  }
+
+  if (llmConfig.jsonMode) {
+    text.format = { type: "json_object" };
+  }
+
+  return Object.keys(text).length > 0 ? text : null;
+}
+
+function openAIResponseBody(runtimeConfig, input) {
+  const llmConfig = runtimeConfig.llm;
+  const body = {
+    model: llmConfig.model,
+    instructions: responseInstructions(runtimeConfig),
+    input,
+    stream: llmConfig.stream,
+  };
+  const temperature = Number(llmConfig.temperature);
+  const maxOutputTokens = optionalInteger(llmConfig.maxOutputTokens, "Max output tokens");
+  const seed = optionalInteger(llmConfig.seed, "Seed");
+  const reasoningEffort = String(llmConfig.reasoning_effort || "default");
+  const textConfig = openAITextConfig(llmConfig);
+
+  if (Number.isFinite(temperature)) {
+    body.temperature = temperature;
+  }
+
+  if (maxOutputTokens !== null && maxOutputTokens > 0) {
+    body.max_output_tokens = maxOutputTokens;
+  }
+
+  if (reasoningEffort && !["default", "none"].includes(reasoningEffort)) {
+    body.reasoning = { effort: reasoningEffort };
+  }
+
+  if (textConfig) {
+    body.text = textConfig;
+  }
+
+  if (Array.isArray(llmConfig.stopSequences) && llmConfig.stopSequences.length > 0) {
+    body.stop = llmConfig.stopSequences;
+  }
+
+  if (seed !== null) {
+    body.seed = seed;
+  }
+
+  return {
+    ...body,
+    ...parseJsonObject(llmConfig.extraParameters, "Extra parameters"),
+  };
+}
+
+function openAIChatBody(runtimeConfig, conversation) {
+  const llmConfig = runtimeConfig.llm;
+  const body = {
+    model: llmConfig.model,
+    messages: [
+      chatInstructionsMessage(runtimeConfig),
+      ...conversation.map(chatInputMessage),
+    ],
+    stream: llmConfig.stream,
+  };
+  const temperature = Number(llmConfig.temperature);
+  const maxOutputTokens = optionalInteger(llmConfig.maxOutputTokens, "Max output tokens");
+  const seed = optionalInteger(llmConfig.seed, "Seed");
+  const reasoningEffort = String(llmConfig.reasoning_effort || "default");
+
+  if (Number.isFinite(temperature)) {
+    body.temperature = temperature;
+  }
+
+  if (maxOutputTokens !== null && maxOutputTokens > 0) {
+    body.max_completion_tokens = maxOutputTokens;
+  }
+
+  if (reasoningEffort && reasoningEffort !== "default") {
+    body.reasoning_effort = reasoningEffort;
+  }
+
+  if (Array.isArray(llmConfig.stopSequences) && llmConfig.stopSequences.length > 0) {
+    body.stop = llmConfig.stopSequences;
+  }
+
+  if (seed !== null) {
+    body.seed = seed;
+  }
+
+  if (llmConfig.jsonMode) {
+    body.response_format = { type: "json_object" };
+  }
+
+  return {
+    ...body,
+    ...parseJsonObject(llmConfig.extraParameters, "Extra parameters"),
+  };
+}
+
+function openAIRequestUrl(llmConfig) {
+  return llmConfig.api === "chat_completions"
+    ? openAIChatCompletionsUrl(llmConfig)
+    : openAIResponseUrl(llmConfig);
+}
+
+function openAIRequestBody(runtimeConfig, conversation) {
+  return runtimeConfig.llm.api === "chat_completions"
+    ? openAIChatBody(runtimeConfig, conversation)
+    : openAIResponseBody(runtimeConfig, conversation.map(responseInputMessage));
+}
+
+async function waitForOpenAIRateLimit(llmConfig) {
+  const requestsPerSecond = Number(llmConfig.requestsPerSecond);
+  if (!Number.isFinite(requestsPerSecond) || requestsPerSecond <= 0) {
+    return;
+  }
+
+  const minimumIntervalMs = 1000 / requestsPerSecond;
+  openaiRateLimitQueue = openaiRateLimitQueue.then(async () => {
+    const waitMs = lastOpenAIRequestAt + minimumIntervalMs - Date.now();
+    if (waitMs > 0) {
+      await delay(waitMs);
+    }
+    lastOpenAIRequestAt = Date.now();
+  });
+
+  await openaiRateLimitQueue;
+}
+
+function retryableOpenAIStatus(status) {
+  return status === 408 || status === 409 || status === 429 || status >= 500;
+}
+
+async function fetchWithTimeout(url, init, timeoutMs) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function fetchOpenAIResponse(runtimeConfig, conversation) {
+  const llmConfig = runtimeConfig.llm;
+  await waitForOpenAIRateLimit(llmConfig);
+
+  const url = openAIRequestUrl(llmConfig);
+  const request = {
+    method: "POST",
+    headers: openAIHeaders(llmConfig),
+    body: JSON.stringify(openAIRequestBody(runtimeConfig, conversation)),
+  };
+  const timeoutMs = Math.max(1000, Number(llmConfig.timeoutSeconds || 70) * 1000);
+  const maxRetries = Math.max(0, Math.floor(Number(llmConfig.maxRetries) || 0));
+  let lastError = null;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    try {
+      const response = await fetchWithTimeout(url, request, timeoutMs);
+      if (
+        response.ok ||
+        !retryableOpenAIStatus(response.status) ||
+        attempt === maxRetries
+      ) {
+        return response;
+      }
+
+      await response.arrayBuffer().catch(() => null);
+    } catch (error) {
+      lastError = error;
+      if (attempt === maxRetries) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(`OpenAI-compatible request failed: ${message}`);
+      }
+    }
+
+    await delay(Math.min(250 * 2 ** attempt, 2000));
+  }
+
+  throw lastError || new Error("OpenAI-compatible request failed.");
+}
+
+async function openAIErrorMessage(response) {
+  const contentType = response.headers.get("content-type") || "";
+
+  if (contentType.includes("application/json")) {
+    const body = await response.json().catch(() => null);
+    return (
+      body?.error?.message ||
+      body?.message ||
+      `OpenAI-compatible endpoint failed with ${response.status}`
+    );
+  }
+
+  const body = await response.text().catch(() => "");
+  return body || `OpenAI-compatible endpoint failed with ${response.status}`;
+}
+
+function contentToText(content) {
+  if (typeof content === "string") {
+    return content;
+  }
+  if (!Array.isArray(content)) {
+    return "";
+  }
+
+  return content
+    .map((item) => {
+      if (typeof item === "string") {
+        return item;
+      }
+      if (item?.type === "text" && item.text) {
+        return item.text;
+      }
+      if (item?.text) {
+        return item.text;
+      }
+      return "";
+    })
+    .join("");
+}
+
+function openAICompletionText(api, body) {
+  if (api === "chat_completions") {
+    return contentToText(body.choices?.[0]?.message?.content);
+  }
+
+  return (
+    body.output_text ||
+    (body.output || [])
+      .flatMap((item) => item.content || [])
+      .filter((item) => item.type === "output_text" && item.text)
+      .map((item) => item.text)
+      .join("") ||
+    ""
+  );
+}
+
+function openAIStreamDelta(api, event) {
+  if (api === "chat_completions") {
+    return (event.choices || [])
+      .map((choice) => contentToText(choice.delta?.content))
+      .join("");
+  }
+
+  return event.type === "response.output_text.delta" && event.delta ? event.delta : "";
+}
+
 async function askOpenAIStream(
   session,
   turn,
@@ -724,34 +1126,20 @@ async function askOpenAIStream(
   { onChunk = async () => {} } = {},
 ) {
   const stream = session.runtimeConfig.llm.stream;
+  const llmApi = session.runtimeConfig.llm.api;
   const requestStartedAt = Date.now();
   const requestStartMs = elapsedMs(turn, requestStartedAt);
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${config.openaiApiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: session.runtimeConfig.llm.model,
-      instructions: responseInstructions(session.runtimeConfig),
-      input: session.conversation.map(responseInputMessage),
-      reasoning: { effort: session.runtimeConfig.llm.reasoning_effort },
-      text: { verbosity: session.runtimeConfig.llm.verbosity },
-      stream,
-    }),
-  });
+  const response = await fetchOpenAIResponse(session.runtimeConfig, session.conversation);
 
   if (!response.ok) {
-    const body = await response.json().catch(() => null);
-    throw new Error(body?.error?.message || `OpenAI failed with ${response.status}`);
+    throw new Error(await openAIErrorMessage(response));
   }
 
   const requestEndMs = elapsedMs(turn);
   sendTimeline(session, turn, {
     spanId: "llm-request",
     stage: "llm_request",
-    label: "OpenAI request",
+    label: "OpenAI-compatible request",
     startMs: requestStartMs,
     endMs: requestEndMs,
   });
@@ -760,14 +1148,7 @@ async function askOpenAIStream(
   if (!stream) {
     const responseReadStartMs = requestEndMs;
     const body = await response.json();
-    const answer =
-      body.output_text ||
-      (body.output || [])
-        .flatMap((item) => item.content || [])
-        .filter((item) => item.type === "output_text" && item.text)
-        .map((item) => item.text)
-        .join("") ||
-      "";
+    const answer = openAICompletionText(llmApi, body);
 
     const chunks = parseAssistantChunks(answer);
     sendJson(session.client, {
@@ -787,7 +1168,7 @@ async function askOpenAIStream(
     sendTimeline(session, turn, {
       spanId: "llm-response",
       stage: "llm_done",
-      label: "OpenAI response",
+      label: "OpenAI-compatible response",
       startMs: responseReadStartMs,
       endMs: elapsedMs(turn),
     });
@@ -796,7 +1177,7 @@ async function askOpenAIStream(
   }
 
   if (!response.body) {
-    throw new Error("OpenAI streaming response had no body.");
+    throw new Error("OpenAI-compatible streaming response had no body.");
   }
 
   const reader = response.body.getReader();
@@ -829,12 +1210,13 @@ async function askOpenAIStream(
         }
 
         const event = JSON.parse(dataLine);
-        if (event.type === "response.output_text.delta" && event.delta) {
-          answer += event.delta;
+        const delta = openAIStreamDelta(llmApi, event);
+        if (delta) {
+          answer += delta;
           sendJson(session.client, {
             type: "assistant_xml_delta",
             turnId: turn.id,
-            text: event.delta,
+            text: delta,
           });
 
           if (!sawFirstDelta) {
@@ -849,7 +1231,7 @@ async function askOpenAIStream(
             });
           }
 
-          for (const chunk of chunkParser.push(event.delta)) {
+          for (const chunk of chunkParser.push(delta)) {
             sendJson(session.client, {
               type: "assistant_delta",
               turnId: turn.id,
@@ -859,7 +1241,7 @@ async function askOpenAIStream(
           }
         } else if (event.type === "error" || event.error) {
           throw new Error(
-            event.error?.message || event.message || "OpenAI stream error.",
+            event.error?.message || event.message || "OpenAI-compatible stream error.",
           );
         }
       }
@@ -884,7 +1266,7 @@ async function askOpenAIStream(
   sendTimeline(session, turn, {
     spanId: "llm-stream",
     stage: "llm_done",
-    label: "OpenAI stream",
+    label: "OpenAI-compatible stream",
     startMs: firstDeltaMs ?? requestEndMs,
     endMs: elapsedMs(turn),
   });
@@ -1219,38 +1601,16 @@ function createDeepgramConnection(session) {
 async function askOpenAIDeviceResponse(session, onTextDelta = () => {}) {
   const runtimeConfig = session.runtimeConfig;
   const stream = runtimeConfig.llm.stream;
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${config.openaiApiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: runtimeConfig.llm.model,
-      instructions: responseInstructions(runtimeConfig),
-      input: session.conversation.map(responseInputMessage),
-      reasoning: { effort: runtimeConfig.llm.reasoning_effort },
-      text: { verbosity: runtimeConfig.llm.verbosity },
-      stream,
-    }),
-  });
+  const llmApi = runtimeConfig.llm.api;
+  const response = await fetchOpenAIResponse(runtimeConfig, session.conversation);
 
   if (!response.ok) {
-    const body = await response.json().catch(() => null);
-    throw new Error(body?.error?.message || `OpenAI failed with ${response.status}`);
+    throw new Error(await openAIErrorMessage(response));
   }
 
   if (!stream) {
     const body = await response.json();
-    const answer = (
-      body.output_text ||
-      (body.output || [])
-        .flatMap((item) => item.content || [])
-        .filter((item) => item.type === "output_text" && item.text)
-        .map((item) => item.text)
-        .join("") ||
-      ""
-    ).trim();
+    const answer = openAICompletionText(llmApi, body).trim();
     if (answer) {
       await onTextDelta(answer);
     }
@@ -1258,7 +1618,7 @@ async function askOpenAIDeviceResponse(session, onTextDelta = () => {}) {
   }
 
   if (!response.body) {
-    throw new Error("OpenAI streaming response had no body.");
+    throw new Error("OpenAI-compatible streaming response had no body.");
   }
 
   const reader = response.body.getReader();
@@ -1288,12 +1648,13 @@ async function askOpenAIDeviceResponse(session, onTextDelta = () => {}) {
         }
 
         const event = JSON.parse(dataLine);
-        if (event.type === "response.output_text.delta" && event.delta) {
-          answer += event.delta;
-          await onTextDelta(event.delta);
+        const delta = openAIStreamDelta(llmApi, event);
+        if (delta) {
+          answer += delta;
+          await onTextDelta(delta);
         } else if (event.type === "error" || event.error) {
           throw new Error(
-            event.error?.message || event.message || "OpenAI stream error.",
+            event.error?.message || event.message || "OpenAI-compatible stream error.",
           );
         }
       }
@@ -1819,16 +2180,18 @@ function handleDeviceAudio(session, frame) {
 }
 
 function configureSession(session, agent) {
-  if (!config.deepgramApiKey || !config.openaiApiKey) {
+  const runtimeConfig = normalizeAgentConfig(agent);
+
+  if (!config.deepgramApiKey || !hasRequiredLlmCredentials(runtimeConfig)) {
     sendJson(session.client, {
       type: "error",
       message:
-        "Missing DEEPGRAM_API_KEY or OPENAI_API_KEY. Create root .env from .env.example.",
+        "Missing DEEPGRAM_API_KEY or LLM API key. Create root .env from .env.example.",
     });
     return;
   }
 
-  session.runtimeConfig = normalizeAgentConfig(agent);
+  session.runtimeConfig = runtimeConfig;
   session.conversation = [];
   session.finalSegments = [];
   if (
@@ -1852,7 +2215,7 @@ const server = http.createServer((req, res) => {
     writeJson(res, 200, {
       ok: true,
       deepgramConfigured: Boolean(config.deepgramApiKey),
-      openaiConfigured: Boolean(config.openaiApiKey),
+      openaiConfigured: Boolean(config.openaiApiKey || config.openaiBaseUrl),
       otaEndpoint: "/ota/",
       deviceWebSocketEndpoint: "/ws",
       deviceCount: deviceRegistry.size,
@@ -2044,7 +2407,7 @@ wss.on("connection", (client, _request, auth) => {
 });
 
 deviceWss.on("connection", (ws, request, auth) => {
-  if (!config.deepgramApiKey || !config.openaiApiKey) {
+  if (!config.deepgramApiKey) {
     ws.close(1011, "Missing API keys");
     return;
   }
@@ -2054,6 +2417,12 @@ deviceWss.on("connection", (ws, request, auth) => {
     request,
   );
   applyPlatformDeviceAuth(device, auth);
+
+  if (!hasRequiredLlmCredentials(device.runtimeConfig)) {
+    ws.close(1011, "Missing API keys");
+    return;
+  }
+
   const session = createDeviceSession(ws, device, request);
 
   if (device.session?.ws.readyState === WebSocket.OPEN) {

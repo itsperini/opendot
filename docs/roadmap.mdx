@@ -1,0 +1,116 @@
+---
+title: Roadmap
+description: Understand OpenDot's current, next, and later roadmap across voice pipeline, agents, platform, transports, devices, hardware, firmware, docs, and tooling.
+---
+
+OpenDot is moving toward an open, provider-pluggable platform for voice agents
+on real devices. The roadmap is organized around one loop:
+
+```text
+build -> tune -> bind -> run -> review
+```
+
+The current milestone is a complete local prototype. The next milestones make
+the runtime, providers, agents, devices, and diagnostics more modular. Later
+work opens deeper local-network, fleet, open hardware, and on-device paths.
+
+<Frame caption="The roadmap keeps the current local prototype connected to later provider, transport, fleet, hardware, and edge directions.">
+  <img
+    src="/images/architecture/roadmap-layers.svg"
+    alt="OpenDot roadmap layers diagram"
+  />
+</Frame>
+
+## Current
+
+Current work should make the local loop reliable and understandable:
+
+- Create, edit, and select agent identities in the platform console.
+- Configure explicit VAD, STT/ASR, LLM, and TTS stages.
+- Test microphone turns in Browser Test through the local runtime.
+- Pair Dot devices, claim activation codes, and bind active identity configs.
+- Keep Fastify, Drizzle, PostgreSQL, and runtime token boundaries clear.
+- Run ESP-IDF firmware on the Waveshare ESP32-S3-AUDIO-Board reference target.
+- Keep setup docs, diagrams, and verification commands accurate.
+
+## Next
+
+Next work should make OpenDot easier to extend without hiding the voice-agent
+model:
+
+| Track                                | Next direction                                                                                                                 |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| Voice Pipeline & Providers           | Split provider integrations behind clearer adapter boundaries, improve stage validation, and support more provider categories. |
+| Voice Agents & Harnesses             | Add stronger agent configuration, knowledge/model surfaces, evaluation fixtures, and local model harness categories.           |
+| Platform Control Plane               | Improve Browser Test timing/replay, device status, empty states, and runtime diagnostics.                                      |
+| Platform Backend & Data              | Add request validation, clearer API contracts, safer runtime token/device credential handling, and migration discipline.       |
+| Media Transport                      | Stabilize WebSocket session events, document message flows, and prepare an adapter shape for future realtime media transports. |
+| Device Communication & Fleet         | Improve current device diagnostics and define future presence, commands, telemetry, and OTA metadata contracts.                |
+| Dot Hardware                         | Convert reference-board learnings into open hardware requirements for enclosure, acoustics, power, PCB, BOM, and fixtures.     |
+| Dot Firmware & Edge                  | Harden provisioning, activation, reconnect behavior, board config, logs, and runtime endpoint setup.                           |
+| Docs, Tooling & Developer Experience | Expand troubleshooting, diagrams, examples, CI checks, and contributor onboarding.                                             |
+
+## Later
+
+Later work should move OpenDot from a local prototype into a platform that can
+operate across cloud, local network, bare-metal, and on-device targets:
+
+- Fully local or self-hosted VAD, STT/ASR, LLM, and TTS options.
+- Realtime media transports such as WebRTC/SFU-style paths when WebSocket audio
+  becomes limiting.
+- MQTT-style device presence, desired/reported state, commands, telemetry,
+  diagnostics, OTA metadata, and multi-device coordination.
+- Purpose-built open Dot hardware with CAD, PCB, BOM, fixtures, acoustic notes,
+  and repeatable firmware flashing.
+- Exploratory MicroPython runtime and on-device inference research with honest
+  memory, latency, model-size, and firmware-impact constraints.
+- Session history, replay artifacts, eval harnesses, and reproducible bug
+  reports across pipeline stages and devices.
+- Production deployment guidance for cloud, local-network, and bare-metal
+  runtime targets.
+
+## Not yet goals
+
+These are important, but they should not pull attention away from the current
+voice-agent/device loop:
+
+- Hosted multi-tenant SaaS infrastructure.
+- Marketplace workflows.
+- Enterprise SSO, billing, and procurement.
+- Broad hardware support before the runtime, firmware, and reference-device
+  path stabilize.
+- A named integration matrix before provider, framework, and transport
+  categories are stable enough to maintain.
+
+## Public alpha release bar
+
+The first public alpha should be a source-only release with honest prototype
+framing. It should not imply Docker images, npm packages, firmware binaries, or
+an OTA release channel.
+
+Before publishing, maintainers should verify:
+
+- Local platform checks pass with Node 24: `pnpm run ci`.
+- Dependency audit has no known moderate-or-higher vulnerabilities:
+  `pnpm audit --audit-level moderate`.
+- Docs links pass with `cd docs && mint broken-links`.
+- `docker compose config --quiet` passes.
+- Checked-in GitHub issue templates and SVG diagrams parse.
+- ESP-IDF 5.5.2 can build firmware from `dot-device/firmware`.
+- Firmware logs do not print Wi-Fi passwords, provider keys, runtime secrets, or
+  device credentials.
+- Browser Test completes one full spoken turn with real provider keys before
+  release notes claim the live voice loop works.
+- Existing pushed release tags, including `v0.1.0`, are not rewritten.
+
+## Contributing to the roadmap
+
+Useful roadmap proposals explain:
+
+- the user, operator, or contributor problem being solved
+- the affected [contribution area](/contribution-areas)
+- how it fits the real-device, cloud, local-network, or on-device direction
+- the smallest milestone that can be reviewed and tested
+
+Keep proposals concrete. A good first milestone should usually improve one
+track, one workflow, and one verification path.

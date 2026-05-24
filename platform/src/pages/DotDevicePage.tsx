@@ -14,15 +14,18 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
+import { PageHeader } from "../layout/PageHeader";
 import type { CreateDotDeviceInput, DotDevice, VoiceAgent } from "../types";
 
 type DotDevicePageProps = {
   agents: VoiceAgent[];
   devices: DotDevice[];
   selectedAgent: VoiceAgent | null;
+  selectedAgentId: string | null;
   onCreateDevice: (input: CreateDotDeviceInput) => Promise<DotDevice | null>;
   onClaimDeviceActivation: (code: string) => Promise<DotDevice | null>;
   onRemoveDevice: (deviceId: string) => Promise<void>;
+  onSelectAgent: (agentId: string) => void;
   onUpdateDevice: (device: DotDevice) => Promise<DotDevice | null>;
 };
 
@@ -115,9 +118,11 @@ export function DotDevicePage({
   agents,
   devices: persistedDevices,
   selectedAgent,
+  selectedAgentId,
   onCreateDevice,
   onClaimDeviceActivation,
   onRemoveDevice,
+  onSelectAgent,
   onUpdateDevice,
 }: DotDevicePageProps) {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(
@@ -358,29 +363,16 @@ export function DotDevicePage({
 
   return (
     <section className="page-section" aria-labelledby="dot-device-title">
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">Dot Device</p>
-          <h2 id="dot-device-title">Paired devices</h2>
-        </div>
-        <div className="section-actions">
-          <span className={`runtime-chip ${runtimeStatus}`}>
-            <Server size={15} />
-            Runtime {availabilityLabel({ availability: runtimeStatus } as DotDevice)}
-          </span>
-          <button
-            className="secondary-action"
-            type="button"
-            onClick={checkAllDevices}
-            disabled={runtimeRefreshing}
-          >
-            <RefreshCw size={16} />
-            Refresh
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        agents={agents}
+        eyebrow="Dot Device"
+        selectedAgentId={selectedAgentId}
+        title="Hardware binding"
+        titleId="dot-device-title"
+        onSelectAgent={onSelectAgent}
+      />
 
-      <div className="device-grid">
+      <div className="page-body device-grid">
         <section className="panel device-list-panel" aria-labelledby="device-list-title">
           <div className="panel-heading compact">
             <div>
@@ -388,6 +380,22 @@ export function DotDevicePage({
               <h2 id="device-list-title">Dot devices</h2>
             </div>
             <span className="count-pill">{devices.length}</span>
+          </div>
+
+          <div className="device-runtime-row">
+            <span className={`runtime-chip ${runtimeStatus}`}>
+              <Server size={15} />
+              Runtime {availabilityLabel({ availability: runtimeStatus } as DotDevice)}
+            </span>
+            <button
+              className="secondary-action"
+              type="button"
+              onClick={checkAllDevices}
+              disabled={runtimeRefreshing}
+            >
+              <RefreshCw size={16} />
+              Refresh status
+            </button>
           </div>
 
           <div className="device-list">
@@ -574,14 +582,14 @@ export function DotDevicePage({
 
             <div className="binding-controls">
               <label>
-                Agent
+                Agent identity
                 <select
                   value={bindingAgentId}
                   onChange={(event) => setBindingAgentId(event.target.value)}
                   disabled={agents.length === 0}
                 >
                   <option value="">
-                    {agents.length === 0 ? "No agents" : "Select agent"}
+                    {agents.length === 0 ? "No identities" : "Select identity"}
                   </option>
                   {agents.map((agent) => (
                     <option key={agent.id} value={agent.id}>
@@ -602,7 +610,7 @@ export function DotDevicePage({
             </div>
 
             <div className="binding-meta">
-              <span>{selectedDevice?.boundAgentName ?? "No agent bound"}</span>
+              <span>{selectedDevice?.boundAgentName ?? "No identity bound"}</span>
               <strong>
                 {selectedDevice?.boundAt
                   ? formatTime(selectedDevice.boundAt)

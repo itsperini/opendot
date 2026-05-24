@@ -31,10 +31,10 @@ OpenDot brings the control plane, voice runtime, and device layer into one workf
     See how local credentials and Supabase Auth enter the console.
   </Card>
   <Card title="Agent Studio" icon="bot" href="/agent-studio">
-    Create and select the draft agent that anchors the rest of the workflow.
+    Create, edit, and select the agent identity that anchors the rest of the workflow.
   </Card>
   <Card title="Configuration" icon="settings-2" href="/configuration">
-    Tune the explicit VAD, STT, LLM, and TTS stages for the selected agent.
+    Tune the Sandwich pipeline or inspect the future Speech-to-speech placeholder.
   </Card>
   <Card title="Browser Test" icon="audio-lines" href="/browser-test">
     Connect the runtime, stream microphone audio, inspect transcripts, and replay spoken
@@ -42,6 +42,22 @@ OpenDot brings the control plane, voice runtime, and device layer into one workf
   </Card>
   <Card title="Dot Device console" icon="cpu" href="/dot-device">
     Pair Dot devices, check runtime availability, and bind voice configs.
+  </Card>
+</CardGroup>
+
+## Start contributing
+
+OpenDot needs contributors across the voice pipeline, agents, platform control
+plane, backend/data, media transport, device communication, hardware, firmware,
+docs, and tooling. The docs map those areas to the current implementation and
+future roadmap.
+
+<CardGroup cols={2}>
+  <Card title="Contribution areas" icon="git-pull-request" href="/contribution-areas">
+    Choose a track, see current maturity, and pick small, medium, or large project briefs.
+  </Card>
+  <Card title="Roadmap" icon="map" href="/roadmap">
+    See the current, next, and later priorities across the platform and device stack.
   </Card>
 </CardGroup>
 
@@ -54,11 +70,12 @@ Reference pages move deeper into the docs so the first path stays clear:
 - [Database inspection](/database-inspection) for Drizzle Studio and schema inspection.
 - [Render deployment](/render-deployment) for hosted preview deployment.
 - [Contributing](/contributing) for contribution workflow and checks.
+- [Contribution areas](/contribution-areas) for the canonical contributor map.
 
 ## Starter pipeline
 
 ```text
-Deepgram VAD -> Deepgram STT -> OpenAI LLM -> Deepgram TTS
+Deepgram VAD -> Deepgram STT -> OpenAI-compatible LLM -> Deepgram TTS
 ```
 
 The current starter pipeline uses hosted Deepgram and OpenAI-compatible stages while keeping the runtime organized around replaceable components. That shape is intentional: the same workflow should be able to move toward local models, self-hosted inference, cloud sessions, local-network operation, and on-device deployments without changing how agents are managed.

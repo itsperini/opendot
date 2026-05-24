@@ -3,9 +3,10 @@ title: Browser Test
 description: Stream microphone audio to the local runtime and inspect live voice turns.
 ---
 
-Browser Test is the local loop for validating a voice agent before binding it to hardware.
+Browser Test is the local loop for validating an agent identity before binding
+it to hardware.
 
-<Frame caption="Browser Test connects to the runtime, streams microphone audio, and shows transcripts, responses, audio, timing, and logs.">
+<Frame caption="Browser Test uses the active identity from the page header, then streams microphone audio through the local runtime.">
   <img src="/images/platform/browser-test.png" alt="OpenDot Browser Test screen" />
 </Frame>
 
@@ -37,7 +38,7 @@ The platform API and runtime load the root `.env`. Leave `POSTGRES_URI` empty fo
 
 ## Run this agent
 
-1. Select an agent in [Agent Studio](/agent-studio).
+1. Select an identity in [Agent Studio](/agent-studio) or the page header.
 2. Review its pipeline in [Configuration](/configuration).
 3. Open **Browser Test**.
 4. Click **Connect** to open an authenticated runtime WebSocket.
@@ -81,7 +82,11 @@ Keep this log in bug reports when voice behavior changes.
 
 ## Runtime authorization
 
-Before the socket opens, the console asks the platform API for a short-lived voice-session token for the selected agent. The runtime verifies that token with the platform API and loads the authorized agent config from the API. If you edit or switch agents while connected, the browser reconnects with a newly minted token.
+Before the socket opens, the console asks the platform API for a short-lived
+voice-session token for the active identity. The runtime verifies that token
+with the platform API and loads the authorized identity config from the API. If
+you edit or switch identities while connected, the browser reconnects with a
+newly minted token.
 
 The runtime WebSocket defaults to:
 

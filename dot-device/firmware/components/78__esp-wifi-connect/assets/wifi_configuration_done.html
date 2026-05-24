@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OpenDot Wi-Fi Setup</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <style>
+        :root {
+            --od-ink: #171321;
+            --od-muted: #625c6f;
+            --od-violet-950: #14091f;
+            --od-violet-900: #2e1065;
+            --od-violet-100: #ede9fe;
+            --od-page: #fbf9ff;
+            --od-border: #e8ddf8;
+            --od-success: #059669;
+            --od-white: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--od-page);
+            color: var(--od-ink);
+            font-family: "Manrope", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        .container {
+            width: min(100%, 420px);
+            padding: 30px;
+            border: 1px solid var(--od-border);
+            border-radius: 8px;
+            background: var(--od-white);
+            box-shadow: 0 18px 60px rgba(76, 29, 149, 0.08);
+            text-align: center;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 24px;
+            color: var(--od-violet-900);
+            font-weight: 800;
+        }
+
+        .brand svg {
+            width: 30px;
+            height: 30px;
+        }
+
+        .checkmark {
+            width: 92px;
+            height: 92px;
+            margin-bottom: 22px;
+        }
+
+        .message {
+            margin-bottom: 4px;
+            font-size: 20px;
+            font-weight: 800;
+        }
+
+        .message p {
+            margin: 8px 0;
+        }
+
+        .hint {
+            margin: 14px 0 0;
+            color: var(--od-muted);
+            font-size: 14px;
+            line-height: 1.55;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="brand">
+            <svg viewBox="0 0 112 112" fill="none" aria-hidden="true">
+                <path d="M0 56C0 25.072 25.072 0 56 0C86.928 0 112 25.072 112 56C112 86.928 86.928 112 56 112C25.072 112 0 86.928 0 56ZM35.384 32.896C35.384 54.692 45.988 91.628 56 95.484C66.012 99.336 95.484 77.812 95.484 56C95.484 34.208 66.012 20.392 56 16.536C45.988 12.684 35.384 11.08 35.384 32.896Z" fill="currentColor" fill-rule="evenodd"/>
+            </svg>
+            <span>OpenDot</span>
+        </div>
+        <svg class="checkmark" viewBox="0 0 52 52">
+            <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none" stroke="#059669" stroke-width="2"/>
+            <path class="checkmark__check" fill="none" stroke="#059669" stroke-width="2" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+        </svg>
+
+        <div class="message">
+            <p>Configuration successful!</p>
+        </div>
+        <p class="hint">The device is leaving setup mode and will continue activation through the OpenDot runtime.</p>
+    </div>
+
+    <script>
+        window.addEventListener('load', function() {
+            // Send exit request after a short delay
+            setTimeout(function() {
+                fetch('/exit', {
+                    method: 'POST'
+                })
+                .then(response => {
+                    if (response.ok) {
+                        console.log('Exit config mode request sent');
+                    } else {
+                        console.error('Failed to send exit request');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

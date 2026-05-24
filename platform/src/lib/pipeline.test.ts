@@ -15,20 +15,53 @@ describe("pipeline helpers", () => {
     expect(pipeline.map((stage) => stage.id)).toEqual(["vad", "stt", "llm", "tts"]);
     expect(pipeline.find((stage) => stage.id === "vad")?.model).toBe("endpointing-vad");
     expect(pipeline.find((stage) => stage.id === "stt")?.model).toBe("nova-3");
-    expect(pipeline.find((stage) => stage.id === "llm")?.model).toBe("gpt-5.4-mini");
+    expect(pipeline.find((stage) => stage.id === "llm")?.model).toBe("gpt-5.1");
     expect(pipeline.find((stage) => stage.id === "tts")?.model).toBe("aura-2-thalia-en");
   });
 
-  it("updates a stage model only when the model is allowed", () => {
+  it("keeps fixed VAD models constrained to known options", () => {
     const pipeline = createDefaultPipeline();
 
-    const validUpdate = updateStageModel(pipeline, "tts", "aura-2-luna-en");
-    const invalidUpdate = updateStageModel(validUpdate, "tts", "missing-voice");
+    const validUpdate = updateStageModel(pipeline, "vad", "utterance-end");
+    const invalidUpdate = updateStageModel(validUpdate, "vad", "missing-vad");
 
-    expect(validUpdate.find((stage) => stage.id === "tts")?.model).toBe("aura-2-luna-en");
-    expect(invalidUpdate.find((stage) => stage.id === "tts")?.model).toBe(
-      "aura-2-luna-en",
+    expect(validUpdate.find((stage) => stage.id === "vad")?.model).toBe("utterance-end");
+    expect(invalidUpdate.find((stage) => stage.id === "vad")?.model).toBe(
+      "utterance-end",
     );
+  });
+
+  it("allows custom STT, LLM, and TTS model names", () => {
+    let pipeline = createDefaultPipeline();
+
+    pipeline = updateStageModel(pipeline, "stt", "custom-stt-live");
+    pipeline = updateStageModel(pipeline, "llm", "vendor/gpt-voice");
+    pipeline = updateStageModel(pipeline, "tts", "custom-voice");
+
+    expect(pipeline.find((stage) => stage.id === "stt")?.model).toBe("custom-stt-live");
+    expect(pipeline.find((stage) => stage.id === "llm")?.model).toBe("vendor/gpt-voice");
+    expect(pipeline.find((stage) => stage.id === "tts")?.model).toBe("custom-voice");
+  });
+
+  it("keeps Chat Completions selected when normalizing LLM settings", () => {
+    let pipeline = createDefaultPipeline();
+    pipeline = updateStageSetting(pipeline, "llm", "api", "chat_completions");
+
+    const agent: VoiceAgent = {
+      id: "agent-1",
+      name: "Test Agent",
+      description: "Uses chat completions",
+      status: "draft",
+      createdAt: "2026-05-23T00:00:00.000Z",
+      updatedAt: "2026-05-23T00:00:00.000Z",
+      pipeline,
+    };
+
+    const apiSetting = normalizeVoiceAgent(agent)
+      .pipeline.find((stage) => stage.id === "llm")
+      ?.settings.find((setting) => setting.key === "api");
+
+    expect(apiSetting?.value).toBe("chat_completions");
   });
 
   it("derives Deepgram listen parameters from VAD and STT settings", () => {
@@ -97,7 +130,7 @@ describe("pipeline helpers", () => {
       .find((stage) => stage.id === "llm")
       ?.settings.find((setting) => setting.key === "system_prompt")?.value;
 
-    expect(normalizedStt?.model).toBe("nova-3");
+    expect(normalizedStt?.model).toBe("old-model");
     expect(
       normalizedVad?.settings.find((setting) => setting.key === "features")?.value,
     ).toEqual(["interim_results", "speech_final"]);
