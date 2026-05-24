@@ -47,8 +47,8 @@ an agent identity in [Agent Studio](/agent-studio) first.
 | -------------------------- | ----------------------------------------------- | ------------------------------------------------------------ |
 | Provider                   | Deepgram                                        | Uses Deepgram live listen options for turn detection.        |
 | Model                      | `endpointing-vad`                               | Keeps VAD visible as a product stage.                        |
-| Endpointing                | `900 ms`                                        | Controls how quickly silence closes a turn.                  |
-| Utterance end              | `1000 ms`                                       | Adds a safer pause for device conversations.                 |
+| Endpointing                | `300 ms`                                        | Controls how quickly silence closes a turn.                  |
+| Utterance end              | `1000 ms`                                      | Adds a safe pause for device conversations.                  |
 | Turn events                | `vad_events`, `interim_results`, `speech_final` | Enables runtime feedback and turn close events.              |
 | Noise floor                | `2` characters                                  | Ignores tiny transcript fragments.                           |
 | Return device to wake word | enabled                                         | Lets firmware leave active listening after a completed turn. |
@@ -74,15 +74,15 @@ The Browser Test panel shows interim and final transcripts from this stage.
 | Field                         | Default                                        | Purpose                                                         |
 | ----------------------------- | ---------------------------------------------- | --------------------------------------------------------------- |
 | Provider                      | OpenAI Compatible Endpoint                     | OpenAI-compatible response generation.                          |
-| Model                         | `gpt-5.1`                                      | Suggested OpenAI model or any custom compatible model id.       |
+| Model                         | `gpt-5-mini`                                   | Suggested lower-latency OpenAI model or any custom compatible model id. |
 | Provider API                  | Responses (recommended)                        | Selects `/responses` or `/chat/completions`.                    |
 | API key name                  | `OPENAI_API_KEY`                               | Runtime environment variable used for auth.                     |
 | Base URL                      | blank                                          | Defaults to OpenAI; custom values append the selected API path. |
 | Temperature                   | `1`                                            | Sampling temperature sent to the provider.                      |
-| Max output tokens             | blank                                          | Optional response token cap.                                    |
+| Max output tokens             | `512`                                          | Response token cap. GPT-5-style reasoning models also spend this budget on reasoning tokens, so keep enough headroom for visible text. |
 | System prompt and chunk rules | voice assistant prompt plus chunk instructions | Shapes the assistant response and TTS chunking.                 |
-| Reasoning effort              | configurable                                   | Controls model reasoning behavior where supported.              |
-| Verbosity                     | configurable                                   | Controls response density where supported.                      |
+| Reasoning effort              | `low`                                          | Controls model reasoning behavior where supported.              |
+| Verbosity                     | `low`                                          | Controls response density where supported.                      |
 | Stop sequences                | none                                           | Optional stop strings, up to four.                              |
 | JSON mode                     | disabled                                       | Requests JSON object output from compatible providers.          |
 | Extra headers                 | none                                           | Additional headers for the provider request.                    |
@@ -93,8 +93,8 @@ The Browser Test panel shows interim and final transcripts from this stage.
 
 The model control has two parts:
 
-- **Suggested models**: current OpenAI model IDs such as `gpt-5.1`, `gpt-5`,
-  and smaller GPT-5 / GPT-4.1 variants.
+- **Suggested models**: current OpenAI model IDs such as `gpt-5-mini`,
+  `gpt-5.1`, `gpt-5`, and smaller GPT-5 / GPT-4.1 variants.
 - **Custom model ID**: any model string supported by the configured
   OpenAI-compatible endpoint.
 

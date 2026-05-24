@@ -111,6 +111,12 @@ export async function updateAgent(agent: VoiceAgent) {
   return body.agent;
 }
 
+export async function deleteAgent(agentId: string) {
+  await requestJson<{ ok: true }>(`/agents/${encodeURIComponent(agentId)}`, {
+    method: "DELETE",
+  });
+}
+
 export async function createDotDevice(input: CreateDotDeviceInput) {
   const body = await requestJson<{ device: DotDevice }>("/dot-devices", {
     body: JSON.stringify(input),

@@ -164,7 +164,10 @@ Add provider keys to the root `.env` before testing live voice sessions:
 DEEPGRAM_API_KEY=...
 OPENAI_API_KEY=...
 OPENAI_BASE_URL=
-OPENAI_MODEL=gpt-5.1
+OPENAI_MODEL=gpt-5-mini
+OPENAI_MAX_OUTPUT_TOKENS=160
+OPENAI_REASONING_EFFORT=low
+OPENAI_VERBOSITY=low
 ```
 
 Then open the platform, create an identity, review the pipeline settings,
@@ -196,7 +199,10 @@ VITE_SUPABASE_ANON_KEY=<supabase anon key>
 DEEPGRAM_API_KEY=...
 OPENAI_API_KEY=...
 OPENAI_BASE_URL=
-OPENAI_MODEL=gpt-5.1
+OPENAI_MODEL=gpt-5-mini
+OPENAI_MAX_OUTPUT_TOKENS=160
+OPENAI_REASONING_EFFORT=low
+OPENAI_VERBOSITY=low
 VITE_PLATFORM_API_URL=https://<opendot-api>.onrender.com/api
 VITE_RUNTIME_HTTP_URL=https://<opendot-runtime>.onrender.com
 VITE_RUNTIME_WS_URL=wss://<opendot-runtime>.onrender.com/voice

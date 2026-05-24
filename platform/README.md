@@ -132,7 +132,10 @@ Add real keys to the root `.env` before starting the runtime:
 DEEPGRAM_API_KEY=...
 OPENAI_API_KEY=...
 OPENAI_BASE_URL=
-OPENAI_MODEL=gpt-5.1
+OPENAI_MODEL=gpt-5-mini
+OPENAI_MAX_OUTPUT_TOKENS=512
+OPENAI_REASONING_EFFORT=low
+OPENAI_VERBOSITY=low
 ```
 
 Then:
@@ -175,10 +178,11 @@ If endpointing is too eager or too slow, tune:
 - STT `language`
 - STT `sample_rate`
 
-For less sensitive device turns, the local defaults are:
+For balanced lower-latency device turns, the local defaults are:
 
 ```bash
-DEEPGRAM_ENDPOINTING_MS=900
+DEEPGRAM_ENDPOINTING_MS=300
+DEEPGRAM_UTTERANCE_END_MS=1000
 MIN_TRANSCRIPT_CHARS=2
 CLOSE_DEVICE_AFTER_TURN=true
 CLOSE_DEVICE_AFTER_TURN_DELAY_MS=300
@@ -226,7 +230,10 @@ PLATFORM_API_INTERNAL_URL=https://<opendot-api>.onrender.com/api
 DEEPGRAM_API_KEY=...
 OPENAI_API_KEY=...
 OPENAI_BASE_URL=
-OPENAI_MODEL=gpt-5.1
+OPENAI_MODEL=gpt-5-mini
+OPENAI_MAX_OUTPUT_TOKENS=512
+OPENAI_REASONING_EFFORT=low
+OPENAI_VERBOSITY=low
 ```
 
 `PLATFORM_AUTH_REQUIRED` is `true` in the Blueprint, and local password auth is

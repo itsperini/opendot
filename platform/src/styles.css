@@ -1082,6 +1082,14 @@ p {
   background: var(--violet-100);
 }
 
+.icon-button.danger {
+  color: var(--rose);
+}
+
+.icon-button.danger:hover:not(:disabled) {
+  background: var(--rose-soft);
+}
+
 .secondary-action {
   align-items: center;
   background: #ffffff;
@@ -1130,7 +1138,7 @@ p {
   border-radius: 8px;
   display: grid;
   gap: 10px;
-  grid-template-columns: minmax(0, 1fr) 34px;
+  grid-template-columns: minmax(0, 1fr) auto;
   padding: 12px;
   text-align: left;
   transition:
@@ -1167,7 +1175,14 @@ p {
   text-align: left;
 }
 
-.agent-row-edit {
+.agent-row-actions {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+}
+
+.agent-row-edit,
+.agent-row-delete {
   align-self: start;
   height: 34px;
   width: 34px;

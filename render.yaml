@@ -78,15 +78,21 @@ services:
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_MODEL
-        value: gpt-5.4-mini
+        value: gpt-5-mini
+      - key: OPENAI_MAX_OUTPUT_TOKENS
+        value: "512"
+      - key: OPENAI_REASONING_EFFORT
+        value: low
+      - key: OPENAI_VERBOSITY
+        value: low
       - key: OPENDOT_SYSTEM_PROMPT
-        value: "You are a concise voice assistant. Answer naturally in one or two short spoken paragraphs."
+        value: "You are a concise voice assistant. Start with the direct answer and reply in one or two short spoken sentences unless asked for detail."
       - key: DEEPGRAM_STT_MODEL
         value: nova-3
       - key: DEEPGRAM_STT_LANGUAGE
         value: en-US
       - key: DEEPGRAM_ENDPOINTING_MS
-        value: "900"
+        value: "300"
       - key: DEEPGRAM_UTTERANCE_END_MS
         value: "1000"
       - key: DEEPGRAM_TTS_MODEL

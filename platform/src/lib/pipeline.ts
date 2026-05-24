@@ -34,9 +34,20 @@ const OPENAI_MODEL_OPTIONS: StageOption[] = [
 ];
 
 const DEFAULT_SYSTEM_PROMPT =
+  "You are a concise voice assistant. Start with the direct answer and reply in one or two short spoken sentences unless asked for detail.";
+
+const LEGACY_DEFAULT_SYSTEM_PROMPT =
   "You are a concise voice assistant. Answer naturally in one or two short spoken paragraphs.";
 
 const DEFAULT_CHUNK_PROMPT = [
+  "For voice output, format every assistant reply as XML-like TTS chunks.",
+  "Use only this format: <chunk>first spoken chunk</chunk><chunk>next spoken chunk</chunk>.",
+  "Do not write any text outside <chunk> tags.",
+  "Close the first chunk after 6-12 spoken words, then close each later chunk as soon as a natural phrase or short sentence is complete.",
+  "Use plain spoken language. Avoid markdown, bullets, code fences, tables, emojis, and XML special characters.",
+].join("\n");
+
+const LEGACY_DEFAULT_CHUNK_PROMPT = [
   "For voice output, format every assistant reply as XML-like TTS chunks.",
   "Use only this format: <chunk>first spoken chunk</chunk><chunk>next spoken chunk</chunk>.",
   "Do not write any text outside <chunk> tags.",
@@ -45,6 +56,7 @@ const DEFAULT_CHUNK_PROMPT = [
 ].join("\n");
 
 const DEFAULT_SYSTEM_AND_CHUNK_PROMPT = `${DEFAULT_SYSTEM_PROMPT}\n\n${DEFAULT_CHUNK_PROMPT}`;
+const LEGACY_DEFAULT_SYSTEM_AND_CHUNK_PROMPT = `${LEGACY_DEFAULT_SYSTEM_PROMPT}\n\n${LEGACY_DEFAULT_CHUNK_PROMPT}`;
 
 const TTS_MODEL_OPTIONS: StageOption[] = [
   { label: "Aura-2 Thalia", value: "aura-2-thalia-en" },
@@ -288,6 +300,39 @@ function deriveFeatureList(
     : nextSetting.value;
 }
 
+function balancedLegacySettingValue(
+  defaultSetting: StageSetting,
+  existingValue: StageSettingValue | undefined,
+) {
+  if (existingValue === undefined) {
+    return undefined;
+  }
+
+  if (
+    defaultSetting.key === "endpointing" &&
+    String(existingValue) === "900"
+  ) {
+    return defaultSetting.value;
+  }
+
+  if (
+    defaultSetting.key === "max_output_tokens" &&
+    ["", "160"].includes(String(existingValue).trim())
+  ) {
+    return defaultSetting.value;
+  }
+
+  if (
+    (defaultSetting.key === "reasoning_effort" ||
+      defaultSetting.key === "verbosity") &&
+    String(existingValue) === "default"
+  ) {
+    return defaultSetting.value;
+  }
+
+  return existingValue;
+}
+
 function normalizeSetting(
   defaultSetting: StageSetting,
   existingSettings: StageSetting[] = [],
@@ -308,6 +353,16 @@ function normalizeSetting(
       (setting) => setting.key === defaultSetting.key,
     );
     const value = typeof existing?.value === "string" ? existing.value.trim() : "";
+    if (
+      value === LEGACY_DEFAULT_SYSTEM_PROMPT ||
+      value === LEGACY_DEFAULT_SYSTEM_AND_CHUNK_PROMPT
+    ) {
+      return {
+        ...defaultSetting,
+        value: defaultSetting.value,
+      };
+    }
+
     const upgradedValue =
       value && !value.toLowerCase().includes("<chunk")
         ? `${value}\n\n${DEFAULT_CHUNK_PROMPT}`
@@ -364,7 +419,10 @@ function normalizeSetting(
   const existing = existingSettings.find((setting) => setting.key === defaultSetting.key);
   return {
     ...defaultSetting,
-    value: normalizeScalarValue(defaultSetting, existing?.value),
+    value: normalizeScalarValue(
+      defaultSetting,
+      balancedLegacySettingValue(defaultSetting, existing?.value),
+    ),
   };
 }
 
@@ -377,12 +435,12 @@ export function createDefaultPipeline(): PipelineStage[] {
       model: "endpointing-vad",
       modelOptions: VAD_MODEL_OPTIONS,
       purpose: "Detect speech boundaries before a turn is committed.",
-      latencyTargetMs: 900,
+      latencyTargetMs: 300,
       settings: [
         {
           key: "endpointing",
           label: "Endpointing",
-          value: 900,
+          value: 300,
           unit: "ms",
           control: "select",
           options: ENDPOINTING_OPTIONS,
@@ -472,7 +530,7 @@ export function createDefaultPipeline(): PipelineStage[] {
       id: "llm",
       label: "Language model",
       provider: "OpenAI Compatible Endpoint",
-      model: "gpt-5.1",
+      model: "gpt-5-mini",
       modelOptions: OPENAI_MODEL_OPTIONS,
       allowCustomModel: true,
       purpose: "Generate the agent response from transcript and context.",
@@ -517,21 +575,21 @@ export function createDefaultPipeline(): PipelineStage[] {
         {
           key: "max_output_tokens",
           label: "Max output tokens",
-          value: "",
+          value: "512",
           control: "text",
           placeholder: "e.g. 1024",
         },
         {
           key: "reasoning_effort",
           label: "Reasoning effort",
-          value: "default",
+          value: "low",
           control: "select",
           options: REASONING_EFFORT_OPTIONS,
         },
         {
           key: "verbosity",
           label: "Verbosity",
-          value: "default",
+          value: "low",
           control: "select",
           options: VERBOSITY_OPTIONS,
         },
@@ -740,7 +798,7 @@ export function deepgramListenParams(pipeline: PipelineStage[]) {
     smart_format: String(selectedFeature(stt, "smart_format", true, "stt_features")),
     interim_results: String(selectedFeature(vad, "interim_results", true)),
     vad_events: String(selectedFeature(vad, "vad_events", true)),
-    endpointing: settingString(vad, "endpointing", 900),
+    endpointing: settingString(vad, "endpointing", 300),
     utterance_end_ms: settingString(vad, "utterance_end_ms", 1000),
     encoding: settingString(stt, "encoding", "linear16"),
     sample_rate: settingString(stt, "sample_rate", 16000),

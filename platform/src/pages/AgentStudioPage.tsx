@@ -7,6 +7,7 @@ type AgentStudioPageProps = {
   agents: VoiceAgent[];
   selectedAgentId: string | null;
   onCreateAgent: (input: CreateAgentInput) => void;
+  onDeleteAgent: (agentId: string) => void;
   onSelectAgent: (agentId: string) => void;
   onUpdateAgent: (agentId: string, input: CreateAgentInput) => void;
 };
@@ -15,6 +16,7 @@ export function AgentStudioPage({
   agents,
   selectedAgentId,
   onCreateAgent,
+  onDeleteAgent,
   onSelectAgent,
   onUpdateAgent,
 }: AgentStudioPageProps) {
@@ -34,6 +36,7 @@ export function AgentStudioPage({
         <AgentList
           agents={agents}
           selectedAgentId={selectedAgentId}
+          onDelete={onDeleteAgent}
           onSelect={onSelectAgent}
           onUpdate={onUpdateAgent}
         />

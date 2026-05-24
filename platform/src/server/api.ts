@@ -960,6 +960,74 @@ async function updateAgent(
   });
 }
 
+async function deleteAgent(context: UserContext, agentId: string) {
+  if (!isUuid(agentId)) {
+    return false;
+  }
+
+  const [row] = await db
+    .select()
+    .from(agents)
+    .where(
+      and(
+        eq(agents.id, agentId),
+        eq(agents.userId, context.user.id),
+        isNull(agents.deletedAt),
+      ),
+    )
+    .limit(1);
+
+  if (!row) {
+    return false;
+  }
+
+  const timestamp = nowDate();
+  const versionRows = await db
+    .select({ id: agentVersions.id })
+    .from(agentVersions)
+    .where(eq(agentVersions.agentId, row.id));
+  const versionIds = versionRows.map((version) => version.id);
+  const deploymentRows = versionIds.length
+    ? await db
+        .select({ id: deployments.id })
+        .from(deployments)
+        .where(inArray(deployments.agentVersionId, versionIds))
+    : [];
+  const deploymentIds = deploymentRows.map((deployment) => deployment.id);
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(agents)
+      .set({ status: "removed", deletedAt: timestamp, updatedAt: timestamp })
+      .where(eq(agents.id, row.id));
+
+    if (row.pipelineId) {
+      await tx
+        .update(pipelines)
+        .set({ deletedAt: timestamp, updatedAt: timestamp })
+        .where(eq(pipelines.id, row.pipelineId));
+    }
+
+    await tx
+      .update(runtimeSessionTokens)
+      .set({ status: "revoked" })
+      .where(eq(runtimeSessionTokens.agentId, row.id));
+
+    if (deploymentIds.length > 0) {
+      await tx
+        .update(deploymentDeviceTargets)
+        .set({ status: "removed", updatedAt: timestamp })
+        .where(inArray(deploymentDeviceTargets.deploymentId, deploymentIds));
+      await tx
+        .update(deployments)
+        .set({ status: "removed", supersededAt: timestamp })
+        .where(inArray(deployments.id, deploymentIds));
+    }
+  });
+
+  return true;
+}
+
 function createDevice(input: CreateDotDeviceInput): DotDevice {
   const updatedAt = nowIso();
   const serialNumber = trimRequired(input.serialNumber, "Serial number");
@@ -1912,6 +1980,12 @@ server.put<{ Params: { id: string }; Body: Partial<VoiceAgent> }>(
     return { agent };
   },
 );
+
+server.delete<{ Params: { id: string } }>("/api/agents/:id", async (request) => {
+  const context = await contextFromRequest(request.headers.authorization);
+  await deleteAgent(context, request.params.id);
+  return { ok: true };
+});
 
 server.get("/api/dot-devices", async (request) => {
   const context = await contextFromRequest(request.headers.authorization);

@@ -37,6 +37,7 @@
  */
 
 #define OPUS_FRAME_DURATION_MS 60
+#define OPUS_VOICE_BITRATE 32000
 #define MAX_ENCODE_TASKS_IN_QUEUE 2
 #define MAX_PLAYBACK_TASKS_IN_QUEUE 2
 #define MAX_DECODE_PACKETS_IN_QUEUE (2400 / OPUS_FRAME_DURATION_MS)
@@ -66,9 +67,9 @@
         .sample_rate        = ESP_AUDIO_SAMPLE_RATE_16K,                                                          \
         .channel            = ESP_AUDIO_MONO,                                                                     \
         .bits_per_sample    = ESP_AUDIO_BIT16,                                                                    \
-        .bitrate            = ESP_OPUS_BITRATE_AUTO,                                                              \
+        .bitrate            = OPUS_VOICE_BITRATE,                                                                 \
         .frame_duration     = (esp_opus_enc_frame_duration_t)AS_OPUS_GET_FRAME_DRU_ENUM(OPUS_FRAME_DURATION_MS),  \
-        .application_mode   = ESP_OPUS_ENC_APPLICATION_AUDIO,                                                     \
+        .application_mode   = ESP_OPUS_ENC_APPLICATION_VOIP,                                                      \
         .complexity         = 0,                                                                                  \
         .enable_fec         = false,                                                                              \
         .enable_dtx         = true,                                                                               \

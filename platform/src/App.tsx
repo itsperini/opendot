@@ -19,6 +19,7 @@ import {
   createDotDevice as createPlatformDotDevice,
   claimDeviceActivation as claimPlatformDeviceActivation,
   createUserApiKey as createPlatformApiKey,
+  deleteAgent as deletePlatformAgent,
   deleteDotDevice as deletePlatformDotDevice,
   loadPlatformState,
   revokeUserApiKey as revokePlatformApiKey,
@@ -125,6 +126,24 @@ function withDevice(state: PlatformState, device: DotDevice): PlatformState {
   };
 }
 
+function withoutAgent(state: PlatformState, agentId: string): PlatformState {
+  return {
+    ...state,
+    agents: state.agents.filter((agent) => agent.id !== agentId),
+    devices: state.devices.map((device) =>
+      device.boundAgentId === agentId
+        ? {
+            ...device,
+            boundAgentId: null,
+            boundAgentName: null,
+            boundConfigVersion: null,
+            boundAt: null,
+          }
+        : device,
+    ),
+  };
+}
+
 function pageFromPathname(pathname: string): PageId {
   const route = pageItems.find((item) => item.path === pathname);
   return route?.id ?? "agent-studio";
@@ -186,6 +205,7 @@ export default function App() {
 
   const createAgentMutation = useMutation({ mutationFn: createPlatformAgent });
   const updateAgentMutation = useMutation({ mutationFn: updatePlatformAgent });
+  const deleteAgentMutation = useMutation({ mutationFn: deletePlatformAgent });
   const createDeviceMutation = useMutation({ mutationFn: createPlatformDotDevice });
   const claimDeviceActivationMutation = useMutation({
     mutationFn: claimPlatformDeviceActivation,
@@ -330,6 +350,22 @@ export default function App() {
         reportPlatformError(error);
         void queryClient.invalidateQueries({ queryKey: platformStateKey });
       });
+  }
+
+  async function handleDeleteAgentIdentity(agentId: string) {
+    updatePlatformState((state) => withoutAgent(state, agentId));
+    if (selectedAgentId === agentId) {
+      const nextAgent = normalizedAgents.find((agent) => agent.id !== agentId);
+      setSelectedAgentId(nextAgent?.id ?? null);
+    }
+
+    try {
+      await deleteAgentMutation.mutateAsync(agentId);
+      setPlatformError(null);
+    } catch (error) {
+      reportPlatformError(error);
+      void queryClient.invalidateQueries({ queryKey: platformStateKey });
+    }
   }
 
   function handleSettingChange(
@@ -592,6 +628,7 @@ export default function App() {
             agents={normalizedAgents}
             selectedAgentId={selectedAgentId}
             onCreateAgent={handleCreateAgent}
+            onDeleteAgent={handleDeleteAgentIdentity}
             onSelectAgent={setSelectedAgentId}
             onUpdateAgent={handleUpdateAgentIdentity}
           />

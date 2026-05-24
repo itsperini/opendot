@@ -88,15 +88,18 @@ services:
       NODE_ENV: production
       RUNTIME_HOST: 0.0.0.0
       RUNTIME_PORT: 8787
-      PLATFORM_API_INTERNAL_URL: ${PLATFORM_API_INTERNAL_URL:-http://platform-api:8788/api}
+      PLATFORM_API_INTERNAL_URL: http://platform-api:8788/api
       OPENDOT_RUNTIME_INTERNAL_SECRET: ${OPENDOT_RUNTIME_INTERNAL_SECRET:-opendot-local-runtime-internal-secret-change-me}
       DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4-mini}
-      OPENDOT_SYSTEM_PROMPT: ${OPENDOT_SYSTEM_PROMPT:-You are a concise voice assistant. Answer naturally in one or two short spoken paragraphs.}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5-mini}
+      OPENAI_MAX_OUTPUT_TOKENS: ${OPENAI_MAX_OUTPUT_TOKENS:-512}
+      OPENAI_REASONING_EFFORT: ${OPENAI_REASONING_EFFORT:-low}
+      OPENAI_VERBOSITY: ${OPENAI_VERBOSITY:-low}
+      OPENDOT_SYSTEM_PROMPT: ${OPENDOT_SYSTEM_PROMPT:-You are a concise voice assistant. Start with the direct answer and reply in one or two short spoken sentences unless asked for detail.}
       DEEPGRAM_STT_MODEL: ${DEEPGRAM_STT_MODEL:-nova-3}
       DEEPGRAM_STT_LANGUAGE: ${DEEPGRAM_STT_LANGUAGE:-en-US}
-      DEEPGRAM_ENDPOINTING_MS: ${DEEPGRAM_ENDPOINTING_MS:-900}
+      DEEPGRAM_ENDPOINTING_MS: ${DEEPGRAM_ENDPOINTING_MS:-300}
       DEEPGRAM_UTTERANCE_END_MS: ${DEEPGRAM_UTTERANCE_END_MS:-1000}
       DEEPGRAM_TTS_MODEL: ${DEEPGRAM_TTS_MODEL:-aura-2-thalia-en}
       DEEPGRAM_TTS_ENCODING: ${DEEPGRAM_TTS_ENCODING:-mp3}
