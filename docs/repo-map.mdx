@@ -28,7 +28,7 @@ verification commands.
 
 | Surface                 | Key files                                                            | What to check                                                            |
 | ----------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| UI shell and navigation | `platform/src/App.tsx`, `platform/src/pages/**`                      | Page state, selected agent/device behavior, loading/error states         |
+| UI shell and navigation | `platform/src/App.tsx`, `platform/src/pages/**`                      | Page state, selected identity/device behavior, loading/error states      |
 | API client and cache    | `platform/src/lib/platformApi.ts`, `platform/src/lib/queryClient.ts` | Request shape, auth token behavior, TanStack Query invalidation          |
 | Pipeline defaults       | `platform/src/lib/pipeline.ts`, `platform/src/types.ts`              | VAD/STT/LLM/TTS stage settings and normalization                         |
 | Control API             | `platform/src/server/api.ts`                                         | Auth, agents, devices, settings, deployments, runtime token verification |

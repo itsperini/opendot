@@ -2,22 +2,24 @@
 
 OpenDot is the open platform for voice agents on real devices.
 
-This app is the current platform workbench for building and tuning voice agents, configuring their runtime behavior, testing sessions, and binding selected configs to hardware.
+This app is the current platform workbench for building and tuning voice agents,
+configuring their runtime behavior, testing sessions, and binding active
+identity configs to hardware.
 
 The current implementation focuses on the first creation flow:
 
-- Create a draft voice agent with a name and description.
+- Create an agent identity with a name and description.
 - Attach a default voice pipeline with four explicit stages: VAD, STT, LLM, and TTS.
 - Edit first-pass pipeline, model, and runtime settings in the browser.
 - Test live sessions against the local voice runtime.
-- Persist draft agents, settings, devices, and SDK key metadata in PostgreSQL.
+- Persist identities, settings, devices, and SDK key metadata in PostgreSQL.
 
 ## Pipeline Defaults
 
 The initial pipeline is:
 
 ```text
-Deepgram VAD -> Deepgram STT -> OpenAI LLM -> Deepgram TTS
+Deepgram VAD -> Deepgram STT -> OpenAI-compatible LLM -> Deepgram TTS
 ```
 
 Deepgram VAD is represented as its own stage, but it maps to Deepgram live streaming options:
@@ -129,12 +131,14 @@ Add real keys to the root `.env` before starting the runtime:
 ```bash
 DEEPGRAM_API_KEY=...
 OPENAI_API_KEY=...
+OPENAI_BASE_URL=
+OPENAI_MODEL=gpt-5.1
 ```
 
 Then:
 
 1. Open the frontend URL, usually `http://localhost:5173`.
-2. Create or select a draft agent.
+2. Create or select an agent identity.
 3. Adjust the VAD, STT, LLM, and TTS parameters.
 4. In **Browser Test**, click **Connect**.
 5. Click **Start mic** and speak.
@@ -158,7 +162,11 @@ For browser TTS experiments, the TTS stage exposes:
 
 Use `Linear16 PCM` plus `Direct PCM stream` to hear raw PCM as it arrives. Other encodings, including Opus, are retained as chunked audio files for browser playback.
 
-The LLM stage exposes `System prompt and chunk rules`, which is prefilled with the voice assistant system prompt and the editable `<chunk>` formatting instructions. The runtime still adds the selected TTS chunk style as a final length hint.
+The LLM stage exposes `System prompt and chunk rules`, which is prefilled with
+the voice assistant system prompt and the editable `<chunk>` formatting
+instructions. It also supports OpenAI-compatible base URLs, custom model IDs,
+and either Responses or Chat Completions provider APIs. The runtime still adds
+the selected TTS chunk style as a final length hint.
 
 If endpointing is too eager or too slow, tune:
 
@@ -217,6 +225,8 @@ OPENDOT_RUNTIME_PUBLIC_WS_URL=wss://<opendot-runtime>.onrender.com/voice
 PLATFORM_API_INTERNAL_URL=https://<opendot-api>.onrender.com/api
 DEEPGRAM_API_KEY=...
 OPENAI_API_KEY=...
+OPENAI_BASE_URL=
+OPENAI_MODEL=gpt-5.1
 ```
 
 `PLATFORM_AUTH_REQUIRED` is `true` in the Blueprint, and local password auth is

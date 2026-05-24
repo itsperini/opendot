@@ -27,9 +27,9 @@ over OTA/bootstrap and WebSocket paths.
 | Firmware      | ESP-IDF for [Waveshare ESP32-S3-AUDIO-Board](https://www.waveshare.com/esp32-s3-audio-board.htm) | Wi-Fi provisioning, activation, wake word, audio I/O, display, WebSocket client |
 
 The control boundary is intentional: browser and device clients do not push raw
-agent configuration directly into the runtime. They ask the platform API for an
-authorized session or credential, and the runtime verifies that token with the
-platform API before loading the agent config.
+identity configuration directly into the runtime. They ask the platform API for
+an authorized session or credential, and the runtime verifies that token with
+the platform API before loading the identity config.
 
 For contributor orientation, see [Contribution areas](/contribution-areas). For
 sequencing across current, next, and later work, see the [Roadmap](/roadmap).
@@ -56,8 +56,8 @@ sequencing across current, next, and later work, see the [Roadmap](/roadmap).
     device audio.
   </Card>
   <Card title="Providers" icon="sparkles">
-    Deepgram backs the starter VAD, STT, and TTS paths. OpenAI-compatible Responses calls
-    back the starter LLM stage.
+    Deepgram backs the starter VAD, STT, and TTS paths. OpenAI-compatible Responses or
+    Chat Completions calls back the starter LLM stage.
   </Card>
   <Card title="Device firmware" icon="cpu">
     ESP-IDF firmware targets the [Waveshare
@@ -112,7 +112,7 @@ See [Configuration](/configuration) for stage settings and
 
 ## Device activation and binding
 
-<Frame caption="Device activation starts at OTA bootstrap, then stores device credentials and applies the bound agent config on authenticated sessions.">
+<Frame caption="Device activation starts at OTA bootstrap, then stores device credentials and applies the bound identity config on authenticated sessions.">
   <img
     src="/images/architecture/device-activation-flow.svg"
     alt="OpenDot device activation and binding diagram"

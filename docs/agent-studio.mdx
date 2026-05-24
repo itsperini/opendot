@@ -1,11 +1,13 @@
 ---
 title: Agent Studio
-description: Create agents and prepare their runtime configuration.
+description: Create agent identities and prepare their runtime configuration.
 ---
 
-Agent Studio is the first step in the OpenDot flow. It creates draft voice agents that become the anchor for pipeline tuning, model settings, knowledge configuration, live testing, and hardware binding.
+Agent Studio is the first step in the OpenDot flow. It creates agent identities
+that become the anchor for pipeline tuning, model settings, knowledge
+configuration, live testing, and hardware binding.
 
-<Frame caption="Agent Studio creates a draft agent and keeps the selected agent visible for the rest of the workflow.">
+<Frame caption="Agent Studio creates identities, edits saved identity copy, and keeps the active identity visible in the page header.">
   <img src="/images/platform/agent-studio.png" alt="OpenDot Agent Studio screen" />
 </Frame>
 
@@ -13,49 +15,54 @@ Agent Studio is the first step in the OpenDot flow. It creates draft voice agent
 
 Agent Studio has two panels:
 
-- **Create voice agent**: creates a new draft agent.
-- **Draft agents**: lists persisted agents and switches the selected agent.
+- **Create agent identity**: creates a new identity with a name and description.
+- **Agent identities**: lists persisted identities, switches the active identity, and opens inline editing.
 
-The selected agent drives the rest of the console. Configuration edits its
+The active identity drives the rest of the console. Configuration edits its
 pipeline, Browser Test authorizes runtime sessions for it, and Dot Device can
-bind it to hardware.
+bind it to hardware. The same active identity selector appears in every
+authenticated page header for quick switching.
 
-## Create voice agent
+## Create agent identity
 
-Each agent starts with:
+Each identity starts with:
 
-- **Agent name**: a short label such as `Lobby guide`
+- **Identity name**: a short label such as `Lobby guide`
 - **Description**: the job the agent should perform
 
-When you click **Create draft agent**, OpenDot attaches the default four-stage
+When you click **Create identity**, OpenDot attaches the default four-stage
 pipeline:
 
 ```text
 VAD -> STT -> LLM -> TTS
 ```
 
-The new agent becomes the selected agent immediately.
+The new identity becomes active immediately.
 
-## Draft agents
+## Agent identities
 
-Use the agent list to switch between drafts. Each row shows the agent name,
-description, and last update time. Selecting a row changes:
+Use the identity list to switch between saved identities. Each row shows the
+identity name, description, and last update time. Selecting a row changes:
 
 - which pipeline is edited in [Configuration](/configuration)
-- which agent the console uses when it asks the platform API for a runtime
+- which identity the console uses when it asks the platform API for a runtime
   voice-session token in [Browser Test](/browser-test)
 - which voice config can be bound to a device in [Dot Device](/dot-device)
 
+Use the edit icon on a saved identity to update its name or description inline.
+Saving creates a new draft version while preserving the current pipeline.
+
 ## Persistence model
 
-The platform API persists the agent and its default pipeline in PostgreSQL as:
+The platform API persists each identity and its default pipeline in PostgreSQL
+as:
 
 - `agents`
 - `agent_versions`
 - `pipelines`
 - `pipeline_versions`
 
-Editing an agent or its pipeline writes a new draft version. The current
+Editing an identity or its pipeline writes a new draft version. The current
 prototype is still single-workspace, but the data model is already shaped around
 durable agent and pipeline configuration rather than browser-only state.
 
@@ -64,5 +71,5 @@ See [Database inspection](/database-inspection) to inspect the stored rows and
 
 ## Next phase
 
-Open [Configuration](/configuration) to tune the selected agent's VAD, STT, LLM,
-and TTS stages.
+Open [Configuration](/configuration) to tune the active identity's VAD, STT,
+LLM, and TTS stages.

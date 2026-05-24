@@ -47,7 +47,7 @@ Most voice agent stacks are split across hosted dashboards, hidden runtime behav
 
 OpenDot is in an early prototype phase. The current implementation focuses on the first complete local loop:
 
-1. Create a draft voice agent in the platform UI.
+1. Create an agent identity in the platform UI.
 2. Configure a traditional voice pipeline: VAD, STT, LLM, and TTS.
 3. Test microphone turns in the browser against a local runtime.
 4. Pair a Dot device and bind the selected voice configuration.
@@ -55,7 +55,7 @@ OpenDot is in an early prototype phase. The current implementation focuses on th
 The starter pipeline currently uses Deepgram and OpenAI-compatible services:
 
 ```text
-Deepgram VAD -> Deepgram STT -> OpenAI LLM -> Deepgram TTS
+Deepgram VAD -> Deepgram STT -> OpenAI-compatible LLM -> Deepgram TTS
 ```
 
 The runtime is structured around replaceable stages so future work can move more of the stack to local and self-hosted models.
@@ -163,9 +163,15 @@ Add provider keys to the root `.env` before testing live voice sessions:
 ```bash
 DEEPGRAM_API_KEY=...
 OPENAI_API_KEY=...
+OPENAI_BASE_URL=
+OPENAI_MODEL=gpt-5.1
 ```
 
-Then open the platform, create an agent, review the pipeline settings, connect from **Browser Test**, and speak into the microphone.
+Then open the platform, create an identity, review the pipeline settings,
+connect from **Browser Test**, and speak into the microphone. Leave
+`OPENAI_BASE_URL` blank for OpenAI, or set it to an OpenAI-compatible provider
+base URL; the selected LLM Provider API determines whether the runtime calls
+`/responses` or `/chat/completions`.
 
 ## Render Deployment
 
@@ -189,6 +195,8 @@ VITE_SUPABASE_URL=https://<project-ref>.supabase.co
 VITE_SUPABASE_ANON_KEY=<supabase anon key>
 DEEPGRAM_API_KEY=...
 OPENAI_API_KEY=...
+OPENAI_BASE_URL=
+OPENAI_MODEL=gpt-5.1
 VITE_PLATFORM_API_URL=https://<opendot-api>.onrender.com/api
 VITE_RUNTIME_HTTP_URL=https://<opendot-runtime>.onrender.com
 VITE_RUNTIME_WS_URL=wss://<opendot-runtime>.onrender.com/voice

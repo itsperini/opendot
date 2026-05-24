@@ -60,14 +60,14 @@ const pageItems = [
     path: "/agent-studio",
     icon: Bot,
     label: "Agent Studio",
-    helper: "Create and select agents",
+    helper: "Create and select identities",
   },
   {
     id: "configuration",
     path: "/configuration",
     icon: Settings2,
     label: "Configuration",
-    helper: "VAD, STT, LLM, TTS",
+    helper: "Voice pipeline",
   },
   {
     id: "browser-test",
@@ -303,6 +303,33 @@ export default function App() {
     } catch (error) {
       reportPlatformError(error);
     }
+  }
+
+  function handleUpdateAgentIdentity(agentId: string, input: CreateAgentInput) {
+    const agent = normalizedAgents.find((item) => item.id === agentId);
+
+    if (!agent) {
+      return;
+    }
+
+    const nextAgent = normalizeVoiceAgent({
+      ...agent,
+      ...input,
+      updatedAt: new Date().toISOString(),
+    });
+
+    updatePlatformState((state) => withAgent(state, nextAgent));
+    updateAgentMutation
+      .mutateAsync(nextAgent)
+      .then((savedAgent) => {
+        updatePlatformState((state) => withAgent(state, savedAgent));
+        setSelectedAgentId(savedAgent.id);
+        setPlatformError(null);
+      })
+      .catch((error) => {
+        reportPlatformError(error);
+        void queryClient.invalidateQueries({ queryKey: platformStateKey });
+      });
   }
 
   function handleSettingChange(
@@ -566,19 +593,28 @@ export default function App() {
             selectedAgentId={selectedAgentId}
             onCreateAgent={handleCreateAgent}
             onSelectAgent={setSelectedAgentId}
+            onUpdateAgent={handleUpdateAgentIdentity}
           />
         ) : null}
 
         {!platformLoading && activePage === "configuration" ? (
           <ConfigurationPage
             agent={selectedAgent}
+            agents={normalizedAgents}
+            selectedAgentId={selectedAgentId}
             onModelChange={handleModelChange}
+            onSelectAgent={setSelectedAgentId}
             onSettingChange={handleSettingChange}
           />
         ) : null}
 
         {!platformLoading && activePage === "browser-test" ? (
-          <BrowserTestPage agent={selectedAgent} />
+          <BrowserTestPage
+            agent={selectedAgent}
+            agents={normalizedAgents}
+            selectedAgentId={selectedAgentId}
+            onSelectAgent={setSelectedAgentId}
+          />
         ) : null}
 
         {!platformLoading && activePage === "dot-device" ? (
@@ -586,18 +622,23 @@ export default function App() {
             agents={normalizedAgents}
             devices={devices}
             selectedAgent={selectedAgent}
+            selectedAgentId={selectedAgentId}
             onClaimDeviceActivation={handleClaimDeviceActivation}
             onCreateDevice={handleCreateDevice}
             onRemoveDevice={handleRemoveDevice}
+            onSelectAgent={setSelectedAgentId}
             onUpdateDevice={handleUpdateDevice}
           />
         ) : null}
 
         {!platformLoading && activePage === "settings" ? (
           <SettingsPage
+            agents={normalizedAgents}
             apiKeys={apiKeys}
+            selectedAgentId={selectedAgentId}
             settings={userSettings}
             onCreateApiKey={handleCreateApiKey}
+            onSelectAgent={setSelectedAgentId}
             onRevokeApiKey={handleRevokeApiKey}
             onSettingChange={handleUserSettingChange}
             onSignOut={handleSignOut}

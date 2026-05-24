@@ -3,9 +3,11 @@ title: Dot Device console
 description: Pair devices, check runtime availability, and bind voice configs.
 ---
 
-Dot Device manages the hardware side of the prototype. It keeps an API-owned inventory of paired devices, claims devices with spoken codes, and binds the selected voice agent config.
+Dot Device manages the hardware side of the prototype. It keeps an API-owned
+inventory of paired devices, claims devices with spoken codes, and binds the
+active agent identity config.
 
-<Frame caption="Dot Device manages runtime availability, device inventory, spoken-code pairing, and voice config binding.">
+<Frame caption="Dot Device keeps runtime status inside device inventory while the page header shows the active identity.">
   <img src="/images/platform/dot-device.png" alt="OpenDot Dot Device screen" />
 </Frame>
 
@@ -16,14 +18,13 @@ For firmware and hardware details behind this console workflow, see
 
 Dot Device has four main areas:
 
-- **Runtime status and Refresh**: checks whether the runtime HTTP endpoint is reachable.
-- **Inventory**: lists paired devices, spoken-code claim, and manual pairing.
+- **Inventory**: lists paired devices, runtime status, spoken-code claim, and manual pairing.
 - **Availability**: shows selected device status and metadata.
-- **Voice Config / Device events**: binds an agent config and records device actions.
+- **Voice Config / Device events**: binds an identity config and records device actions.
 
-## Runtime status and Refresh
+## Runtime status
 
-The page checks the runtime health endpoint. By default it uses:
+The Inventory panel checks the runtime health endpoint. By default it uses:
 
 ```text
 http://localhost:8787
@@ -31,7 +32,8 @@ http://localhost:8787
 
 The page derives that URL from `VITE_RUNTIME_HTTP_URL` or `VITE_RUNTIME_WS_URL`.
 
-Click **Refresh** to check runtime health and each paired device endpoint.
+Click **Refresh status** to check runtime health and each paired device
+endpoint.
 
 ## Inventory
 
@@ -63,7 +65,7 @@ For local demos, `demo://custom-dot` is enough.
 ## Availability
 
 The Availability panel shows the selected device status, auth source, model, IP,
-last seen time, and bound agent. Use **Check** to probe only the selected device
+last seen time, and bound identity. Use **Check** to probe only the selected device
 or **Remove** to delete it from the platform inventory.
 
 Availability values:
@@ -75,10 +77,11 @@ Availability values:
 ## Voice Config
 
 1. Select a device.
-2. Select an agent in **Voice Config**.
+2. Select an agent identity in **Voice Config**.
 3. Click **Bind config**.
 
-OpenDot stores the binding in the platform API. The runtime applies the bound agent config after the device connects with a valid device token.
+OpenDot stores the binding in the platform API. The runtime applies the bound
+identity config after the device connects with a valid device token.
 
 Bindings are stored as deployment and deployment-device-target records, so a
 device points at a versioned agent and pipeline config rather than browser-only

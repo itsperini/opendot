@@ -5,7 +5,7 @@ description: Manage workspace preferences and prototype SDK keys.
 
 Settings holds user-level preferences and prototype SDK keys for OpenDot. In the database, profile state is split across `app_users` and `user_preferences` so Supabase Auth can provide identity without owning OpenDot product data.
 
-<Frame caption="Settings keeps workspace preferences and prototype SDK keys separate from runtime and device credentials.">
+<Frame caption="Settings keeps workspace preferences and prototype SDK keys separate from runtime, device credentials, and the active identity selector.">
   <img src="/images/platform/settings.png" alt="OpenDot Settings screen" />
 </Frame>
 
@@ -15,6 +15,9 @@ Settings has two panels:
 
 - **Workspace preferences**: user profile and console density.
 - **SDK API keys**: prototype keys for future external SDK/API access.
+
+The sticky page header still shows the active agent identity selector, but
+Settings changes only workspace preferences and SDK key metadata.
 
 ## Workspace preferences
 

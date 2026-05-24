@@ -31,10 +31,10 @@ OpenDot brings the control plane, voice runtime, and device layer into one workf
     See how local credentials and Supabase Auth enter the console.
   </Card>
   <Card title="Agent Studio" icon="bot" href="/agent-studio">
-    Create and select the draft agent that anchors the rest of the workflow.
+    Create, edit, and select the agent identity that anchors the rest of the workflow.
   </Card>
   <Card title="Configuration" icon="settings-2" href="/configuration">
-    Tune the explicit VAD, STT, LLM, and TTS stages for the selected agent.
+    Tune the Sandwich pipeline or inspect the future Speech-to-speech placeholder.
   </Card>
   <Card title="Browser Test" icon="audio-lines" href="/browser-test">
     Connect the runtime, stream microphone audio, inspect transcripts, and replay spoken
@@ -75,7 +75,7 @@ Reference pages move deeper into the docs so the first path stays clear:
 ## Starter pipeline
 
 ```text
-Deepgram VAD -> Deepgram STT -> OpenAI LLM -> Deepgram TTS
+Deepgram VAD -> Deepgram STT -> OpenAI-compatible LLM -> Deepgram TTS
 ```
 
 The current starter pipeline uses hosted Deepgram and OpenAI-compatible stages while keeping the runtime organized around replaceable components. That shape is intentional: the same workflow should be able to move toward local models, self-hosted inference, cloud sessions, local-network operation, and on-device deployments without changing how agents are managed.

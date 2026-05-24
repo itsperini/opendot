@@ -22,10 +22,15 @@ const STT_MODEL_OPTIONS: StageOption[] = [
 ];
 
 const OPENAI_MODEL_OPTIONS: StageOption[] = [
-  { label: "GPT-5.5", value: "gpt-5.5" },
-  { label: "GPT-5.4", value: "gpt-5.4" },
-  { label: "GPT-5.4 mini", value: "gpt-5.4-mini" },
-  { label: "GPT-5.4 nano", value: "gpt-5.4-nano" },
+  { label: "GPT-5.1", value: "gpt-5.1" },
+  { label: "GPT-5.1 Chat latest", value: "gpt-5.1-chat-latest" },
+  { label: "GPT-5", value: "gpt-5" },
+  { label: "GPT-5 mini", value: "gpt-5-mini" },
+  { label: "GPT-5 nano", value: "gpt-5-nano" },
+  { label: "GPT-5 pro", value: "gpt-5-pro" },
+  { label: "GPT-4.1", value: "gpt-4.1" },
+  { label: "GPT-4.1 mini", value: "gpt-4.1-mini" },
+  { label: "GPT-4.1 nano", value: "gpt-4.1-nano" },
 ];
 
 const DEFAULT_SYSTEM_PROMPT =
@@ -124,9 +129,21 @@ const STT_FEATURE_OPTIONS: StageOption[] = [
   { label: "Numerals", value: "numerals" },
 ];
 
-const LLM_API_OPTIONS: StageOption[] = [{ label: "Responses API", value: "Responses" }];
+const LLM_API_OPTIONS: StageOption[] = [
+  { label: "Responses (recommended)", value: "responses" },
+  { label: "Chat Completions", value: "chat_completions" },
+];
+
+function normalizeLlmApiValue(value: StageSettingValue | undefined) {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (["chat", "chat-completions", "chat_completions"].includes(normalized)) {
+    return "chat_completions";
+  }
+  return normalized === "responses" ? "responses" : undefined;
+}
 
 const REASONING_EFFORT_OPTIONS: StageOption[] = [
+  { label: "Default", value: "default" },
   { label: "None", value: "none" },
   { label: "Low", value: "low" },
   { label: "Medium", value: "medium" },
@@ -135,6 +152,7 @@ const REASONING_EFFORT_OPTIONS: StageOption[] = [
 ];
 
 const VERBOSITY_OPTIONS: StageOption[] = [
+  { label: "Default", value: "default" },
   { label: "Low", value: "low" },
   { label: "Medium", value: "medium" },
   { label: "High", value: "high" },
@@ -197,6 +215,35 @@ function normalizeScalarValue(
     return typeof value === "string" ? value : setting.value;
   }
 
+  if (setting.control === "text") {
+    return typeof value === "string" || typeof value === "number"
+      ? String(value)
+      : setting.value;
+  }
+
+  if (setting.control === "number") {
+    const numericValue =
+      typeof value === "number"
+        ? value
+        : typeof value === "string"
+          ? Number(value)
+          : NaN;
+
+    return Number.isFinite(numericValue) ? numericValue : setting.value;
+  }
+
+  if (setting.control === "key-value-list") {
+    if (!value || Array.isArray(value) || typeof value !== "object") {
+      return setting.value;
+    }
+
+    return Object.fromEntries(
+      Object.entries(value)
+        .map(([key, entryValue]) => [key.trim(), String(entryValue)] as const)
+        .filter(([key]) => key.length > 0),
+    );
+  }
+
   return setting.value;
 }
 
@@ -205,6 +252,19 @@ function normalizeMultiValue(setting: StageSetting, values: unknown) {
   const allowed = optionValueSet(setting.options);
   const filtered = selected.filter((value) => allowed.has(value));
   return Array.isArray(values) ? filtered : setting.value;
+}
+
+function normalizeMultiTextValue(setting: StageSetting, values: unknown) {
+  const selected = Array.isArray(values)
+    ? values.map(String)
+    : typeof values === "string"
+      ? values.split(/\r?\n|,/)
+      : [];
+  const uniqueValues = Array.from(
+    new Set(selected.map((value) => value.trim()).filter(Boolean)),
+  );
+
+  return uniqueValues.slice(0, setting.maxItems ?? uniqueValues.length);
 }
 
 function deriveFeatureList(
@@ -234,6 +294,17 @@ function normalizeSetting(
   defaultSetting: StageSetting,
   existingSettings: StageSetting[] = [],
 ) {
+  if (defaultSetting.key === "api") {
+    const existing = existingSettings.find(
+      (setting) => setting.key === defaultSetting.key,
+    );
+
+    return {
+      ...defaultSetting,
+      value: normalizeLlmApiValue(existing?.value) ?? defaultSetting.value,
+    };
+  }
+
   if (defaultSetting.key === "system_prompt") {
     const existing = existingSettings.find(
       (setting) => setting.key === defaultSetting.key,
@@ -279,6 +350,17 @@ function normalizeSetting(
         value: deriveFeatureList(existingSettings, defaultSetting, ["stream"]),
       };
     }
+  }
+
+  if (defaultSetting.control === "multi-text") {
+    const existing = existingSettings.find(
+      (setting) => setting.key === defaultSetting.key,
+    );
+
+    return {
+      ...defaultSetting,
+      value: normalizeMultiTextValue(defaultSetting, existing?.value),
+    };
   }
 
   const existing = existingSettings.find((setting) => setting.key === defaultSetting.key);
@@ -352,6 +434,7 @@ export function createDefaultPipeline(): PipelineStage[] {
       provider: "Deepgram",
       model: "nova-3",
       modelOptions: STT_MODEL_OPTIONS,
+      allowCustomModel: true,
       purpose: "Stream live user audio into partial and final transcripts.",
       latencyTargetMs: 650,
       settings: [
@@ -390,9 +473,10 @@ export function createDefaultPipeline(): PipelineStage[] {
     {
       id: "llm",
       label: "Language model",
-      provider: "OpenAI",
-      model: "gpt-5.4-mini",
+      provider: "OpenAI Compatible Endpoint",
+      model: "gpt-5.1",
       modelOptions: OPENAI_MODEL_OPTIONS,
+      allowCustomModel: true,
       purpose: "Generate the agent response from transcript and context.",
       latencyTargetMs: 1200,
       settings: [
@@ -404,31 +488,122 @@ export function createDefaultPipeline(): PipelineStage[] {
         },
         {
           key: "api",
-          label: "API",
-          value: "Responses",
+          label: "Provider API",
+          value: "responses",
           control: "select",
           options: LLM_API_OPTIONS,
         },
         {
+          key: "api_key_name",
+          label: "API key name",
+          value: "OPENAI_API_KEY",
+          control: "text",
+          placeholder: "OPENAI_API_KEY",
+        },
+        {
+          key: "base_url",
+          label: "Base URL",
+          value: "",
+          control: "text",
+          placeholder: "https://api.openai.com/v1",
+        },
+        {
+          key: "temperature",
+          label: "Temperature",
+          value: 1,
+          control: "number",
+          min: 0,
+          max: 2,
+          step: 0.1,
+        },
+        {
+          key: "max_output_tokens",
+          label: "Max output tokens",
+          value: "",
+          control: "text",
+          placeholder: "e.g. 1024",
+        },
+        {
           key: "reasoning_effort",
           label: "Reasoning effort",
-          value: "none",
+          value: "default",
           control: "select",
           options: REASONING_EFFORT_OPTIONS,
         },
         {
           key: "verbosity",
           label: "Verbosity",
-          value: "low",
+          value: "default",
           control: "select",
           options: VERBOSITY_OPTIONS,
         },
         {
           key: "response_features",
-          label: "Response features",
+          label: "Options",
           value: ["stream"],
           control: "multi-select",
           options: LLM_FEATURE_OPTIONS,
+        },
+        {
+          key: "stop_sequences",
+          label: "Stop sequences",
+          value: [],
+          control: "multi-text",
+          maxItems: 4,
+          placeholder: "Type and press Enter...",
+        },
+        {
+          key: "seed",
+          label: "Seed",
+          value: "",
+          control: "text",
+          placeholder: "e.g. 42",
+        },
+        {
+          key: "json_mode",
+          label: "JSON mode",
+          value: false,
+          control: "switch",
+        },
+        {
+          key: "extra_headers",
+          label: "Extra headers",
+          value: {},
+          control: "key-value-list",
+        },
+        {
+          key: "timeout_s",
+          label: "Timeout",
+          value: 70,
+          unit: "s",
+          control: "number",
+          min: 1,
+          max: 600,
+          step: 1,
+        },
+        {
+          key: "max_retries",
+          label: "Max retries",
+          value: 2,
+          control: "number",
+          min: 0,
+          max: 10,
+          step: 1,
+        },
+        {
+          key: "requests_per_second",
+          label: "Requests per second",
+          value: 50,
+          control: "number",
+          min: 0.1,
+          max: 1000,
+          step: 0.1,
+        },
+        {
+          key: "extra_parameters",
+          label: "Extra parameters",
+          value: "{}",
+          control: "textarea",
         },
       ],
       emits: ["llm_delta", "llm_done"],
@@ -439,6 +614,7 @@ export function createDefaultPipeline(): PipelineStage[] {
       provider: "Deepgram",
       model: "aura-2-thalia-en",
       modelOptions: TTS_MODEL_OPTIONS,
+      allowCustomModel: true,
       purpose: "Render the assistant response as spoken audio.",
       latencyTargetMs: 900,
       settings: [
@@ -488,9 +664,18 @@ export function updateStageModel(
     }
 
     const allowed = optionValueSet(stage.modelOptions);
+    const trimmedModel = model.trim();
+
+    if (stage.allowCustomModel) {
+      return {
+        ...stage,
+        model,
+      };
+    }
+
     return {
       ...stage,
-      model: allowed.has(model) ? model : stage.model,
+      model: allowed.has(trimmedModel) ? trimmedModel : stage.model,
     };
   });
 }
@@ -583,9 +768,12 @@ export function normalizeVoiceAgent(agent: VoiceAgent): VoiceAgent {
     pipeline: defaults.map((defaultStage) => {
       const existing = agent.pipeline?.find((stage) => stage.id === defaultStage.id);
       const allowedModels = optionValueSet(defaultStage.modelOptions);
-      const model =
-        existing?.model && allowedModels.has(String(existing.model))
-          ? existing.model
+      const existingModel =
+        typeof existing?.model === "string" ? existing.model : String(existing?.model ?? "");
+      const model = defaultStage.allowCustomModel
+        ? existingModel || defaultStage.model
+        : existingModel && allowedModels.has(existingModel)
+          ? existingModel
           : defaultStage.model;
 
       return {

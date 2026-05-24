@@ -31,8 +31,8 @@ export function CreateAgentPanel({ onCreate }: CreateAgentPanelProps) {
     <section className="panel create-panel" aria-labelledby="create-agent-title">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">Agent Studio</p>
-          <h2 id="create-agent-title">Create voice agent</h2>
+          <p className="eyebrow">Builder</p>
+          <h2 id="create-agent-title">Create agent identity</h2>
         </div>
         <div className="icon-badge">
           <Sparkles size={18} />
@@ -41,7 +41,7 @@ export function CreateAgentPanel({ onCreate }: CreateAgentPanelProps) {
 
       <form className="agent-form" onSubmit={handleSubmit}>
         <label>
-          Agent name
+          Identity name
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
@@ -69,7 +69,7 @@ export function CreateAgentPanel({ onCreate }: CreateAgentPanelProps) {
 
         <button className="primary-button" type="submit">
           <Plus size={17} />
-          Create draft agent
+          Create identity
         </button>
       </form>
     </section>
