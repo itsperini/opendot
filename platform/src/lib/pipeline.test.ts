@@ -38,12 +38,8 @@ describe("pipeline helpers", () => {
     pipeline = updateStageModel(pipeline, "llm", "vendor/gpt-voice");
     pipeline = updateStageModel(pipeline, "tts", "custom-voice");
 
-    expect(pipeline.find((stage) => stage.id === "stt")?.model).toBe(
-      "custom-stt-live",
-    );
-    expect(pipeline.find((stage) => stage.id === "llm")?.model).toBe(
-      "vendor/gpt-voice",
-    );
+    expect(pipeline.find((stage) => stage.id === "stt")?.model).toBe("custom-stt-live");
+    expect(pipeline.find((stage) => stage.id === "llm")?.model).toBe("vendor/gpt-voice");
     expect(pipeline.find((stage) => stage.id === "tts")?.model).toBe("custom-voice");
   });
 

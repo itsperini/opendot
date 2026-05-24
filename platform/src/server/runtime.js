@@ -386,7 +386,10 @@ function stringListSetting(stage, key, fallback = []) {
     return fallback;
   }
 
-  return value.map(String).map((item) => item.trim()).filter(Boolean);
+  return value
+    .map(String)
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function recordSetting(stage, key, fallback = {}) {
@@ -786,7 +789,9 @@ function normalizeOpenAIBaseUrl(baseUrl) {
 }
 
 function normalizeOpenAIApi(api) {
-  const normalized = String(api || "responses").trim().toLowerCase();
+  const normalized = String(api || "responses")
+    .trim()
+    .toLowerCase();
   if (["chat", "chat-completions", "chat_completions"].includes(normalized)) {
     return "chat_completions";
   }
@@ -800,9 +805,7 @@ function openAIResponseUrl(llmConfig) {
 
 function openAIChatCompletionsUrl(llmConfig) {
   const baseUrl = normalizeOpenAIBaseUrl(llmConfig.baseUrl);
-  return baseUrl.endsWith("/chat/completions")
-    ? baseUrl
-    : `${baseUrl}/chat/completions`;
+  return baseUrl.endsWith("/chat/completions") ? baseUrl : `${baseUrl}/chat/completions`;
 }
 
 function openAIApiKey(llmConfig) {
@@ -885,10 +888,7 @@ function openAIResponseBody(runtimeConfig, input) {
     stream: llmConfig.stream,
   };
   const temperature = Number(llmConfig.temperature);
-  const maxOutputTokens = optionalInteger(
-    llmConfig.maxOutputTokens,
-    "Max output tokens",
-  );
+  const maxOutputTokens = optionalInteger(llmConfig.maxOutputTokens, "Max output tokens");
   const seed = optionalInteger(llmConfig.seed, "Seed");
   const reasoningEffort = String(llmConfig.reasoning_effort || "default");
   const textConfig = openAITextConfig(llmConfig);
@@ -934,10 +934,7 @@ function openAIChatBody(runtimeConfig, conversation) {
     stream: llmConfig.stream,
   };
   const temperature = Number(llmConfig.temperature);
-  const maxOutputTokens = optionalInteger(
-    llmConfig.maxOutputTokens,
-    "Max output tokens",
-  );
+  const maxOutputTokens = optionalInteger(llmConfig.maxOutputTokens, "Max output tokens");
   const seed = optionalInteger(llmConfig.seed, "Seed");
   const reasoningEffort = String(llmConfig.reasoning_effort || "default");
 

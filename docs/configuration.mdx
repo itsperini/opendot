@@ -71,25 +71,25 @@ The Browser Test panel shows interim and final transcripts from this stage.
 
 ## Stage 3: Language model
 
-| Field                         | Default                                        | Purpose                                            |
-| ----------------------------- | ---------------------------------------------- | -------------------------------------------------- |
-| Provider                      | OpenAI Compatible Endpoint                     | OpenAI-compatible response generation.             |
-| Model                         | `gpt-5.1`                                      | Suggested OpenAI model or any custom compatible model id. |
-| Provider API                  | Responses (recommended)                        | Selects `/responses` or `/chat/completions`.       |
-| API key name                  | `OPENAI_API_KEY`                               | Runtime environment variable used for auth.        |
+| Field                         | Default                                        | Purpose                                                         |
+| ----------------------------- | ---------------------------------------------- | --------------------------------------------------------------- |
+| Provider                      | OpenAI Compatible Endpoint                     | OpenAI-compatible response generation.                          |
+| Model                         | `gpt-5.1`                                      | Suggested OpenAI model or any custom compatible model id.       |
+| Provider API                  | Responses (recommended)                        | Selects `/responses` or `/chat/completions`.                    |
+| API key name                  | `OPENAI_API_KEY`                               | Runtime environment variable used for auth.                     |
 | Base URL                      | blank                                          | Defaults to OpenAI; custom values append the selected API path. |
-| Temperature                   | `1`                                            | Sampling temperature sent to the provider.         |
-| Max output tokens             | blank                                          | Optional response token cap.                       |
-| System prompt and chunk rules | voice assistant prompt plus chunk instructions | Shapes the assistant response and TTS chunking.    |
-| Reasoning effort              | configurable                                   | Controls model reasoning behavior where supported. |
-| Verbosity                     | configurable                                   | Controls response density where supported.         |
-| Stop sequences                | none                                           | Optional stop strings, up to four.                 |
-| JSON mode                     | disabled                                       | Requests JSON object output from compatible providers. |
-| Extra headers                 | none                                           | Additional headers for the provider request.       |
-| Timeout                       | `70 s`                                         | Per-request timeout before retry handling.         |
-| Max retries                   | `2`                                            | Retry count for transient provider failures.       |
-| Requests per second           | `50`                                           | Runtime-side LLM request pacing.                   |
-| Extra parameters              | `{}`                                           | Provider-specific JSON merged into the request body. |
+| Temperature                   | `1`                                            | Sampling temperature sent to the provider.                      |
+| Max output tokens             | blank                                          | Optional response token cap.                                    |
+| System prompt and chunk rules | voice assistant prompt plus chunk instructions | Shapes the assistant response and TTS chunking.                 |
+| Reasoning effort              | configurable                                   | Controls model reasoning behavior where supported.              |
+| Verbosity                     | configurable                                   | Controls response density where supported.                      |
+| Stop sequences                | none                                           | Optional stop strings, up to four.                              |
+| JSON mode                     | disabled                                       | Requests JSON object output from compatible providers.          |
+| Extra headers                 | none                                           | Additional headers for the provider request.                    |
+| Timeout                       | `70 s`                                         | Per-request timeout before retry handling.                      |
+| Max retries                   | `2`                                            | Retry count for transient provider failures.                    |
+| Requests per second           | `50`                                           | Runtime-side LLM request pacing.                                |
+| Extra parameters              | `{}`                                           | Provider-specific JSON merged into the request body.            |
 
 The model control has two parts:
 

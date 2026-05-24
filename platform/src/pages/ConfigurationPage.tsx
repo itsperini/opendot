@@ -27,8 +27,7 @@ export function ConfigurationPage({
   onSelectAgent,
   onSettingChange,
 }: ConfigurationPageProps) {
-  const [architectureMode, setArchitectureMode] =
-    useState<ArchitectureMode>("sandwich");
+  const [architectureMode, setArchitectureMode] = useState<ArchitectureMode>("sandwich");
 
   return (
     <section className="page-section" aria-labelledby="configuration-title">
@@ -41,7 +40,10 @@ export function ConfigurationPage({
         onSelectAgent={onSelectAgent}
       />
       <div className="page-body">
-        <section className="panel architecture-panel" aria-labelledby="architecture-title">
+        <section
+          className="panel architecture-panel"
+          aria-labelledby="architecture-title"
+        >
           <div className="architecture-panel-heading">
             <div>
               <p className="eyebrow">Architecture</p>

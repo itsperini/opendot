@@ -135,7 +135,9 @@ const LLM_API_OPTIONS: StageOption[] = [
 ];
 
 function normalizeLlmApiValue(value: StageSettingValue | undefined) {
-  const normalized = String(value ?? "").trim().toLowerCase();
+  const normalized = String(value ?? "")
+    .trim()
+    .toLowerCase();
   if (["chat", "chat-completions", "chat_completions"].includes(normalized)) {
     return "chat_completions";
   }
@@ -223,11 +225,7 @@ function normalizeScalarValue(
 
   if (setting.control === "number") {
     const numericValue =
-      typeof value === "number"
-        ? value
-        : typeof value === "string"
-          ? Number(value)
-          : NaN;
+      typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
 
     return Number.isFinite(numericValue) ? numericValue : setting.value;
   }
@@ -769,7 +767,9 @@ export function normalizeVoiceAgent(agent: VoiceAgent): VoiceAgent {
       const existing = agent.pipeline?.find((stage) => stage.id === defaultStage.id);
       const allowedModels = optionValueSet(defaultStage.modelOptions);
       const existingModel =
-        typeof existing?.model === "string" ? existing.model : String(existing?.model ?? "");
+        typeof existing?.model === "string"
+          ? existing.model
+          : String(existing?.model ?? "");
       const model = defaultStage.allowCustomModel
         ? existingModel || defaultStage.model
         : existingModel && allowedModels.has(existingModel)

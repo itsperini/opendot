@@ -595,8 +595,7 @@ p {
 .section-heading {
   align-items: center;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(251, 249, 255, 0.9)),
-    #ffffff;
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(251, 249, 255, 0.9)), #ffffff;
   border-bottom: 1px solid var(--line);
   box-shadow: 0 14px 38px rgba(76, 29, 149, 0.06);
   backdrop-filter: blur(16px);
