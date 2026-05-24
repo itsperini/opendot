@@ -42,8 +42,10 @@ import type {
   CreateDotDeviceInput,
   DotDevice,
   PipelineStage,
+  RealtimeVoiceAgentConfig,
   StageSettingValue,
   UserSettings,
+  VoiceArchitecture,
   VoiceAgent,
 } from "./types";
 import type { PlatformState } from "./lib/platformApi";
@@ -420,6 +422,54 @@ export default function App() {
       });
   }
 
+  function handleArchitectureChange(architecture: VoiceArchitecture) {
+    if (!selectedAgent) {
+      return;
+    }
+
+    const nextAgent = normalizeVoiceAgent({
+      ...selectedAgent,
+      architecture,
+      updatedAt: new Date().toISOString(),
+    });
+
+    updatePlatformState((state) => withAgent(state, nextAgent));
+    updateAgentMutation
+      .mutateAsync(nextAgent)
+      .then((savedAgent) => {
+        updatePlatformState((state) => withAgent(state, savedAgent));
+        setPlatformError(null);
+      })
+      .catch((error) => {
+        reportPlatformError(error);
+        void queryClient.invalidateQueries({ queryKey: platformStateKey });
+      });
+  }
+
+  function handleRealtimeConfigChange(realtime: RealtimeVoiceAgentConfig) {
+    if (!selectedAgent) {
+      return;
+    }
+
+    const nextAgent = normalizeVoiceAgent({
+      ...selectedAgent,
+      realtime,
+      updatedAt: new Date().toISOString(),
+    });
+
+    updatePlatformState((state) => withAgent(state, nextAgent));
+    updateAgentMutation
+      .mutateAsync(nextAgent)
+      .then((savedAgent) => {
+        updatePlatformState((state) => withAgent(state, savedAgent));
+        setPlatformError(null);
+      })
+      .catch((error) => {
+        reportPlatformError(error);
+        void queryClient.invalidateQueries({ queryKey: platformStateKey });
+      });
+  }
+
   function handleUserSettingChange<Key extends keyof UserSettings>(
     key: Key,
     value: UserSettings[Key],
@@ -639,7 +689,9 @@ export default function App() {
             agent={selectedAgent}
             agents={normalizedAgents}
             selectedAgentId={selectedAgentId}
+            onArchitectureChange={handleArchitectureChange}
             onModelChange={handleModelChange}
+            onRealtimeConfigChange={handleRealtimeConfigChange}
             onSelectAgent={setSelectedAgentId}
             onSettingChange={handleSettingChange}
           />

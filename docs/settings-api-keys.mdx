@@ -35,7 +35,7 @@ Compact density tightens page spacing and panel padding across the platform cons
 
 Use **SDK API keys** to create and revoke local prototype keys for future external SDK/API access. These keys are not used for browser `/voice` sessions or device pairing.
 
-The current prototype stores user-scoped API key hashes and metadata in PostgreSQL. The full token is only shown when a key is created. Runtime browser sessions use short-lived voice-session tokens, and Dot devices use separate opaque device credentials.
+The current prototype stores user-scoped API key hashes and metadata in PostgreSQL. The full token is only shown when a key is created. Runtime browser sessions use short-lived voice-session or realtime browser-session tokens, and Dot devices use separate opaque device credentials.
 
 ## Copy and revoke
 
@@ -48,6 +48,7 @@ Revoked keys remain visible so you can see when they were created and confirm th
 
 ## What Settings does not control
 
-Settings keys are separate from browser voice-session tokens and Dot device
-credentials. Browser Test uses short-lived runtime session tokens, and Dot
-devices use opaque device credentials created during activation.
+Settings keys are separate from browser voice-session tokens, realtime
+browser-session tokens, and Dot device credentials. Browser Test uses
+short-lived runtime session tokens, and Dot devices use opaque device
+credentials created during activation.

@@ -37,7 +37,7 @@
 
 Most voice agent stacks are split across hosted dashboards, hidden runtime behavior, provider-specific configuration, and disconnected device firmware. OpenDot is designed as a coherent operating layer for agents that need to run beyond a browser demo:
 
-- **Voice pipeline control**: build and tune VAD, STT, LLM, and TTS stages as explicit, replaceable components.
+- **Voice architecture control**: build and tune the explicit VAD, STT, LLM, and TTS Sandwich path, or switch an agent to browser Realtime speech-to-speech testing.
 - **Agent configuration**: connect agents to prompts, knowledge, model choices, and runtime presets.
 - **Real hardware binding**: bind voice configs to Dot devices and inspect runtime availability.
 - **Flexible operation**: run sessions in the cloud, local network, or on-device as the stack matures.
@@ -48,9 +48,10 @@ Most voice agent stacks are split across hosted dashboards, hidden runtime behav
 OpenDot is in an early prototype phase. The current implementation focuses on the first complete local loop:
 
 1. Create an agent identity in the platform UI.
-2. Configure a traditional voice pipeline: VAD, STT, LLM, and TTS.
-3. Test microphone turns in the browser against a local runtime.
-4. Pair a Dot device and bind the selected voice configuration.
+2. Configure the default Sandwich pipeline: VAD, STT, LLM, and TTS.
+3. Optionally switch the agent to Speech-to-speech for browser WebRTC testing with OpenAI Realtime.
+4. Test microphone turns in the browser against the local runtime.
+5. Pair a Dot device and bind the selected voice configuration.
 
 The starter pipeline currently uses Deepgram and OpenAI-compatible services:
 
@@ -58,7 +59,9 @@ The starter pipeline currently uses Deepgram and OpenAI-compatible services:
 Deepgram VAD -> Deepgram STT -> OpenAI-compatible LLM -> Deepgram TTS
 ```
 
-The runtime is structured around replaceable stages so future work can move more of the stack to local and self-hosted models.
+The runtime keeps the Sandwich path structured around replaceable stages while
+also minting short-lived OpenAI Realtime client secrets for the current browser
+Speech-to-speech test path. Device realtime bridging remains a later step.
 
 ## Start contributing
 
@@ -165,16 +168,20 @@ DEEPGRAM_API_KEY=...
 OPENAI_API_KEY=...
 OPENAI_BASE_URL=
 OPENAI_MODEL=gpt-5-mini
-OPENAI_MAX_OUTPUT_TOKENS=160
+OPENAI_MAX_OUTPUT_TOKENS=512
 OPENAI_REASONING_EFFORT=low
 OPENAI_VERBOSITY=low
 ```
 
-Then open the platform, create an identity, review the pipeline settings,
-connect from **Browser Test**, and speak into the microphone. Leave
-`OPENAI_BASE_URL` blank for OpenAI, or set it to an OpenAI-compatible provider
-base URL; the selected LLM Provider API determines whether the runtime calls
-`/responses` or `/chat/completions`.
+Then open the platform, create an identity, review the Configuration page, and
+connect from **Browser Test**. Sandwich agents use the local runtime WebSocket
+and the VAD -> STT -> LLM -> TTS path. Speech-to-speech agents use the platform
+API and runtime to mint an ephemeral OpenAI Realtime client secret via
+`POST /api/runtime/realtime-browser-sessions` and `/realtime/client-secret`,
+then connect from the browser with native WebRTC. Leave `OPENAI_BASE_URL` blank
+for the Sandwich OpenAI-compatible LLM stage, or set it to an OpenAI-compatible
+provider base URL; the selected LLM Provider API determines whether the Sandwich
+runtime calls `/responses` or `/chat/completions`.
 
 ## Render Deployment
 
@@ -200,7 +207,7 @@ DEEPGRAM_API_KEY=...
 OPENAI_API_KEY=...
 OPENAI_BASE_URL=
 OPENAI_MODEL=gpt-5-mini
-OPENAI_MAX_OUTPUT_TOKENS=160
+OPENAI_MAX_OUTPUT_TOKENS=512
 OPENAI_REASONING_EFFORT=low
 OPENAI_VERBOSITY=low
 VITE_PLATFORM_API_URL=https://<opendot-api>.onrender.com/api
@@ -217,8 +224,9 @@ The Render Blueprint is auth-gated: `PLATFORM_AUTH_REQUIRED=true` and
 verification, disable email confirmations in the Supabase Auth settings for the
 preview project.
 
-The runtime now verifies browser voice-session tokens and device credentials
-with the platform API before accepting `/voice` or `/ws` connections. Keep
+The runtime now verifies browser voice-session tokens, realtime browser-session
+tokens, and device credentials with the platform API before accepting `/voice`,
+`/realtime/client-secret`, or `/ws` flows. Keep
 `OPENDOT_RUNTIME_INTERNAL_SECRET` identical on the API and runtime services.
 
 ## Platform Commands
@@ -273,8 +281,9 @@ on real devices. The roadmap is organized by maturity:
   reliable.
 - **Next:** modularize providers, agents, runtime events, backend contracts, and
   device diagnostics.
-- **Later:** open paths for local models, WebRTC-style media, MQTT-style device
-  communication, open Dot hardware, and exploratory edge inference.
+- **Later:** open paths for local models, device realtime bridging,
+  SFU-style media, MQTT-style device communication, open Dot hardware, and
+  exploratory edge inference.
 
 See [ROADMAP.md](ROADMAP.md) for the concise root roadmap and
 [docs/roadmap.mdx](docs/roadmap.mdx) for the canonical docs roadmap.

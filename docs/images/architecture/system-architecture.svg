@@ -1,6 +1,6 @@
 <svg width="1600" height="920" viewBox="0 0 1600 920" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="system-architecture-title system-architecture-desc">
   <title id="system-architecture-title">OpenDot system architecture</title>
-  <desc id="system-architecture-desc">Browser console, platform API, PostgreSQL, voice runtime, hosted providers, and Dot firmware connections.</desc>
+  <desc id="system-architecture-desc">Browser console, platform API, PostgreSQL, voice runtime, OpenAI Realtime, hosted providers, and Dot firmware connections.</desc>
   <defs>
     <marker id="arrow" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto" markerUnits="strokeWidth">
       <path d="M0 0L11 5.5L0 11Z" fill="#6d28d9" />
@@ -29,7 +29,7 @@
 
   <rect class="bg" width="1600" height="920" />
   <text class="title" x="80" y="82">OpenDot current architecture</text>
-  <text class="subtitle" x="80" y="116">The platform owns durable configuration and device binding. The realtime runtime owns live audio sessions.</text>
+  <text class="subtitle" x="80" y="116">The platform owns durable configuration and device binding. The runtime owns live audio sessions and Realtime client-secret exchange.</text>
 
   <rect class="panel" x="80" y="180" width="300" height="166" rx="8" />
   <text class="label" x="112" y="224">Web console</text>
@@ -53,9 +53,9 @@
 
   <rect class="dark" x="520" y="555" width="360" height="190" rx="8" />
   <text class="dark-label" x="552" y="602">Voice runtime</text>
-  <text class="dark-body" x="552" y="634">Node WebSocket service</text>
-  <text class="dark-body" x="552" y="660">Browser /voice and device /ws</text>
-  <text class="dark-body" x="552" y="686">VAD, STT, LLM, TTS orchestration</text>
+  <text class="dark-body" x="552" y="634">Node voice runtime service</text>
+  <text class="dark-body" x="552" y="660">/voice, /ws, /realtime secrets</text>
+  <text class="dark-body" x="552" y="686">Sandwich pipeline + Realtime boundary</text>
   <rect class="chip" x="552" y="705" width="86" height="28" rx="8" />
   <text class="chip-text" x="573" y="724">:8787</text>
 
@@ -67,9 +67,9 @@
 
   <rect class="panel" x="1040" y="565" width="360" height="170" rx="8" />
   <text class="label" x="1072" y="612">Hosted providers</text>
-  <text class="body" x="1072" y="644">Deepgram live STT and VAD</text>
-  <text class="body" x="1072" y="670">OpenAI-compatible LLM</text>
-  <text class="body" x="1072" y="696">Deepgram TTS audio</text>
+  <text class="body" x="1072" y="644">Deepgram live STT, VAD, and TTS</text>
+  <text class="body" x="1072" y="670">OpenAI-compatible Sandwich LLM</text>
+  <text class="body" x="1072" y="696">OpenAI Realtime speech-to-speech</text>
 
   <rect class="panel-soft" x="80" y="810" width="1320" height="58" rx="8" />
   <text class="body" x="112" y="844">Docs, Docker Compose, Render Blueprint, containers, and firmware notes describe how contributors run and verify each boundary.</text>
@@ -84,7 +84,7 @@
   <text class="mono" x="705" y="456">verify tokens + load config</text>
 
   <path class="line-soft" d="M230 346V455H610V545" />
-  <text class="mono" x="264" y="432">voice-session token</text>
+  <text class="mono" x="264" y="432">voice + realtime tokens</text>
 
   <path class="line" d="M380 650H510" />
   <text class="mono" x="410" y="632">/ota + /ws</text>

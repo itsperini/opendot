@@ -48,10 +48,41 @@ export type PipelineStage = {
   emits: string[];
 };
 
+export type VoiceArchitecture = "sandwich" | "speech_to_speech";
+
+export type RealtimeProvider = "openai";
+
+export type RealtimeReasoningEffort = "low" | "medium" | "high";
+
+export type RealtimeTurnDetectionType = "semantic_vad" | "server_vad";
+
+export type RealtimeTurnEagerness = "auto" | "low" | "medium" | "high";
+
+export type RealtimeTurnDetectionConfig = {
+  type: RealtimeTurnDetectionType;
+  eagerness: RealtimeTurnEagerness;
+  threshold: number;
+  prefixPaddingMs: number;
+  silenceDurationMs: number;
+  createResponse: boolean;
+  interruptResponse: boolean;
+};
+
+export type RealtimeVoiceAgentConfig = {
+  provider: RealtimeProvider;
+  model: string;
+  voice: string;
+  instructions: string;
+  reasoningEffort: RealtimeReasoningEffort;
+  turnDetection: RealtimeTurnDetectionConfig;
+};
+
 export type VoiceAgent = {
   id: string;
   name: string;
   description: string;
+  architecture: VoiceArchitecture;
+  realtime: RealtimeVoiceAgentConfig;
   status: "draft";
   createdAt: string;
   updatedAt: string;
@@ -98,6 +129,12 @@ export type DeviceActivationClaimInput = {
 
 export type RuntimeVoiceSession = {
   url: string;
+  expiresAt: string;
+};
+
+export type RealtimeBrowserSession = {
+  token: string;
+  clientSecretUrl: string;
   expiresAt: string;
 };
 

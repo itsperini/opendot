@@ -79,9 +79,9 @@
 
   <rect class="panel" x="1240" y="170" width="280" height="150" rx="8" />
   <text class="label" x="1272" y="214">Media Transport</text>
-  <text class="body" x="1272" y="246">Current WebSocket audio</text>
-  <text class="body" x="1272" y="270">and data sessions, future</text>
-  <text class="body" x="1272" y="294">WebRTC/SFU adapters</text>
+  <text class="body" x="1272" y="246">WebSocket /voice and /ws</text>
+  <text class="body" x="1272" y="270">browser WebRTC Realtime,</text>
+  <text class="body" x="1272" y="294">future SFU/device bridge</text>
 
   <rect class="panel" x="1240" y="370" width="280" height="150" rx="8" />
   <text class="label" x="1272" y="414">Device Fleet</text>

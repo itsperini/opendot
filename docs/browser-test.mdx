@@ -1,18 +1,20 @@
 ---
 title: Browser Test
-description: Stream microphone audio to the local runtime and inspect live voice turns.
+description: Stream microphone audio through the saved agent architecture and inspect live voice turns.
 ---
 
 Browser Test is the local loop for validating an agent identity before binding
-it to hardware.
+it to hardware. The panel follows the selected agent architecture: Sandwich uses
+the local runtime WebSocket, while Speech-to-speech uses native browser WebRTC
+with OpenAI Realtime.
 
-<Frame caption="Browser Test uses the active identity from the page header, then streams microphone audio through the local runtime.">
+<Frame caption="Browser Test uses the active identity from the page header, then follows the saved Sandwich or Speech-to-speech architecture.">
   <img src="/images/platform/browser-test.png" alt="OpenDot Browser Test screen" />
 </Frame>
 
 ## What you see in the UI
 
-Browser Test has four main areas:
+For Sandwich agents, Browser Test has four main areas:
 
 - **Run this agent**: connection and microphone controls.
 - **Live transcript / Assistant**: text and audio for the latest turn.
@@ -39,7 +41,7 @@ The platform API and runtime load the root `.env`. Leave `POSTGRES_URI` empty fo
 ## Run this agent
 
 1. Select an identity in [Agent Studio](/agent-studio) or the page header.
-2. Review its pipeline in [Configuration](/configuration).
+2. Review its architecture and pipeline in [Configuration](/configuration).
 3. Open **Browser Test**.
 4. Click **Connect** to open an authenticated runtime WebSocket.
 5. Click **Start mic**.
@@ -49,6 +51,11 @@ The platform API and runtime load the root `.env`. Leave `POSTGRES_URI` empty fo
 Use **Force reply** only when you want the runtime to respond to the current
 final transcript without waiting for normal turn close. Use **Reset** to clear
 the runtime conversation and local panel state.
+
+For Speech-to-speech agents, set the architecture in **Configuration**, then
+use **Connect**, **Start mic**, **Interrupt**, **Reset**, and **Disconnect** in
+Browser Test. Reset closes the peer connection and clears the local transcript,
+assistant, and event state.
 
 ## Live transcript and assistant output
 
@@ -88,6 +95,12 @@ with the platform API and loads the authorized identity config from the API. If
 you edit or switch identities while connected, the browser reconnects with a
 newly minted token.
 
+Speech-to-speech Browser Test uses a separate realtime browser-session token
+from `POST /api/runtime/realtime-browser-sessions`. The browser sends that
+one-use token to the runtime at `/realtime/client-secret`; the runtime verifies
+it with the platform API, creates an OpenAI Realtime client secret using its own
+`OPENAI_API_KEY`, and returns only the ephemeral client secret to the browser.
+
 The runtime WebSocket defaults to:
 
 ```text
@@ -107,3 +120,4 @@ VITE_RUNTIME_WS_URL=ws://localhost:8787/voice
 - If the mic does not start, check browser microphone permissions.
 - If text appears but audio does not play, review the TTS encoding and browser delivery settings.
 - If turns close too quickly, tune VAD endpointing in **Configuration**.
+- If Speech-to-speech connect fails, confirm `OPENAI_API_KEY` is set on the runtime and `OPENDOT_RUNTIME_PUBLIC_HTTP_URL` points to it.

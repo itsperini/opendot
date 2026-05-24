@@ -10,7 +10,8 @@ The current implementation focuses on the first creation flow:
 
 - Create an agent identity with a name and description.
 - Attach a default voice pipeline with four explicit stages: VAD, STT, LLM, and TTS.
-- Edit first-pass pipeline, model, and runtime settings in the browser.
+- Switch an agent to OpenAI Realtime speech-to-speech when direct audio-in/audio-out testing is needed.
+- Edit first-pass pipeline, model, realtime, and runtime settings in the browser.
 - Test live sessions against the local voice runtime.
 - Persist identities, settings, devices, and SDK key metadata in PostgreSQL.
 
@@ -31,6 +32,10 @@ Deepgram VAD is represented as its own stage, but it maps to Deepgram live strea
 - `speech_final`
 
 This keeps the product model clear while still matching how Deepgram exposes end-of-speech behavior in the live listen API.
+
+Speech-to-speech agents keep the same identity and saved versioning model, but
+Browser Test connects with native WebRTC through an OpenAI Realtime client
+secret minted by the runtime.
 
 ## Run Locally
 
@@ -138,7 +143,7 @@ OPENAI_REASONING_EFFORT=low
 OPENAI_VERBOSITY=low
 ```
 
-Then:
+For the Sandwich architecture:
 
 1. Open the frontend URL, usually `http://localhost:5173`.
 2. Create or select an agent identity.
@@ -147,6 +152,20 @@ Then:
 5. Click **Start mic** and speak.
 6. Stop speaking and wait for Deepgram endpointing / utterance end to commit the turn.
 7. The assistant text streams back and the generated TTS audio chunks play in the browser.
+
+For Speech-to-speech:
+
+1. Open **Configuration** for the active agent.
+2. Switch to **Speech-to-speech Architecture** and adjust the OpenAI Realtime settings.
+3. Open **Browser Test** and click **Connect**.
+4. Click **Start mic** and speak.
+5. Use **Interrupt**, **Reset**, and **Disconnect** to test turn-taking behavior.
+
+The browser never receives `OPENAI_API_KEY`. The platform API creates a
+short-lived runtime token at `POST /api/runtime/realtime-browser-sessions`, the
+runtime exchanges it at `/realtime/client-secret` for an OpenAI Realtime client
+secret with its own `OPENAI_API_KEY`, and the browser uses that short-lived
+client secret for the WebRTC call.
 
 The runtime instructs the voice agent to emit XML-like TTS chunks:
 
@@ -241,6 +260,9 @@ disabled there so Supabase owns Render authentication. Disable email
 confirmations in Supabase Auth for this preview if signup should create an
 active session immediately.
 
-The runtime verifies browser voice-session tokens and device credentials with
-the platform API before accepting `/voice` or `/ws` connections. Keep
-`OPENDOT_RUNTIME_INTERNAL_SECRET` identical on the API and runtime services.
+The runtime verifies browser voice-session tokens, realtime browser-session
+tokens, and device credentials with the platform API. Sandwich Browser Test uses
+`/voice`, Dot devices use `/ws`, and Speech-to-speech Browser Test uses
+`/realtime/client-secret` before the browser connects to OpenAI Realtime with an
+ephemeral client secret. Keep `OPENDOT_RUNTIME_INTERNAL_SECRET` identical on the
+API and runtime services.

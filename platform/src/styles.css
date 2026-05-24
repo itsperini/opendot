@@ -782,6 +782,11 @@ p {
   color: var(--violet-800);
 }
 
+.architecture-toggle button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
 .architecture-toggle svg {
   flex: 0 0 auto;
 }
@@ -2184,7 +2189,7 @@ p {
   padding: 5px 8px;
 }
 
-.s2s-placeholder {
+.s2s-config {
   background: var(--surface-soft);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -2237,31 +2242,55 @@ p {
   color: #ffffff;
 }
 
-.s2s-disabled-settings {
+.s2s-settings {
   display: grid;
   gap: 8px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   min-width: 0;
 }
 
-.s2s-disabled-settings label {
-  color: var(--muted);
-  display: grid;
-  font-size: 12px;
-  font-weight: 800;
-  gap: 6px;
-  min-width: 0;
-}
-
-.s2s-disabled-settings input {
+.s2s-settings .setting-row {
   background: #ffffff;
   border: 1px solid var(--line);
   border-radius: 8px;
-  color: var(--muted);
-  min-height: 36px;
   min-width: 0;
-  opacity: 0.72;
-  padding: 0 10px;
+  padding: 9px;
+}
+
+.s2s-settings .setting-row input:read-only {
+  background: var(--surface-soft);
+  color: var(--muted);
+}
+
+.s2s-checkbox {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  display: flex;
+  font-size: 12px;
+  font-weight: 850;
+  gap: 8px;
+  min-height: 54px;
+  min-width: 0;
+  padding: 9px;
+}
+
+.s2s-checkbox input {
+  accent-color: var(--violet-700);
+  flex: 0 0 auto;
+  height: 18px;
+  width: 18px;
+}
+
+.s2s-checkbox span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.s2s-instructions-row {
+  grid-column: 1 / -1;
 }
 
 .details-grid {
@@ -2358,6 +2387,11 @@ p {
   color: var(--emerald);
 }
 
+.runtime-status.speaking {
+  background: #f5f3ff;
+  color: var(--violet-700);
+}
+
 .runtime-status.error {
   background: var(--rose-soft);
   color: var(--rose);
@@ -2404,6 +2438,24 @@ p {
   font-weight: 800;
   gap: 8px;
   padding: 10px 12px;
+}
+
+.realtime-session-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-width: 0;
+}
+
+.realtime-session-meta span {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  min-height: 28px;
+  padding: 7px 10px;
 }
 
 .test-grid {
@@ -2530,6 +2582,10 @@ p {
 
 .assistant-card audio {
   width: 100%;
+}
+
+.remote-audio {
+  min-height: 36px;
 }
 
 .assistant-chunked-output {
@@ -2904,6 +2960,13 @@ p {
   line-height: 1.45;
 }
 
+.realtime-event-type {
+  color: #c4b5fd;
+  display: inline-block;
+  font-weight: 900;
+  margin-right: 8px;
+}
+
 @media (max-width: 1180px) {
   .auth-shell {
     grid-template-columns: 0.82fr 0.72fr;
@@ -2981,7 +3044,7 @@ p {
   .settings-page-fields,
   .api-key-form,
   .api-key-row,
-  .s2s-disabled-settings,
+  .s2s-settings,
   .s2s-route,
   .stage-summary {
     grid-template-columns: 1fr;

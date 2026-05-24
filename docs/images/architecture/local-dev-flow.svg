@@ -1,6 +1,6 @@
 <svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="local-dev-flow-title local-dev-flow-desc">
   <title id="local-dev-flow-title">OpenDot local development topology</title>
-  <desc id="local-dev-flow-desc">Docker Compose and pnpm local processes with ports and dependencies.</desc>
+  <desc id="local-dev-flow-desc">Docker Compose and pnpm local processes with ports, runtime sessions, and Realtime client-secret exchange.</desc>
   <defs>
     <marker id="arrow" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto" markerUnits="strokeWidth">
       <path d="M0 0L11 5.5L0 11Z" fill="#6d28d9" />
@@ -48,7 +48,7 @@
 
   <rect class="runtime" x="910" y="255" width="215" height="105" rx="8" />
   <text class="dark-label" x="936" y="292">voice-runtime</text>
-  <text class="dark-body" x="936" y="320">WebSocket audio</text>
+  <text class="dark-body" x="936" y="320">WebSocket + secrets</text>
   <text class="mono" x="936" y="344">:8787</text>
 
   <rect class="node" x="1190" y="255" width="205" height="105" rx="8" />
@@ -78,7 +78,7 @@
 
   <rect class="runtime" x="740" y="575" width="230" height="105" rx="8" />
   <text class="dark-label" x="766" y="612">pnpm run runtime</text>
-  <text class="dark-body" x="766" y="640">/voice, /ws, /ota</text>
+  <text class="dark-body" x="766" y="640">/voice, /ws, /realtime</text>
   <text class="mono" x="766" y="664">:8787</text>
 
   <rect class="node" x="1050" y="575" width="230" height="105" rx="8" />

@@ -1,11 +1,11 @@
 ---
 title: Configuration
-description: Tune the VAD, STT, LLM, and TTS stages for the active OpenDot agent identity.
+description: Tune the active OpenDot agent identity for sandwich or realtime speech-to-speech voice sessions.
 ---
 
 Configuration is the second page in the console workflow. It takes the active
 agent identity from **Agent Studio** and turns it into an explicit voice runtime
-configuration. The page separates the current modular pipeline from the future
+configuration. The page separates the current modular pipeline from the realtime
 speech-to-speech path so both architecture families can grow without collapsing
 into one settings surface.
 
@@ -20,15 +20,16 @@ runtime explicit by using the Sandwich architecture:
 VAD -> STT -> LLM -> TTS
 ```
 
-The Speech-to-speech architecture mode is present as a placeholder for realtime
-models that process audio input and produce audio output directly.
+The Speech-to-speech architecture mode saves OpenAI Realtime settings that
+process audio input and produce audio output directly.
 
 ## What you see in the UI
 
 The architecture selector has two modes:
 
 - **Sandwich Architecture**: the active VAD, STT, LLM, and TTS configuration.
-- **Speech-to-speech Architecture**: a placeholder for realtime model settings.
+- **Speech-to-speech Architecture**: OpenAI Realtime model, voice, instructions,
+  reasoning effort, and turn-detection settings.
 
 In Sandwich Architecture, each stage row has the same shape:
 
@@ -115,6 +116,26 @@ The runtime expects assistant responses in XML-like chunks:
 Each closed chunk can be sent to TTS while the rest of the answer is still
 streaming.
 
+## Speech-to-speech
+
+Speech-to-speech keeps the existing agent identity but swaps the Browser Test
+runtime path to OpenAI Realtime over native browser WebRTC.
+
+| Field              | Default          | Purpose                                      |
+| ------------------ | ---------------- | -------------------------------------------- |
+| Provider           | OpenAI Realtime  | Runtime-minted client secrets stay server-side. |
+| Model              | `gpt-realtime-2` | Capable realtime speech-to-speech default.   |
+| Voice              | `marin`          | Default realtime voice.                      |
+| Reasoning effort   | `low`            | Applies to `gpt-realtime-2`.                 |
+| Turn detection     | `semantic_vad`   | Natural turn-taking with model-side VAD.     |
+| Semantic eagerness | `auto`           | Controls semantic VAD response timing.       |
+| Create response    | enabled          | Lets VAD automatically trigger a response.   |
+| Interrupt response | enabled          | Lets user speech interrupt model audio.      |
+| Instructions       | OpenDot realtime prompt | Kept separate from sandwich XML chunk rules. |
+
+`gpt-realtime-mini` is selectable for cheaper repeated testing. `cedar` and
+the other realtime voices are selectable from the same settings surface.
+
 ## Stage 4: Text to speech
 
 | Field            | Default             | Purpose                                           |
@@ -133,8 +154,10 @@ the browser. Other encodings are retained as chunked audio files for playback.
 
 Changing Configuration updates the active identity through the platform API. The
 API writes a new draft version for the agent and a new draft pipeline version in
-PostgreSQL. The runtime later loads the authorized version when Browser Test
-opens a voice session or a Dot device connects with valid credentials.
+PostgreSQL. Architecture and realtime settings live in the agent version
+manifest; the VAD, STT, LLM, and TTS stages remain in the pipeline version
+manifest. The runtime later loads the authorized version when Browser Test opens
+a voice session or a Dot device connects with valid credentials.
 
 See [Platform architecture](/architecture) for the full system boundary and
 [Browser Test](/browser-test) for the next step in the UI workflow.

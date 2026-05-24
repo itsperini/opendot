@@ -1,9 +1,15 @@
 import type {
   PipelineStage,
   PipelineStageId,
+  RealtimeReasoningEffort,
+  RealtimeTurnDetectionConfig,
+  RealtimeTurnDetectionType,
+  RealtimeTurnEagerness,
+  RealtimeVoiceAgentConfig,
   StageOption,
   StageSetting,
   StageSettingValue,
+  VoiceArchitecture,
   VoiceAgent,
 } from "../types.js";
 
@@ -57,6 +63,53 @@ const LEGACY_DEFAULT_CHUNK_PROMPT = [
 
 const DEFAULT_SYSTEM_AND_CHUNK_PROMPT = `${DEFAULT_SYSTEM_PROMPT}\n\n${DEFAULT_CHUNK_PROMPT}`;
 const LEGACY_DEFAULT_SYSTEM_AND_CHUNK_PROMPT = `${LEGACY_DEFAULT_SYSTEM_PROMPT}\n\n${LEGACY_DEFAULT_CHUNK_PROMPT}`;
+
+const DEFAULT_REALTIME_INSTRUCTIONS =
+  "You are a concise voice assistant for OpenDot. Speak naturally, keep answers short, and ask one clear follow-up only when it helps the user move forward.";
+
+export const REALTIME_MODEL_OPTIONS: StageOption[] = [
+  {
+    label: "GPT Realtime 2",
+    value: "gpt-realtime-2",
+    description: "Most capable realtime voice model.",
+  },
+  {
+    label: "GPT Realtime mini",
+    value: "gpt-realtime-mini",
+    description: "Cost-efficient realtime voice model.",
+  },
+];
+
+export const REALTIME_VOICE_OPTIONS: StageOption[] = [
+  { label: "Marin", value: "marin" },
+  { label: "Cedar", value: "cedar" },
+  { label: "Alloy", value: "alloy" },
+  { label: "Ash", value: "ash" },
+  { label: "Ballad", value: "ballad" },
+  { label: "Coral", value: "coral" },
+  { label: "Echo", value: "echo" },
+  { label: "Sage", value: "sage" },
+  { label: "Shimmer", value: "shimmer" },
+  { label: "Verse", value: "verse" },
+];
+
+export const REALTIME_REASONING_EFFORT_OPTIONS: StageOption[] = [
+  { label: "Low", value: "low" },
+  { label: "Medium", value: "medium" },
+  { label: "High", value: "high" },
+];
+
+export const REALTIME_TURN_DETECTION_OPTIONS: StageOption[] = [
+  { label: "Semantic VAD", value: "semantic_vad" },
+  { label: "Server VAD", value: "server_vad" },
+];
+
+export const REALTIME_EAGERNESS_OPTIONS: StageOption[] = [
+  { label: "Auto", value: "auto" },
+  { label: "Low", value: "low" },
+  { label: "Medium", value: "medium" },
+  { label: "High", value: "high" },
+];
 
 const TTS_MODEL_OPTIONS: StageOption[] = [
   { label: "Aura-2 Thalia", value: "aura-2-thalia-en" },
@@ -195,8 +248,135 @@ const TTS_CHUNK_STYLE_OPTIONS: StageOption[] = [
   { label: "Relaxed paragraphs", value: "relaxed" },
 ];
 
+type VoiceAgentInput = Omit<VoiceAgent, "architecture" | "realtime"> & {
+  architecture?: unknown;
+  realtime?: unknown;
+};
+
 function optionValueSet(options: StageOption[] = []) {
   return new Set(options.map((option) => String(option.value)));
+}
+
+function optionStringValue(
+  options: StageOption[],
+  value: unknown,
+  fallback: string,
+) {
+  const candidate = typeof value === "string" ? value.trim() : "";
+  return optionValueSet(options).has(candidate) ? candidate : fallback;
+}
+
+function booleanValue(value: unknown, fallback: boolean) {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function boundedNumber(
+  value: unknown,
+  fallback: number,
+  min: number,
+  max: number,
+) {
+  const numericValue =
+    typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+
+  if (!Number.isFinite(numericValue)) {
+    return fallback;
+  }
+
+  return Math.min(Math.max(numericValue, min), max);
+}
+
+function objectValue(value: unknown) {
+  return value && !Array.isArray(value) && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+export function createDefaultRealtimeConfig(): RealtimeVoiceAgentConfig {
+  return {
+    provider: "openai",
+    model: "gpt-realtime-2",
+    voice: "marin",
+    instructions: DEFAULT_REALTIME_INSTRUCTIONS,
+    reasoningEffort: "low",
+    turnDetection: {
+      type: "semantic_vad",
+      eagerness: "auto",
+      threshold: 0.5,
+      prefixPaddingMs: 300,
+      silenceDurationMs: 500,
+      createResponse: true,
+      interruptResponse: true,
+    },
+  };
+}
+
+export function normalizeArchitecture(value: unknown): VoiceArchitecture {
+  return value === "speech_to_speech" ? "speech_to_speech" : "sandwich";
+}
+
+export function normalizeRealtimeConfig(
+  value: unknown,
+): RealtimeVoiceAgentConfig {
+  const defaults = createDefaultRealtimeConfig();
+  const input = objectValue(value);
+  const turnInput = objectValue(input.turnDetection);
+  const turnType = optionStringValue(
+    REALTIME_TURN_DETECTION_OPTIONS,
+    turnInput.type,
+    defaults.turnDetection.type,
+  ) as RealtimeTurnDetectionType;
+  const eagerness = optionStringValue(
+    REALTIME_EAGERNESS_OPTIONS,
+    turnInput.eagerness,
+    defaults.turnDetection.eagerness,
+  ) as RealtimeTurnEagerness;
+  const turnDetection: RealtimeTurnDetectionConfig = {
+    type: turnType,
+    eagerness,
+    threshold: boundedNumber(
+      turnInput.threshold,
+      defaults.turnDetection.threshold,
+      0,
+      1,
+    ),
+    prefixPaddingMs: boundedNumber(
+      turnInput.prefixPaddingMs,
+      defaults.turnDetection.prefixPaddingMs,
+      0,
+      2000,
+    ),
+    silenceDurationMs: boundedNumber(
+      turnInput.silenceDurationMs,
+      defaults.turnDetection.silenceDurationMs,
+      100,
+      4000,
+    ),
+    createResponse: booleanValue(
+      turnInput.createResponse,
+      defaults.turnDetection.createResponse,
+    ),
+    interruptResponse: booleanValue(
+      turnInput.interruptResponse,
+      defaults.turnDetection.interruptResponse,
+    ),
+  };
+
+  return {
+    provider: "openai",
+    model: optionStringValue(REALTIME_MODEL_OPTIONS, input.model, defaults.model),
+    voice: optionStringValue(REALTIME_VOICE_OPTIONS, input.voice, defaults.voice),
+    instructions:
+      typeof input.instructions === "string" && input.instructions.trim()
+        ? input.instructions.trim()
+        : defaults.instructions,
+    reasoningEffort: optionStringValue(
+      REALTIME_REASONING_EFFORT_OPTIONS,
+      input.reasoningEffort,
+      defaults.reasoningEffort,
+    ) as RealtimeReasoningEffort,
+    turnDetection,
+  };
 }
 
 function includesOption(options: StageOption[] | undefined, value: StageSettingValue) {
@@ -816,11 +996,13 @@ export function deepgramListenParams(pipeline: PipelineStage[]) {
   return params;
 }
 
-export function normalizeVoiceAgent(agent: VoiceAgent): VoiceAgent {
+export function normalizeVoiceAgent(agent: VoiceAgentInput): VoiceAgent {
   const defaults = createDefaultPipeline();
 
   return {
     ...agent,
+    architecture: normalizeArchitecture(agent.architecture),
+    realtime: normalizeRealtimeConfig(agent.realtime),
     pipeline: defaults.map((defaultStage) => {
       const existing = agent.pipeline?.find((stage) => stage.id === defaultStage.id);
       const allowedModels = optionValueSet(defaultStage.modelOptions);

@@ -55,6 +55,7 @@ import type {
   DotDeviceAvailability,
   DotDeviceUpdateMode,
   PipelineStage,
+  RealtimeBrowserSession,
   UserApiKey,
   UserSettings,
   VoiceAgent,
@@ -113,6 +114,10 @@ type DeviceActivationClaimInput = {
 };
 
 type RuntimeVoiceSessionInput = {
+  agentId?: string;
+};
+
+type RuntimeRealtimeSessionInput = {
   agentId?: string;
 };
 
@@ -337,11 +342,19 @@ function agentFromRows(
   const pipeline = Array.isArray(pipelineVersion?.manifestJson?.stages)
     ? pipelineVersion.manifestJson.stages
     : createDefaultPipeline();
+  const manifest =
+    agentVersion?.manifestJson &&
+    typeof agentVersion.manifestJson === "object" &&
+    !Array.isArray(agentVersion.manifestJson)
+      ? agentVersion.manifestJson
+      : {};
 
   return normalizeVoiceAgent({
     id: agent.id,
     name: agent.name,
     description: agent.description,
+    architecture: manifest.architecture,
+    realtime: manifest.realtime,
     status: "draft",
     createdAt: requiredDateIso(agent.createdAt),
     updatedAt: requiredDateIso(agent.updatedAt),
@@ -774,6 +787,15 @@ async function createAgent(context: UserContext, input: CreateAgentInput) {
   const description = trimRequired(input.description, "Agent description");
   const pipeline = createDefaultPipeline();
   const agentSlug = createScopedSlug(name, "agent", agentId);
+  const normalizedAgent = normalizeVoiceAgent({
+    id: agentId,
+    name,
+    description,
+    status: "draft",
+    createdAt: timestamp.toISOString(),
+    updatedAt: timestamp.toISOString(),
+    pipeline,
+  });
 
   await db.transaction(async (tx) => {
     await tx.insert(pipelines).values({
@@ -818,22 +840,20 @@ async function createAgent(context: UserContext, input: CreateAgentInput) {
       pipelineVersionId,
       versionNumber: 1,
       status: "draft",
-      manifestJson: { name, description, status: "draft" },
+      manifestJson: {
+        name,
+        description,
+        status: "draft",
+        architecture: normalizedAgent.architecture,
+        realtime: normalizedAgent.realtime,
+      },
       createdByUserId: context.user.id,
       createdAt: timestamp,
       publishedAt: null,
     });
   });
 
-  return normalizeVoiceAgent({
-    id: agentId,
-    name,
-    description,
-    status: "draft",
-    createdAt: timestamp.toISOString(),
-    updatedAt: timestamp.toISOString(),
-    pipeline,
-  });
+  return normalizedAgent;
 }
 
 async function updateAgent(
@@ -893,6 +913,23 @@ async function updateAgent(
   const agentVersionId = randomUUID();
   const nextAgentVersion = (latestAgentVersion?.versionNumber ?? 0) + 1;
   const nextPipelineVersion = (latestPipelineVersion?.versionNumber ?? 0) + 1;
+  const latestManifest =
+    latestAgentVersion?.manifestJson &&
+    typeof latestAgentVersion.manifestJson === "object" &&
+    !Array.isArray(latestAgentVersion.manifestJson)
+      ? latestAgentVersion.manifestJson
+      : {};
+  const normalizedAgent = normalizeVoiceAgent({
+    id: row.id,
+    name,
+    description,
+    architecture: body.architecture ?? latestManifest.architecture,
+    realtime: body.realtime ?? latestManifest.realtime,
+    status: "draft",
+    createdAt: requiredDateIso(row.createdAt),
+    updatedAt: timestamp.toISOString(),
+    pipeline,
+  });
 
   await db.transaction(async (tx) => {
     if (!row.pipelineId) {
@@ -942,22 +979,20 @@ async function updateAgent(
       pipelineVersionId,
       versionNumber: nextAgentVersion,
       status: "draft",
-      manifestJson: { name, description, status: "draft" },
+      manifestJson: {
+        name,
+        description,
+        status: "draft",
+        architecture: normalizedAgent.architecture,
+        realtime: normalizedAgent.realtime,
+      },
       createdByUserId: context.user.id,
       createdAt: timestamp,
       publishedAt: null,
     });
   });
 
-  return normalizeVoiceAgent({
-    id: row.id,
-    name,
-    description,
-    status: "draft",
-    createdAt: requiredDateIso(row.createdAt),
-    updatedAt: timestamp.toISOString(),
-    pipeline,
-  });
+  return normalizedAgent;
 }
 
 async function deleteAgent(context: UserContext, agentId: string) {
@@ -1667,6 +1702,49 @@ async function createRuntimeVoiceSession(
   };
 }
 
+function runtimeRealtimeClientSecretUrl() {
+  const url = new URL(config.runtimePublicHttpUrl);
+  url.pathname = "/realtime/client-secret";
+  url.search = "";
+  url.hash = "";
+  return url.toString();
+}
+
+async function createRuntimeRealtimeSession(
+  context: UserContext,
+  input: RuntimeRealtimeSessionInput,
+): Promise<{ realtimeSession: RealtimeBrowserSession }> {
+  const agentId = trimRequired(input.agentId, "Agent id");
+  const agent = await readAgentForUser(context.user.id, agentId);
+
+  if (!agent) {
+    throw httpError("Agent not found.", 404);
+  }
+
+  const timestamp = nowDate();
+  const expiresAt = new Date(timestamp.getTime() + 60 * 1000);
+  const token = createRuntimeSessionToken();
+
+  await db.insert(runtimeSessionTokens).values({
+    id: randomUUID(),
+    userId: context.user.id,
+    agentId,
+    tokenHash: hashToken(token),
+    status: "active",
+    createdAt: timestamp,
+    expiresAt,
+    usedAt: null,
+  });
+
+  return {
+    realtimeSession: {
+      token,
+      clientSecretUrl: runtimeRealtimeClientSecretUrl(),
+      expiresAt: expiresAt.toISOString(),
+    },
+  };
+}
+
 async function verifyRuntimeVoiceSession(body: unknown) {
   const input = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
   const token = trimRequired(input.token, "Voice session token");
@@ -2049,6 +2127,16 @@ server.post<{ Body: RuntimeVoiceSessionInput }>(
     return reply
       .code(201)
       .send(await createRuntimeVoiceSession(context, request.body ?? {}));
+  },
+);
+
+server.post<{ Body: RuntimeRealtimeSessionInput }>(
+  "/api/runtime/realtime-browser-sessions",
+  async (request, reply) => {
+    const context = await contextFromRequest(request.headers.authorization);
+    return reply
+      .code(201)
+      .send(await createRuntimeRealtimeSession(context, request.body ?? {}));
   },
 );
 

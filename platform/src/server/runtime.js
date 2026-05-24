@@ -1,7 +1,7 @@
 import "./env.js";
 
 import http from "node:http";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { WebSocket, WebSocketServer } from "ws";
 import OpusScript from "opusscript";
 
@@ -48,6 +48,136 @@ const ttsChunkBaseInstructions = [
 
 function defaultPromptInstructions() {
   return [config.systemPrompt, ttsChunkBaseInstructions.join("\n")].join("\n\n");
+}
+
+const defaultRealtimeInstructions =
+  "You are a concise voice assistant for OpenDot. Speak naturally, keep answers short, and ask one clear follow-up only when it helps the user move forward.";
+
+const realtimeModels = new Set(["gpt-realtime-2", "gpt-realtime-mini"]);
+const realtimeVoices = new Set([
+  "marin",
+  "cedar",
+  "alloy",
+  "ash",
+  "ballad",
+  "coral",
+  "echo",
+  "sage",
+  "shimmer",
+  "verse",
+]);
+const realtimeReasoningEfforts = new Set(["low", "medium", "high"]);
+const realtimeTurnTypes = new Set(["semantic_vad", "server_vad"]);
+const realtimeEagerness = new Set(["auto", "low", "medium", "high"]);
+
+function stringSetValue(value, allowed, fallback) {
+  const candidate = String(value || "").trim();
+  return allowed.has(candidate) ? candidate : fallback;
+}
+
+function booleanConfigValue(value, fallback) {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function boundedConfigNumber(value, fallback, min, max) {
+  const numericValue = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(numericValue)
+    ? Math.min(Math.max(numericValue, min), max)
+    : fallback;
+}
+
+function normalizeRealtimeConfig(value = null) {
+  const input = value && !Array.isArray(value) && typeof value === "object" ? value : {};
+  const turnInput =
+    input.turnDetection &&
+    !Array.isArray(input.turnDetection) &&
+    typeof input.turnDetection === "object"
+      ? input.turnDetection
+      : {};
+
+  return {
+    provider: "openai",
+    model: stringSetValue(input.model, realtimeModels, "gpt-realtime-2"),
+    voice: stringSetValue(input.voice, realtimeVoices, "marin"),
+    instructions:
+      typeof input.instructions === "string" && input.instructions.trim()
+        ? input.instructions.trim()
+        : defaultRealtimeInstructions,
+    reasoningEffort: stringSetValue(
+      input.reasoningEffort,
+      realtimeReasoningEfforts,
+      "low",
+    ),
+    turnDetection: {
+      type: stringSetValue(turnInput.type, realtimeTurnTypes, "semantic_vad"),
+      eagerness: stringSetValue(turnInput.eagerness, realtimeEagerness, "auto"),
+      threshold: boundedConfigNumber(turnInput.threshold, 0.5, 0, 1),
+      prefixPaddingMs: boundedConfigNumber(turnInput.prefixPaddingMs, 300, 0, 2000),
+      silenceDurationMs: boundedConfigNumber(
+        turnInput.silenceDurationMs,
+        500,
+        100,
+        4000,
+      ),
+      createResponse: booleanConfigValue(turnInput.createResponse, true),
+      interruptResponse: booleanConfigValue(turnInput.interruptResponse, true),
+    },
+  };
+}
+
+function realtimeInstructions(agent, realtime) {
+  return [
+    realtime.instructions,
+    `Agent name: ${agent?.name || "Untitled agent"}.`,
+    agent?.description ? `Agent description: ${agent.description}.` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function realtimeTurnDetectionPayload(realtime) {
+  const turn = realtime.turnDetection;
+  if (turn.type === "server_vad") {
+    return {
+      type: "server_vad",
+      threshold: turn.threshold,
+      prefix_padding_ms: turn.prefixPaddingMs,
+      silence_duration_ms: turn.silenceDurationMs,
+      create_response: turn.createResponse,
+      interrupt_response: turn.interruptResponse,
+    };
+  }
+
+  return {
+    type: "semantic_vad",
+    eagerness: turn.eagerness,
+    create_response: turn.createResponse,
+    interrupt_response: turn.interruptResponse,
+  };
+}
+
+function openAIRealtimeClientSecretPayload(agent) {
+  const realtime = normalizeRealtimeConfig(agent?.realtime);
+  const session = {
+    type: "realtime",
+    model: realtime.model,
+    instructions: realtimeInstructions(agent, realtime),
+    output_modalities: ["audio"],
+    audio: {
+      input: {
+        turn_detection: realtimeTurnDetectionPayload(realtime),
+      },
+      output: {
+        voice: realtime.voice,
+      },
+    },
+  };
+
+  if (realtime.model === "gpt-realtime-2") {
+    session.reasoning = { effort: realtime.reasoningEffort };
+  }
+
+  return { session };
 }
 
 function ttsChunkStyleInstruction(runtimeConfig) {
@@ -468,6 +598,8 @@ function normalizeAgentConfig(agent) {
   return {
     agentName: agent?.name || "Untitled agent",
     description: agent?.description || "",
+    architecture: agent?.architecture === "speech_to_speech" ? "speech_to_speech" : "sandwich",
+    realtime: normalizeRealtimeConfig(agent?.realtime),
     systemPrompt:
       stringSetting(llm, "system_prompt", "").trim() || defaultPromptInstructions(),
     listen,
@@ -770,6 +902,62 @@ function readJsonBody(req) {
 
     req.on("error", reject);
   });
+}
+
+function runtimeHttpError(message, statusCode) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+}
+
+function openAISafetyIdentifier(userId) {
+  return createHash("sha256")
+    .update(`opendot:${String(userId || "anonymous")}`)
+    .digest("hex");
+}
+
+async function createRealtimeClientSecret(body) {
+  const input = body && !Array.isArray(body) && typeof body === "object" ? body : {};
+  const token = String(input.token || "").trim();
+
+  if (!token) {
+    throw runtimeHttpError("Realtime session token is required.", 400);
+  }
+
+  if (!config.openaiApiKey) {
+    throw runtimeHttpError(
+      "Missing OPENAI_API_KEY. Create root .env from .env.example.",
+      500,
+    );
+  }
+
+  const { body: auth } = await callPlatformInternal(
+    "/internal/runtime/voice-sessions/verify",
+    {
+      token,
+    },
+  );
+  const response = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.openaiApiKey}`,
+      "Content-Type": "application/json",
+      "OpenAI-Safety-Identifier": openAISafetyIdentifier(auth.userId),
+    },
+    body: JSON.stringify(openAIRealtimeClientSecretPayload(auth.agent)),
+  });
+  const responseBody = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw runtimeHttpError(
+      responseBody?.error?.message ||
+        responseBody?.message ||
+        `OpenAI Realtime client secret failed with ${response.status}.`,
+      response.status,
+    );
+  }
+
+  return responseBody;
 }
 
 function responseInputMessage(message) {
@@ -2522,6 +2710,20 @@ const server = http.createServer((req, res) => {
       deviceWebSocketEndpoint: "/ws",
       deviceCount: deviceRegistry.size,
     });
+    return;
+  }
+
+  if (url.pathname === "/realtime/client-secret" && req.method === "POST") {
+    readJsonBody(req)
+      .then(createRealtimeClientSecret)
+      .then((body) => {
+        writeJson(res, 201, body);
+      })
+      .catch((error) => {
+        writeJson(res, error.statusCode || 502, {
+          error: error.message || String(error),
+        });
+      });
     return;
   }
 

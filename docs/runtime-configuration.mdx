@@ -3,12 +3,13 @@ title: Runtime configuration
 description: Environment variables and local runtime behavior for voice sessions and devices.
 ---
 
-The runtime process handles live voice sessions for the browser and Dot devices.
+The runtime process handles live Sandwich voice sessions for the browser and
+Dot devices, plus browser Speech-to-speech client-secret exchange.
 
-The runtime verifies browser voice-session tokens and device credentials with
-the platform API before accepting `/voice` or `/ws` connections. Keep the
-runtime service behind normal deployment protections and use provider-key quotas
-for public previews.
+The runtime verifies browser voice-session tokens, realtime browser-session
+tokens, and device credentials with the platform API before accepting `/voice`,
+`/realtime/client-secret`, or `/ws` traffic. Keep the runtime service behind
+normal deployment protections and use provider-key quotas for public previews.
 
 The platform API stores the OSS OpenDot control plane in PostgreSQL: app users, local auth credentials, user preferences, SDK API keys, versioned agents and pipelines, devices, device activation requests, device credentials, runtime session tokens, device state, and deployments.
 
@@ -76,6 +77,12 @@ base of an OpenAI-compatible API such as `https://example.com/v1`. Agent-level
 LLM settings can also override the base URL and API key environment variable
 name from the Configuration page.
 
+Speech-to-speech Browser Test also uses `OPENAI_API_KEY`, but only inside the
+runtime. The platform API mints a one-use realtime browser-session token at
+`POST /api/runtime/realtime-browser-sessions`, the runtime exchanges it for an
+OpenAI Realtime client secret at `/realtime/client-secret`, and the browser uses
+that short-lived client secret for the WebRTC call.
+
 The selected LLM **Provider API** controls which path the runtime calls:
 Responses appends `/responses`, while Chat Completions appends
 `/chat/completions`.
@@ -101,11 +108,13 @@ VITE_RUNTIME_HTTP_URL=http://localhost:8787
 ```
 
 If `VITE_RUNTIME_HTTP_URL` is not set, the frontend derives the HTTP base from `VITE_RUNTIME_WS_URL`.
+Speech-to-speech Browser Test gets its runtime HTTP URL from the platform API
+response, which is built from `OPENDOT_RUNTIME_PUBLIC_HTTP_URL`.
 
 ## Runtime/API trust
 
-The runtime calls internal platform API endpoints to verify `/voice` and `/ws`
-connections and to proxy firmware activation:
+The runtime calls internal platform API endpoints to verify `/voice`,
+`/realtime/client-secret`, and `/ws` flows and to proxy firmware activation:
 
 ```bash
 OPENDOT_RUNTIME_INTERNAL_SECRET=opendot-local-runtime-internal-secret-change-me
@@ -116,8 +125,8 @@ OPENDOT_RUNTIME_PUBLIC_WS_URL=ws://localhost:8787/voice
 
 Use the same `OPENDOT_RUNTIME_INTERNAL_SECRET` on the platform API and runtime
 services. In hosted deployments, set the public runtime URLs to the externally
-reachable runtime service so browser voice-session tokens and device OTA config
-point at the right host.
+reachable runtime service so browser session tokens, realtime client-secret
+exchange, and device OTA config point at the right host.
 
 ## Turn-close defaults
 

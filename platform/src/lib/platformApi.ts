@@ -6,6 +6,7 @@ import type {
   CreateDotDeviceInput,
   DeviceActivationClaimInput,
   DotDevice,
+  RealtimeBrowserSession,
   RuntimeVoiceSession,
   UserApiKey,
   UserSettings,
@@ -159,6 +160,17 @@ export async function createRuntimeVoiceSession(agentId: string) {
     },
   );
   return body.voiceSession;
+}
+
+export async function createRealtimeBrowserSession(agentId: string) {
+  const body = await requestJson<{ realtimeSession: RealtimeBrowserSession }>(
+    "/runtime/realtime-browser-sessions",
+    {
+      body: JSON.stringify({ agentId }),
+      method: "POST",
+    },
+  );
+  return body.realtimeSession;
 }
 
 export async function updateUserSettings(settings: UserSettings) {

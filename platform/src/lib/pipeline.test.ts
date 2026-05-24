@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { StageSetting, VoiceAgent } from "../types.js";
 import {
+  createDefaultRealtimeConfig,
   createDefaultPipeline,
   deepgramListenParams,
+  normalizeRealtimeConfig,
   normalizeVoiceAgent,
   updateStageModel,
   updateStageSetting,
@@ -64,6 +66,8 @@ describe("pipeline helpers", () => {
       id: "agent-1",
       name: "Test Agent",
       description: "Uses chat completions",
+      architecture: "sandwich",
+      realtime: createDefaultRealtimeConfig(),
       status: "draft",
       createdAt: "2026-05-23T00:00:00.000Z",
       updatedAt: "2026-05-23T00:00:00.000Z",
@@ -175,11 +179,11 @@ describe("pipeline helpers", () => {
       },
     ];
 
-    const agent: VoiceAgent = {
+    const agent = {
       id: "agent-1",
       name: "Test Agent",
       description: "Legacy draft",
-      status: "draft",
+      status: "draft" as const,
       createdAt: "2026-05-23T00:00:00.000Z",
       updatedAt: "2026-05-23T00:00:00.000Z",
       pipeline: legacyPipeline,
@@ -198,6 +202,55 @@ describe("pipeline helpers", () => {
     ).toEqual(["interim_results", "speech_final"]);
     expect(normalizedPrompt).toContain("Be concise.");
     expect(normalizedPrompt).toContain("<chunk>");
+    expect(normalized.architecture).toBe("sandwich");
+    expect(normalized.realtime).toMatchObject({
+      provider: "openai",
+      model: "gpt-realtime-2",
+      voice: "marin",
+      reasoningEffort: "low",
+      turnDetection: {
+        type: "semantic_vad",
+        eagerness: "auto",
+        createResponse: true,
+        interruptResponse: true,
+      },
+    });
+  });
+
+  it("normalizes realtime settings for speech-to-speech agents", () => {
+    const realtime = normalizeRealtimeConfig({
+      provider: "unknown",
+      model: "gpt-realtime-mini",
+      voice: "cedar",
+      instructions: "Answer in one spoken sentence.",
+      reasoningEffort: "medium",
+      turnDetection: {
+        type: "server_vad",
+        eagerness: "high",
+        threshold: 2,
+        prefixPaddingMs: "-20",
+        silenceDurationMs: "250",
+        createResponse: false,
+        interruptResponse: false,
+      },
+    });
+
+    expect(realtime).toEqual({
+      provider: "openai",
+      model: "gpt-realtime-mini",
+      voice: "cedar",
+      instructions: "Answer in one spoken sentence.",
+      reasoningEffort: "medium",
+      turnDetection: {
+        type: "server_vad",
+        eagerness: "high",
+        threshold: 1,
+        prefixPaddingMs: 0,
+        silenceDurationMs: 250,
+        createResponse: false,
+        interruptResponse: false,
+      },
+    });
   });
 });
 

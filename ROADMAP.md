@@ -30,8 +30,10 @@ on-device runtimes.
 Current work should make the local prototype reliable:
 
 - Create and select draft agents in the platform console.
-- Configure VAD, STT/ASR, LLM, and TTS stages.
-- Test microphone turns in Browser Test through the local runtime.
+- Configure Sandwich VAD, STT/ASR, LLM, and TTS stages.
+- Test Sandwich microphone turns in Browser Test through runtime `/voice`.
+- Switch Browser Test agents to Speech-to-speech for native browser WebRTC with
+  OpenAI Realtime.
 - Pair Dot devices, claim activation codes, and bind selected agent configs.
 - Keep Fastify, Drizzle, PostgreSQL, and runtime token boundaries clear.
 - Run ESP-IDF firmware on the Waveshare ESP32-S3-AUDIO-Board reference target.
@@ -60,8 +62,9 @@ Next work should make OpenDot easier to extend:
 Later work should open deeper deployment and hardware paths:
 
 - Fully local or self-hosted VAD, STT/ASR, LLM, and TTS options.
-- Realtime media transports such as WebRTC/SFU-style paths when WebSocket audio
-  becomes limiting.
+- Expand realtime media beyond the current browser WebRTC test: device realtime
+  bridging, SFU-style fleet paths, and lower-level WebSocket bridges where
+  needed.
 - MQTT-style device presence, desired/reported state, commands, telemetry,
   diagnostics, OTA metadata, and multi-device coordination.
 - Purpose-built open Dot hardware with CAD, PCB, BOM, fixtures, acoustic notes,
