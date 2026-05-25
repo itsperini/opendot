@@ -33,16 +33,6 @@
   </p>
 </div>
 
-## Why OpenDot
-
-Most voice agent stacks are split across hosted dashboards, hidden runtime behavior, provider-specific configuration, and disconnected device firmware. OpenDot is designed as a coherent operating layer for agents that need to run beyond a browser demo:
-
-- **Voice architecture control**: build and tune the explicit VAD, STT, LLM, and TTS Sandwich path, or switch an agent to Realtime speech-to-speech testing in the browser or on a bound Dot device.
-- **Agent configuration**: connect agents to prompts, knowledge, model choices, and runtime presets.
-- **Real hardware binding**: bind voice configs to Dot devices and inspect runtime availability.
-- **Flexible operation**: run sessions in the cloud, local network, or on-device as the stack matures.
-- **Open path to bare metal**: start with hosted starter providers today, then move toward local models, self-hosted inference, and real-device deployments without changing the agent management model.
-
 ## Project Status
 
 OpenDot is in an early prototype phase. The current implementation focuses on the first complete local loop:
