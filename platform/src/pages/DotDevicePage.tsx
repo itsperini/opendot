@@ -1,16 +1,21 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import {
+  Cable,
   CheckCircle2,
   Cpu,
+  Eraser,
   Hash,
   Link2,
   Plus,
+  Power,
   Radio,
   RefreshCw,
   Router,
   Server,
+  Terminal,
   Trash2,
+  Unplug,
   Wifi,
   WifiOff,
 } from "lucide-react";
@@ -32,6 +37,40 @@ type DotDevicePageProps = {
 type DeviceLog = {
   id: string;
   text: string;
+};
+
+type SerialLogEntry = {
+  id: string;
+  level: "data" | "status" | "error";
+  text: string;
+};
+
+type SerialPortInfo = {
+  usbProductId?: number;
+  usbVendorId?: number;
+};
+
+type SerialSignalState = {
+  break?: boolean;
+  dataTerminalReady?: boolean;
+  requestToSend?: boolean;
+};
+
+type BrowserSerialPort = {
+  close: () => Promise<void>;
+  getInfo?: () => SerialPortInfo;
+  open: (options: { baudRate: number; bufferSize?: number }) => Promise<void>;
+  readable: ReadableStream<Uint8Array> | null;
+  setSignals?: (signals: SerialSignalState) => Promise<void>;
+};
+
+type BrowserSerial = {
+  getPorts: () => Promise<BrowserSerialPort[]>;
+  requestPort: (options?: { filters?: SerialPortInfo[] }) => Promise<BrowserSerialPort>;
+};
+
+type SerialNavigator = Navigator & {
+  serial?: BrowserSerial;
 };
 
 function wait(ms: number) {
@@ -137,6 +176,24 @@ export function DotDevicePage({
   const [runtimeStatus, setRuntimeStatus] =
     useState<DotDevice["availability"]>("unknown");
   const [runtimeRefreshing, setRuntimeRefreshing] = useState(false);
+  const [serialEnabled, setSerialEnabled] = useState(false);
+  const [serialConnected, setSerialConnected] = useState(false);
+  const [serialConnecting, setSerialConnecting] = useState(false);
+  const [serialResetting, setSerialResetting] = useState(false);
+  const [serialError, setSerialError] = useState<string | null>(null);
+  const [serialLines, setSerialLines] = useState<SerialLogEntry[]>([]);
+  const serialPortRef = useRef<BrowserSerialPort | null>(null);
+  const serialReaderRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(
+    null,
+  );
+  const serialReadPromiseRef = useRef<Promise<void> | null>(null);
+  const serialStopRef = useRef(false);
+  const serialBufferRef = useRef("");
+  const serialConsoleRef = useRef<HTMLOListElement | null>(null);
+  const serialDecoderRef = useRef(new TextDecoder());
+  const serialSupported =
+    typeof navigator !== "undefined" &&
+    Boolean((navigator as SerialNavigator).serial);
 
   useEffect(() => {
     if (selectedAgent) {
@@ -202,6 +259,223 @@ export function DotDevicePage({
       return;
     }
     onUpdateDevice(update(device)).catch(() => undefined);
+  }
+
+  const appendSerialEntries = useCallback(
+    (entries: Array<Pick<SerialLogEntry, "level" | "text">>) => {
+      if (entries.length === 0) {
+        return;
+      }
+
+      setSerialLines((current) =>
+        [
+          ...current,
+          ...entries.map((entry) => ({
+            ...entry,
+            id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          })),
+        ].slice(-500),
+      );
+    },
+    [],
+  );
+
+  const appendSerialLine = useCallback(
+    (text: string, level: SerialLogEntry["level"] = "data") => {
+      appendSerialEntries([
+        {
+          level,
+          text:
+            level === "data"
+              ? text
+              : `[${new Date().toLocaleTimeString()}] ${text}`,
+        },
+      ]);
+    },
+    [appendSerialEntries],
+  );
+
+  const appendSerialChunk = useCallback((chunk: string) => {
+    const normalizedChunk = chunk.replace(/\r/g, "");
+    const lines = `${serialBufferRef.current}${normalizedChunk}`.split("\n");
+    serialBufferRef.current = lines.pop() ?? "";
+    appendSerialEntries(
+      lines.map((line) => ({
+        level: "data",
+        text: line,
+      })),
+    );
+  }, [appendSerialEntries]);
+
+  const flushSerialBuffer = useCallback(() => {
+    const buffered = serialBufferRef.current;
+    if (!buffered) {
+      return;
+    }
+
+    serialBufferRef.current = "";
+    appendSerialLine(buffered);
+  }, [appendSerialLine]);
+
+  const readSerial = useCallback(async (port: BrowserSerialPort) => {
+    while (port.readable && !serialStopRef.current) {
+      const reader = port.readable.getReader();
+      serialReaderRef.current = reader;
+
+      try {
+        while (!serialStopRef.current) {
+          const { done, value } = await reader.read();
+
+          if (done) {
+            break;
+          }
+
+          if (value) {
+            appendSerialChunk(serialDecoderRef.current.decode(value, { stream: true }));
+          }
+        }
+      } catch (error) {
+        if (!serialStopRef.current) {
+          const message = error instanceof Error ? error.message : String(error);
+          setSerialError(message);
+          appendSerialLine(`Serial read failed: ${message}`, "error");
+        }
+      } finally {
+        reader.releaseLock();
+
+        if (serialReaderRef.current === reader) {
+          serialReaderRef.current = null;
+        }
+      }
+    }
+  }, [appendSerialChunk, appendSerialLine]);
+
+  const disconnectSerial = useCallback(async () => {
+    serialStopRef.current = true;
+
+    const reader = serialReaderRef.current;
+    serialReaderRef.current = null;
+    if (reader) {
+      await reader.cancel().catch(() => undefined);
+    }
+
+    const readPromise = serialReadPromiseRef.current;
+    if (readPromise) {
+      await readPromise.catch(() => undefined);
+    }
+
+    flushSerialBuffer();
+
+    const port = serialPortRef.current;
+    serialPortRef.current = null;
+    if (port) {
+      await port.close().catch((error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        setSerialError(message);
+        appendSerialLine(`Serial close failed: ${message}`, "error");
+      });
+      appendSerialLine("Serial disconnected.", "status");
+    }
+
+    setSerialConnected(false);
+    setSerialConnecting(false);
+  }, [appendSerialLine, flushSerialBuffer]);
+
+  useEffect(() => {
+    return () => {
+      void disconnectSerial();
+    };
+  }, [disconnectSerial]);
+
+  useEffect(() => {
+    if (serialEnabled || (!serialConnected && !serialConnecting)) {
+      return;
+    }
+
+    void disconnectSerial();
+  }, [disconnectSerial, serialConnected, serialConnecting, serialEnabled]);
+
+  useEffect(() => {
+    if (!serialEnabled || !serialConsoleRef.current) {
+      return;
+    }
+
+    serialConsoleRef.current.scrollTop = serialConsoleRef.current.scrollHeight;
+  }, [serialEnabled, serialLines]);
+
+  async function connectSerial() {
+    const serial = (navigator as SerialNavigator).serial;
+
+    setSerialEnabled(true);
+    setSerialError(null);
+
+    if (!serial) {
+      setSerialError("Web Serial is not available in this browser.");
+      return;
+    }
+
+    setSerialConnecting(true);
+
+    try {
+      const port = await serial.requestPort();
+      await port.open({ baudRate: 115200, bufferSize: 64 * 1024 });
+
+      serialPortRef.current = port;
+      serialStopRef.current = false;
+      serialBufferRef.current = "";
+      serialDecoderRef.current = new TextDecoder();
+      setSerialConnected(true);
+      appendSerialLine("Serial connected at 115200 baud.", "status");
+
+      const readPromise = readSerial(port);
+      serialReadPromiseRef.current = readPromise;
+      void readPromise.finally(() => {
+        if (serialReadPromiseRef.current === readPromise) {
+          serialReadPromiseRef.current = null;
+        }
+
+        if (!serialStopRef.current) {
+          setSerialConnected(false);
+        }
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === "NotFoundError") {
+        appendSerialLine("Serial port selection canceled.", "status");
+      } else {
+        const message = error instanceof Error ? error.message : String(error);
+        setSerialError(message);
+        appendSerialLine(`Serial connect failed: ${message}`, "error");
+      }
+    } finally {
+      setSerialConnecting(false);
+    }
+  }
+
+  async function resetSerialDevice() {
+    const port = serialPortRef.current;
+
+    if (!port?.setSignals) {
+      setSerialError("Serial reset signals are not available.");
+      return;
+    }
+
+    setSerialResetting(true);
+    setSerialError(null);
+
+    try {
+      await port.setSignals({ dataTerminalReady: false, requestToSend: true });
+      await wait(120);
+      await port.setSignals({ dataTerminalReady: false, requestToSend: false });
+      await wait(120);
+      appendSerialLine("Reset pulse sent.", "status");
+      appendLog(setDeviceLog, "Serial reset pulse sent.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setSerialError(message);
+      appendSerialLine(`Reset failed: ${message}`, "error");
+    } finally {
+      setSerialResetting(false);
+    }
   }
 
   async function handleCreateDevice(event: FormEvent<HTMLFormElement>) {
@@ -617,6 +891,99 @@ export function DotDevicePage({
                   : "Not synced"}
               </strong>
             </div>
+          </section>
+
+          <section className="panel serial-panel">
+            <div className="panel-heading compact">
+              <div>
+                <p className="eyebrow">Serial</p>
+                <h2>Device console</h2>
+              </div>
+              <Terminal size={18} />
+            </div>
+
+            <div className="serial-toolbar">
+              <label className="serial-enable-toggle">
+                <input
+                  checked={serialEnabled}
+                  type="checkbox"
+                  onChange={(event) => setSerialEnabled(event.target.checked)}
+                />
+                Enable serial
+              </label>
+
+              <div className="serial-actions">
+                <button
+                  className="secondary-action"
+                  type="button"
+                  onClick={connectSerial}
+                  disabled={
+                    !serialEnabled ||
+                    !serialSupported ||
+                    serialConnected ||
+                    serialConnecting
+                  }
+                >
+                  <Cable size={16} />
+                  Connect
+                </button>
+                <button
+                  className="secondary-action"
+                  type="button"
+                  onClick={resetSerialDevice}
+                  disabled={!serialEnabled || !serialConnected || serialResetting}
+                >
+                  <Power size={16} />
+                  Reset
+                </button>
+                <button
+                  className="secondary-action"
+                  type="button"
+                  onClick={disconnectSerial}
+                  disabled={!serialConnected && !serialConnecting}
+                >
+                  <Unplug size={16} />
+                  Disconnect
+                </button>
+                <button
+                  className="secondary-action"
+                  type="button"
+                  onClick={() => setSerialLines([])}
+                  disabled={serialLines.length === 0}
+                >
+                  <Eraser size={16} />
+                  Clear
+                </button>
+              </div>
+            </div>
+
+            <div
+              className={`serial-status ${
+                serialConnected ? "connected" : serialSupported ? "idle" : "unsupported"
+              }`}
+            >
+              {serialConnected
+                ? "Connected"
+                : serialSupported
+                  ? "Waiting"
+                  : "Unsupported"}
+            </div>
+
+            {serialEnabled ? (
+              <ol className="serial-console" ref={serialConsoleRef}>
+                {serialLines.length === 0 ? (
+                  <li className="status">No serial data.</li>
+                ) : (
+                  serialLines.map((line) => (
+                    <li className={line.level} key={line.id}>
+                      {line.text || " "}
+                    </li>
+                  ))
+                )}
+              </ol>
+            ) : null}
+
+            {serialError ? <p className="serial-error">{serialError}</p> : null}
           </section>
 
           <section className="runtime-log device-log">

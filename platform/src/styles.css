@@ -1528,6 +1528,111 @@ p {
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
+.serial-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.serial-toolbar {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-width: 0;
+}
+
+.serial-enable-toggle {
+  align-items: center;
+  color: var(--ink);
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 850;
+  gap: 8px;
+  min-height: 38px;
+  white-space: nowrap;
+}
+
+.serial-enable-toggle input {
+  accent-color: var(--violet-700);
+  height: 16px;
+  margin: 0;
+  width: 16px;
+}
+
+.serial-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: end;
+  min-width: 0;
+}
+
+.serial-status {
+  align-items: center;
+  background: #f4f4f5;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: #52525b;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 900;
+  min-height: 30px;
+  padding: 0 10px;
+  width: fit-content;
+}
+
+.serial-status.connected {
+  background: var(--emerald-soft);
+  border-color: #bbf7d0;
+  color: var(--emerald);
+}
+
+.serial-status.unsupported {
+  background: var(--rose-soft);
+  border-color: #fecdd3;
+  color: var(--rose);
+}
+
+.serial-console {
+  background: var(--violet-950);
+  border: 1px solid rgba(196, 181, 253, 0.18);
+  border-radius: 8px;
+  color: #ede9fe;
+  display: grid;
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  max-height: 260px;
+  min-height: 180px;
+  overflow: auto;
+  padding: 12px;
+}
+
+.serial-console li {
+  color: rgba(255, 255, 255, 0.82);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.serial-console li.status {
+  color: #c4b5fd;
+}
+
+.serial-console li.error {
+  color: #fecdd3;
+}
+
+.serial-error {
+  color: var(--rose);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.4;
+  margin: 0;
+}
+
 .device-log {
   min-height: 180px;
 }
@@ -3137,6 +3242,19 @@ p {
   .device-runtime-row .secondary-action {
     justify-content: center;
     width: 100%;
+  }
+
+  .serial-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .serial-actions {
+    justify-content: stretch;
+  }
+
+  .serial-actions .secondary-action {
+    justify-content: center;
+    flex: 1 1 120px;
   }
 
   .device-stats {

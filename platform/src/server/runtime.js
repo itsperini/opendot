@@ -4,6 +4,15 @@ import http from "node:http";
 import { createHash, randomUUID } from "node:crypto";
 import { WebSocket, WebSocketServer } from "ws";
 import OpusScript from "opusscript";
+import {
+  createDeviceRealtimeBridge,
+  deviceRuntimeCredentialStatus,
+  encodePcmToOpusFrames,
+} from "./realtime-device-bridge.js";
+import {
+  normalizeRealtimeConfig,
+  openAIRealtimeClientSecretPayload,
+} from "./realtime-config.js";
 
 const config = {
   host: process.env.RUNTIME_HOST || "0.0.0.0",
@@ -48,136 +57,6 @@ const ttsChunkBaseInstructions = [
 
 function defaultPromptInstructions() {
   return [config.systemPrompt, ttsChunkBaseInstructions.join("\n")].join("\n\n");
-}
-
-const defaultRealtimeInstructions =
-  "You are a concise voice assistant for OpenDot. Speak naturally, keep answers short, and ask one clear follow-up only when it helps the user move forward.";
-
-const realtimeModels = new Set(["gpt-realtime-2", "gpt-realtime-mini"]);
-const realtimeVoices = new Set([
-  "marin",
-  "cedar",
-  "alloy",
-  "ash",
-  "ballad",
-  "coral",
-  "echo",
-  "sage",
-  "shimmer",
-  "verse",
-]);
-const realtimeReasoningEfforts = new Set(["low", "medium", "high"]);
-const realtimeTurnTypes = new Set(["semantic_vad", "server_vad"]);
-const realtimeEagerness = new Set(["auto", "low", "medium", "high"]);
-
-function stringSetValue(value, allowed, fallback) {
-  const candidate = String(value || "").trim();
-  return allowed.has(candidate) ? candidate : fallback;
-}
-
-function booleanConfigValue(value, fallback) {
-  return typeof value === "boolean" ? value : fallback;
-}
-
-function boundedConfigNumber(value, fallback, min, max) {
-  const numericValue = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(numericValue)
-    ? Math.min(Math.max(numericValue, min), max)
-    : fallback;
-}
-
-function normalizeRealtimeConfig(value = null) {
-  const input = value && !Array.isArray(value) && typeof value === "object" ? value : {};
-  const turnInput =
-    input.turnDetection &&
-    !Array.isArray(input.turnDetection) &&
-    typeof input.turnDetection === "object"
-      ? input.turnDetection
-      : {};
-
-  return {
-    provider: "openai",
-    model: stringSetValue(input.model, realtimeModels, "gpt-realtime-2"),
-    voice: stringSetValue(input.voice, realtimeVoices, "marin"),
-    instructions:
-      typeof input.instructions === "string" && input.instructions.trim()
-        ? input.instructions.trim()
-        : defaultRealtimeInstructions,
-    reasoningEffort: stringSetValue(
-      input.reasoningEffort,
-      realtimeReasoningEfforts,
-      "low",
-    ),
-    turnDetection: {
-      type: stringSetValue(turnInput.type, realtimeTurnTypes, "semantic_vad"),
-      eagerness: stringSetValue(turnInput.eagerness, realtimeEagerness, "auto"),
-      threshold: boundedConfigNumber(turnInput.threshold, 0.5, 0, 1),
-      prefixPaddingMs: boundedConfigNumber(turnInput.prefixPaddingMs, 300, 0, 2000),
-      silenceDurationMs: boundedConfigNumber(
-        turnInput.silenceDurationMs,
-        500,
-        100,
-        4000,
-      ),
-      createResponse: booleanConfigValue(turnInput.createResponse, true),
-      interruptResponse: booleanConfigValue(turnInput.interruptResponse, true),
-    },
-  };
-}
-
-function realtimeInstructions(agent, realtime) {
-  return [
-    realtime.instructions,
-    `Agent name: ${agent?.name || "Untitled agent"}.`,
-    agent?.description ? `Agent description: ${agent.description}.` : "",
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
-
-function realtimeTurnDetectionPayload(realtime) {
-  const turn = realtime.turnDetection;
-  if (turn.type === "server_vad") {
-    return {
-      type: "server_vad",
-      threshold: turn.threshold,
-      prefix_padding_ms: turn.prefixPaddingMs,
-      silence_duration_ms: turn.silenceDurationMs,
-      create_response: turn.createResponse,
-      interrupt_response: turn.interruptResponse,
-    };
-  }
-
-  return {
-    type: "semantic_vad",
-    eagerness: turn.eagerness,
-    create_response: turn.createResponse,
-    interrupt_response: turn.interruptResponse,
-  };
-}
-
-function openAIRealtimeClientSecretPayload(agent) {
-  const realtime = normalizeRealtimeConfig(agent?.realtime);
-  const session = {
-    type: "realtime",
-    model: realtime.model,
-    instructions: realtimeInstructions(agent, realtime),
-    output_modalities: ["audio"],
-    audio: {
-      input: {
-        turn_detection: realtimeTurnDetectionPayload(realtime),
-      },
-      output: {
-        voice: realtime.voice,
-      },
-    },
-  };
-
-  if (realtime.model === "gpt-realtime-2") {
-    session.reasoning = { effort: realtime.reasoningEffort };
-  }
-
-  return { session };
 }
 
 function ttsChunkStyleInstruction(runtimeConfig) {
@@ -294,7 +173,9 @@ function createDeviceSession(ws, device, request) {
     ws,
     deepgram: null,
     decoder: null,
+    realtimeBridge: null,
     runtimeConfig: device.runtimeConfig,
+    userId: device.userId || null,
     conversation: [],
     finalSegments: [],
     sttConnecting: false,
@@ -575,12 +456,7 @@ function normalizeAgentConfig(agent) {
       settingWithLegacyDefault(vad, "endpointing", 900, config.endpointingMs),
     ),
     utterance_end_ms: String(
-      settingWithLegacyDefault(
-        vad,
-        "utterance_end_ms",
-        1000,
-        config.utteranceEndMs,
-      ),
+      settingWithLegacyDefault(vad, "utterance_end_ms", 1000, config.utteranceEndMs),
     ),
     encoding: String(setting(stt, "encoding", "linear16")),
     sample_rate: String(setting(stt, "sample_rate", 16000)),
@@ -598,7 +474,8 @@ function normalizeAgentConfig(agent) {
   return {
     agentName: agent?.name || "Untitled agent",
     description: agent?.description || "",
-    architecture: agent?.architecture === "speech_to_speech" ? "speech_to_speech" : "sandwich",
+    architecture:
+      agent?.architecture === "speech_to_speech" ? "speech_to_speech" : "sandwich",
     realtime: normalizeRealtimeConfig(agent?.realtime),
     systemPrompt:
       stringSetting(llm, "system_prompt", "").trim() || defaultPromptInstructions(),
@@ -617,8 +494,7 @@ function normalizeAgentConfig(agent) {
             "160",
             config.openaiMaxOutputTokens,
           ),
-        ).trim() ||
-        config.openaiMaxOutputTokens,
+        ).trim() || config.openaiMaxOutputTokens,
       reasoning_effort: String(
         settingWithLegacyDefault(
           llm,
@@ -628,12 +504,7 @@ function normalizeAgentConfig(agent) {
         ),
       ),
       verbosity: String(
-        settingWithLegacyDefault(
-          llm,
-          "verbosity",
-          "default",
-          config.openaiVerbosity,
-        ),
+        settingWithLegacyDefault(llm, "verbosity", "default", config.openaiVerbosity),
       ),
       stream: selectedFeature(llm, "stream", true, "response_features"),
       stopSequences: stringListSetting(llm, "stop_sequences", []).slice(0, 4),
@@ -825,6 +696,7 @@ function applyPlatformDeviceAuth(device, auth) {
 
   if (platformDevice) {
     device.platformDeviceId = platformDevice.id;
+    device.userId = auth?.userId || platformDevice.userId || device.userId || null;
     device.name = platformDevice.name || device.name;
     device.model = platformDevice.model || device.model;
     device.serialNumber = platformDevice.serialNumber || device.serialNumber;
@@ -836,6 +708,7 @@ function applyPlatformDeviceAuth(device, auth) {
   }
 
   device.agentSnapshot = agent;
+  device.userId = auth?.userId || device.userId || null;
   device.runtimeConfig = normalizeAgentConfig(agent);
   device.updatedAt = now;
 
@@ -1093,9 +966,7 @@ function logTurnTimingSummary(session, timings, status = "complete") {
     .filter((name) => timings.marks.has(name))
     .map(
       (name) =>
-        `${name}=${formatLatencyMs(
-          elapsedTurnTiming(timings, timings.marks.get(name)),
-        )}`,
+        `${name}=${formatLatencyMs(elapsedTurnTiming(timings, timings.marks.get(name)))}`,
     );
 
   console.log(
@@ -1149,6 +1020,18 @@ function usesDefaultOpenAIEndpoint(llmConfig) {
 function hasRequiredLlmCredentials(runtimeConfig) {
   const llmConfig = runtimeConfig?.llm || {};
   return !usesDefaultOpenAIEndpoint(llmConfig) || Boolean(openAIApiKey(llmConfig));
+}
+
+function isSpeechToSpeechAgent(runtimeConfig) {
+  return runtimeConfig?.architecture === "speech_to_speech";
+}
+
+function deviceCredentialStatus(runtimeConfig) {
+  return deviceRuntimeCredentialStatus(runtimeConfig, {
+    openaiApiKey: config.openaiApiKey,
+    deepgramApiKey: config.deepgramApiKey,
+    llmConfigured: hasRequiredLlmCredentials(runtimeConfig),
+  });
 }
 
 function openAIHeaders(llmConfig) {
@@ -1458,9 +1341,7 @@ function openAIStreamCompletedText(api, event) {
 
 function openAIStreamIncompleteReason(event) {
   return (
-    event.response?.incomplete_details?.reason ||
-    event.incomplete_details?.reason ||
-    ""
+    event.response?.incomplete_details?.reason || event.incomplete_details?.reason || ""
   );
 }
 
@@ -2114,6 +1995,12 @@ function sendDeviceJson(session, payload) {
   });
 }
 
+function closeDeviceRealtimeBridge(session, reason = "closed") {
+  const bridge = session.realtimeBridge;
+  session.realtimeBridge = null;
+  bridge?.close(reason);
+}
+
 function resetDeviceTurnAudio(session) {
   session.pendingPcm = [];
   session.finalSegments = [];
@@ -2153,6 +2040,7 @@ function finalizeDeviceStt(session) {
 function closeDeviceAfterTurn(session, reason = "turn_complete") {
   session.listening = false;
   closeDeviceStt(session);
+  closeDeviceRealtimeBridge(session, reason);
 
   if (!session.runtimeConfig.turn.closeDeviceAfterTurn || !session.transport.isOpen()) {
     setDeviceState(session, "ready", "Turn complete.");
@@ -2333,21 +2221,6 @@ async function synthesizeDevicePcm(session, text) {
   return Buffer.from(await response.arrayBuffer());
 }
 
-function encodePcmToOpusFrames(pcm, sampleRate = 24000, frameDurationMs = 60) {
-  const encoder = new OpusScript(sampleRate, 1, OpusScript.Application.AUDIO);
-  const frameSamples = (sampleRate / 1000) * frameDurationMs;
-  const frameBytes = frameSamples * 2;
-  const frames = [];
-
-  for (let offset = 0; offset < pcm.length; offset += frameBytes) {
-    const frame = Buffer.alloc(frameBytes);
-    pcm.copy(frame, 0, offset, Math.min(offset + frameBytes, pcm.length));
-    frames.push(Buffer.from(encoder.encode(frame, frameSamples)));
-  }
-
-  return frames;
-}
-
 function createDeviceTtsStreamer(session, timings) {
   const items = [];
   let inputDone = false;
@@ -2496,15 +2369,11 @@ async function handleDeviceTurn(session, transcript) {
 
   try {
     session.conversation.push({ role: "user", content: cleanTranscript });
-    const rawAnswer = await askOpenAIDeviceResponse(
-      session,
-      timings,
-      async (delta) => {
-        for (const chunk of chunkParser.push(delta)) {
-          ttsStreamer.enqueue(chunk);
-        }
-      },
-    );
+    const rawAnswer = await askOpenAIDeviceResponse(session, timings, async (delta) => {
+      for (const chunk of chunkParser.push(delta)) {
+        ttsStreamer.enqueue(chunk);
+      }
+    });
 
     for (const chunk of chunkParser.flush()) {
       ttsStreamer.enqueue(chunk);
@@ -2569,6 +2438,46 @@ function startDeviceStt(session) {
   session.deepgram = createDeviceSttConnection(session);
 }
 
+function ensureDeviceRealtimeBridge(session) {
+  if (!session.realtimeBridge) {
+    session.realtimeBridge = createDeviceRealtimeBridge({
+      session,
+      apiKey: config.openaiApiKey,
+      safetyIdentifier: openAISafetyIdentifier(session.userId || session.deviceId),
+      sendDeviceJson,
+      setDeviceState,
+      markTurnTiming,
+      logTurnTimingSummary,
+      closeDeviceAfterTurn,
+    });
+  }
+  return session.realtimeBridge;
+}
+
+function preconnectDeviceRealtimeTurn(session) {
+  if (session.processing || session.closingAfterTurn) {
+    return;
+  }
+  closeDeviceStt(session);
+  ensureDeviceRealtimeBridge(session).preconnect();
+}
+
+function startDeviceRealtimeTurn(session) {
+  if (session.processing || session.closingAfterTurn) {
+    return;
+  }
+  closeDeviceStt(session);
+  ensureDeviceRealtimeBridge(session).startListening();
+}
+
+function finalizeDeviceRealtimeTurn(session) {
+  if (!session.realtimeBridge) {
+    return;
+  }
+  session.processing = true;
+  session.realtimeBridge.stopListening();
+}
+
 function handleDeviceJson(session, message) {
   if (message.type === "hello") {
     sendDeviceJson(session, {
@@ -2602,7 +2511,8 @@ function handleDeviceJson(session, message) {
         );
         return;
       }
-      session.listening = true;
+      const speechToSpeech = isSpeechToSpeechAgent(session.runtimeConfig);
+      session.listening = speechToSpeech ? message.state === "start" : true;
       session.awaitingFinal = false;
       resetDeviceTurnAudio(session);
       if (
@@ -2618,17 +2528,33 @@ function handleDeviceJson(session, message) {
         message.state === "detect" ? "wake_detected" : "listening",
         message.text ? `Wake detected: ${message.text}` : `Listen ${message.state}.`,
       );
-      startDeviceStt(session);
+      if (speechToSpeech) {
+        if (message.state === "detect") {
+          preconnectDeviceRealtimeTurn(session);
+        } else {
+          startDeviceRealtimeTurn(session);
+        }
+      } else {
+        startDeviceStt(session);
+      }
     } else if (message.state === "stop") {
       session.listening = false;
       setDeviceState(session, "processing", "Listen stop.");
-      finalizeDeviceStt(session);
+      if (isSpeechToSpeechAgent(session.runtimeConfig)) {
+        finalizeDeviceRealtimeTurn(session);
+      } else {
+        finalizeDeviceStt(session);
+      }
     }
     return;
   }
 
   if (message.type === "abort") {
     console.log(`[device ${session.id}] abort ${message.reason || ""}`);
+    if (isSpeechToSpeechAgent(session.runtimeConfig) && session.realtimeBridge) {
+      session.realtimeBridge.abort(message.reason || "abort");
+      return;
+    }
     setDeviceState(session, "ready", `Abort: ${message.reason || "no reason"}.`);
     return;
   }
@@ -2645,13 +2571,20 @@ function handleDeviceAudio(session, frame) {
     return;
   }
 
+  if (isSpeechToSpeechAgent(session.runtimeConfig)) {
+    startDeviceRealtimeTurn(session);
+    session.realtimeBridge?.handleAudio(frame);
+    return;
+  }
+
   startDeviceStt(session);
   if (!session.decoder) {
     session.decoder = new OpusScript(16000, 1, OpusScript.Application.AUDIO);
   }
 
   try {
-    const pcm = Buffer.from(session.decoder.decode(frame));
+    const deviceFrameSamples = (16000 / 1000) * 60;
+    const pcm = Buffer.from(session.decoder.decode(frame, deviceFrameSamples));
     session.turnAudioFrames += 1;
     session.turnAudioBytes += frame.length;
 
@@ -2911,19 +2844,16 @@ wss.on("connection", (client, _request, auth) => {
 });
 
 deviceWss.on("connection", (ws, request, auth) => {
-  if (!config.deepgramApiKey) {
-    ws.close(1011, "Missing API keys");
-    return;
-  }
-
   const device = getOrCreateDevice(
     request.headers["device-id"] || request.headers["client-id"],
     request,
   );
   applyPlatformDeviceAuth(device, auth);
 
-  if (!hasRequiredLlmCredentials(device.runtimeConfig)) {
-    ws.close(1011, "Missing API keys");
+  const credentialStatus = deviceCredentialStatus(device.runtimeConfig);
+  if (!credentialStatus.ok) {
+    logDeviceEvent(device, credentialStatus.message);
+    ws.close(1011, credentialStatus.message);
     return;
   }
 
@@ -2964,8 +2894,10 @@ deviceWss.on("connection", (ws, request, auth) => {
       session.closeTimer = null;
     }
     session.listening = false;
+    session.processing = false;
     session.closingAfterTurn = false;
     closeDeviceStt(session);
+    closeDeviceRealtimeBridge(session, "device disconnected");
     if (device.session === session) {
       device.session = null;
       device.availability = "offline";

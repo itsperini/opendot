@@ -27,17 +27,17 @@ pick a project shape that can be reviewed without turning into a rewrite.
 
 ## Track map
 
-| Track                                | Purpose                                                                                                           | Current maturity        |
-| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| Voice Pipeline & Providers           | Make VAD, STT/ASR, LLM, TTS, and provider adapters explicit and replaceable.                                      | Current plus next work  |
-| Voice Agents & Harnesses             | Improve prompts, knowledge, tools, local model harnesses, evals, and framework integration categories.            | Early next work         |
-| Platform Control Plane               | Build the console workflows for agents, configuration, Browser Test, devices, and runtime diagnostics.            | Current work            |
-| Platform Backend & Data              | Own Fastify APIs, auth, Drizzle/Postgres schema, runtime tokens, settings, deployments, and API contracts.        | Current work            |
-| Media Transport                      | Evolve browser/device audio and data sessions across `/voice`, `/ws`, browser WebRTC, and future fleet paths.     | Current plus later work |
-| Device Communication & Fleet         | Add reliable presence, commands, telemetry, diagnostics, OTA metadata, and multi-device communication over time.  | Later work              |
-| Dot Hardware                         | Design open hardware paths from reference-board constraints toward CAD, acoustics, PCB, BOM, and fixtures.        | Later work              |
-| Dot Firmware & Edge                  | Improve ESP-IDF drivers, provisioning, wake/audio/display, and research MicroPython or on-device inference later. | Current plus later work |
-| Docs, Tooling & Developer Experience | Make setup, diagrams, examples, CI, templates, and contribution flow easier.                                      | Current work            |
+| Track                                | Purpose                                                                                                                                   | Current maturity        |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| Voice Pipeline & Providers           | Make VAD, STT/ASR, LLM, TTS, and provider adapters explicit and replaceable.                                                              | Current plus next work  |
+| Voice Agents & Harnesses             | Improve prompts, knowledge, tools, local model harnesses, evals, and framework integration categories.                                    | Early next work         |
+| Platform Control Plane               | Build the console workflows for agents, configuration, Browser Test, devices, and runtime diagnostics.                                    | Current work            |
+| Platform Backend & Data              | Own Fastify APIs, auth, Drizzle/Postgres schema, runtime tokens, settings, deployments, and API contracts.                                | Current work            |
+| Media Transport                      | Evolve browser/device audio and data sessions across `/voice`, `/ws`, browser WebRTC, the device Realtime bridge, and future fleet paths. | Current plus later work |
+| Device Communication & Fleet         | Add reliable presence, commands, telemetry, diagnostics, OTA metadata, and multi-device communication over time.                          | Later work              |
+| Dot Hardware                         | Design open hardware paths from reference-board constraints toward CAD, acoustics, PCB, BOM, and fixtures.                                | Later work              |
+| Dot Firmware & Edge                  | Improve ESP-IDF drivers, provisioning, wake/audio/display, and research MicroPython or on-device inference later.                         | Current plus later work |
+| Docs, Tooling & Developer Experience | Make setup, diagrams, examples, CI, templates, and contribution flow easier.                                                              | Current work            |
 
 ## Voice Pipeline & Providers
 
@@ -140,19 +140,20 @@ devices, and the runtime while preserving the voice pipeline product model.
 **Current state:** Sandwich Browser Test uses `/voice` WebSocket connections.
 Dot devices use `/ws` WebSocket connections. Speech-to-speech Browser Test uses
 native browser WebRTC through OpenAI Realtime after the platform and runtime
-complete the realtime browser-session token and client-secret exchange. Device
-realtime bridging, SFU-style media infrastructure, and fleet media paths are
-future transport adapters, not rewrites of the control plane.
+complete the realtime browser-session token and client-secret exchange.
+Speech-to-speech Dot sessions keep `/ws`, while the runtime opens a server-side
+OpenAI Realtime WebSocket bridge. SFU-style media infrastructure and fleet media
+paths are future transport adapters, not rewrites of the control plane.
 
 **Good first directions:** Document current message flows, clarify the
 realtime client-secret exchange, improve connection diagnostics, add structured
 runtime events, or benchmark WebSocket audio limits.
 
-| Size   | Project brief                                                                             | Verification                                           |
-| ------ | ----------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| Small  | Clarify one browser WebSocket, device WebSocket, or browser WebRTC flow in docs.           | Docs formatting and link checks                        |
-| Medium | Add runtime event logging for connection, turn, or transport failures.                    | Platform checks plus Browser Test                      |
-| Large  | Prototype a transport adapter shape that keeps pipeline and credential boundaries intact. | Architecture review, tests, and manual runtime testing |
+| Size   | Project brief                                                                                            | Verification                                           |
+| ------ | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Small  | Clarify one browser WebSocket, device WebSocket, browser WebRTC, or device Realtime bridge flow in docs. | Docs formatting and link checks                        |
+| Medium | Add runtime event logging for connection, turn, or transport failures.                                   | Platform checks plus Browser Test                      |
+| Large  | Prototype a transport adapter shape that keeps pipeline and credential boundaries intact.                | Architecture review, tests, and manual runtime testing |
 
 **Start in:** [Platform architecture](/architecture), [Runtime configuration](/runtime-configuration),
 `platform/src/server/runtime.js`, and `platform/platform-architecture.md`.

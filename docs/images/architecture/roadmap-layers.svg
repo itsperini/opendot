@@ -44,9 +44,9 @@
   <text class="chip-text" x="320" y="418">Device binding</text>
   <text class="dark-body" x="145" y="492">Fastify API verifies runtime tokens</text>
   <text class="dark-body" x="145" y="520">PostgreSQL stores product state</text>
-  <text class="dark-body" x="145" y="548">Runtime owns /voice, /ws, client secrets</text>
+  <text class="dark-body" x="145" y="548">Runtime owns /voice, /ws, Realtime boundary</text>
   <text class="dark-body" x="145" y="576">Firmware runs on ESP32-S3 reference board</text>
-  <text class="mono" x="145" y="680">Sandwich + browser OpenAI Realtime</text>
+  <text class="mono" x="145" y="680">Sandwich + browser/device Realtime</text>
 
   <rect class="panel" x="595" y="210" width="410" height="615" rx="8" />
   <text class="label" x="635" y="260">Next</text>
@@ -72,8 +72,8 @@
   <text class="body" x="1150" y="367">Self-hosted and local VAD,</text>
   <text class="body" x="1150" y="391">STT/ASR, LLM and TTS models</text>
   <rect class="panel-soft" x="1125" y="430" width="300" height="70" rx="8" />
-  <text class="body" x="1150" y="459">Device realtime bridge and</text>
-  <text class="body" x="1150" y="483">SFU-style fleet media paths</text>
+  <text class="body" x="1150" y="459">SFU-style fleet media paths</text>
+  <text class="body" x="1150" y="483">and lower-level transports</text>
   <rect class="panel-soft" x="1125" y="522" width="300" height="70" rx="8" />
   <text class="body" x="1150" y="551">Open Dot hardware: CAD, PCB,</text>
   <text class="body" x="1150" y="575">BOM, acoustics and fixtures</text>

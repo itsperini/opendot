@@ -16,8 +16,9 @@ docker compose up --build
 
 Add provider keys to the root `.env` before testing live voice sessions. The
 default Sandwich Browser Test path needs both `OPENAI_API_KEY` and
-`DEEPGRAM_API_KEY`; Speech-to-speech Browser Test uses `OPENAI_API_KEY` through
-the runtime. The rest can stay at the defaults. Create those keys from the
+`DEEPGRAM_API_KEY`; Speech-to-speech Browser Test and Speech-to-speech Dot
+device sessions use `OPENAI_API_KEY` through the runtime. The rest can stay at
+the defaults. Create those keys from the
 [Deepgram Console](https://console.deepgram.com/) and the
 [OpenAI platform](https://platform.openai.com/).
 
@@ -53,7 +54,8 @@ To test the current Speech-to-speech browser path, switch the active agent in
 **Configuration** before opening **Browser Test**. That mode asks the platform
 API for a realtime browser-session token, has the runtime mint an OpenAI
 Realtime client secret, then connects the browser to OpenAI Realtime over native
-WebRTC.
+WebRTC. If you bind the same Speech-to-speech agent to a Dot device, the device
+keeps using `/ws` and the runtime opens the OpenAI Realtime WebSocket bridge.
 
 ## 3. Optional pnpm workflow
 
@@ -104,6 +106,10 @@ OPENAI_VERBOSITY=low
 Open **Dot Device** to claim a spoken device code, refresh runtime availability,
 and bind the active identity config to the device.
 
+Bound devices follow the saved architecture. Sandwich agents use the existing
+Deepgram plus LLM plus TTS runtime path; Speech-to-speech agents use the runtime
+Realtime bridge without changing firmware.
+
 The default runtime endpoints are:
 
 ```text
@@ -114,7 +120,7 @@ HTTP:      http://localhost:8787
 ## Next steps
 
 - [Platform architecture](/architecture) explains the whole repo and runtime boundary.
-- [Configuration](/configuration) explains the Sandwich stage controls and Speech-to-speech browser settings.
+- [Configuration](/configuration) explains the Sandwich stage controls and Speech-to-speech browser/device settings.
 - [Database inspection](/database-inspection) shows how to inspect PostgreSQL rows with Drizzle Studio.
 - [Authentication](/authentication) covers local email/password auth and Supabase Auth.
 - [Render deployment](/render-deployment) covers hosted preview deployment.

@@ -1639,6 +1639,7 @@ async function verifyDeviceRuntimeToken(body: unknown) {
   }
 
   return {
+    userId: device.userId,
     device: publicDevice,
     agent: await readRuntimeAgentForDevice(device.id),
   };

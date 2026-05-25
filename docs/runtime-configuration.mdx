@@ -4,7 +4,8 @@ description: Environment variables and local runtime behavior for voice sessions
 ---
 
 The runtime process handles live Sandwich voice sessions for the browser and
-Dot devices, plus browser Speech-to-speech client-secret exchange.
+Dot devices, browser Speech-to-speech client-secret exchange, and the
+Speech-to-speech Dot device bridge.
 
 The runtime verifies browser voice-session tokens, realtime browser-session
 tokens, and device credentials with the platform API before accepting `/voice`,
@@ -77,11 +78,15 @@ base of an OpenAI-compatible API such as `https://example.com/v1`. Agent-level
 LLM settings can also override the base URL and API key environment variable
 name from the Configuration page.
 
-Speech-to-speech Browser Test also uses `OPENAI_API_KEY`, but only inside the
-runtime. The platform API mints a one-use realtime browser-session token at
-`POST /api/runtime/realtime-browser-sessions`, the runtime exchanges it for an
-OpenAI Realtime client secret at `/realtime/client-secret`, and the browser uses
-that short-lived client secret for the WebRTC call.
+Sandwich Browser Test and Sandwich Dot sessions need `DEEPGRAM_API_KEY` plus the
+configured LLM key. Speech-to-speech Browser Test and Speech-to-speech Dot
+sessions use `OPENAI_API_KEY` inside the runtime; Deepgram is not required for
+those Realtime sessions. The platform API mints a one-use realtime
+browser-session token at `POST /api/runtime/realtime-browser-sessions`, the
+runtime exchanges it for an OpenAI Realtime client secret at
+`/realtime/client-secret`, and the browser uses that short-lived client secret
+for the WebRTC call. Dot devices never receive an OpenAI key or client secret;
+the runtime opens the server-side OpenAI Realtime WebSocket on their behalf.
 
 The selected LLM **Provider API** controls which path the runtime calls:
 Responses appends `/responses`, while Chat Completions appends
@@ -140,7 +145,9 @@ CLOSE_DEVICE_AFTER_TURN=true
 CLOSE_DEVICE_AFTER_TURN_DELAY_MS=300
 ```
 
-When `CLOSE_DEVICE_AFTER_TURN` is enabled, the runtime closes the device audio socket shortly after a completed turn so firmware can return to idle or wake-word mode.
+When `CLOSE_DEVICE_AFTER_TURN` is enabled, the runtime closes the device audio
+socket shortly after a completed Sandwich or Speech-to-speech turn so firmware
+can return to idle or wake-word mode.
 
 ## TTS defaults
 

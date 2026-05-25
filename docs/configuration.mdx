@@ -49,7 +49,7 @@ an agent identity in [Agent Studio](/agent-studio) first.
 | Provider                   | Deepgram                                        | Uses Deepgram live listen options for turn detection.        |
 | Model                      | `endpointing-vad`                               | Keeps VAD visible as a product stage.                        |
 | Endpointing                | `300 ms`                                        | Controls how quickly silence closes a turn.                  |
-| Utterance end              | `1000 ms`                                      | Adds a safe pause for device conversations.                  |
+| Utterance end              | `1000 ms`                                       | Adds a safe pause for device conversations.                  |
 | Turn events                | `vad_events`, `interim_results`, `speech_final` | Enables runtime feedback and turn close events.              |
 | Noise floor                | `2` characters                                  | Ignores tiny transcript fragments.                           |
 | Return device to wake word | enabled                                         | Lets firmware leave active listening after a completed turn. |
@@ -72,25 +72,25 @@ The Browser Test panel shows interim and final transcripts from this stage.
 
 ## Stage 3: Language model
 
-| Field                         | Default                                        | Purpose                                                         |
-| ----------------------------- | ---------------------------------------------- | --------------------------------------------------------------- |
-| Provider                      | OpenAI Compatible Endpoint                     | OpenAI-compatible response generation.                          |
-| Model                         | `gpt-5-mini`                                   | Suggested lower-latency OpenAI model or any custom compatible model id. |
-| Provider API                  | Responses (recommended)                        | Selects `/responses` or `/chat/completions`.                    |
-| API key name                  | `OPENAI_API_KEY`                               | Runtime environment variable used for auth.                     |
-| Base URL                      | blank                                          | Defaults to OpenAI; custom values append the selected API path. |
-| Temperature                   | `1`                                            | Sampling temperature sent to the provider.                      |
+| Field                         | Default                                        | Purpose                                                                                                                                |
+| ----------------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Provider                      | OpenAI Compatible Endpoint                     | OpenAI-compatible response generation.                                                                                                 |
+| Model                         | `gpt-5-mini`                                   | Suggested lower-latency OpenAI model or any custom compatible model id.                                                                |
+| Provider API                  | Responses (recommended)                        | Selects `/responses` or `/chat/completions`.                                                                                           |
+| API key name                  | `OPENAI_API_KEY`                               | Runtime environment variable used for auth.                                                                                            |
+| Base URL                      | blank                                          | Defaults to OpenAI; custom values append the selected API path.                                                                        |
+| Temperature                   | `1`                                            | Sampling temperature sent to the provider.                                                                                             |
 | Max output tokens             | `512`                                          | Response token cap. GPT-5-style reasoning models also spend this budget on reasoning tokens, so keep enough headroom for visible text. |
-| System prompt and chunk rules | voice assistant prompt plus chunk instructions | Shapes the assistant response and TTS chunking.                 |
-| Reasoning effort              | `low`                                          | Controls model reasoning behavior where supported.              |
-| Verbosity                     | `low`                                          | Controls response density where supported.                      |
-| Stop sequences                | none                                           | Optional stop strings, up to four.                              |
-| JSON mode                     | disabled                                       | Requests JSON object output from compatible providers.          |
-| Extra headers                 | none                                           | Additional headers for the provider request.                    |
-| Timeout                       | `70 s`                                         | Per-request timeout before retry handling.                      |
-| Max retries                   | `2`                                            | Retry count for transient provider failures.                    |
-| Requests per second           | `50`                                           | Runtime-side LLM request pacing.                                |
-| Extra parameters              | `{}`                                           | Provider-specific JSON merged into the request body.            |
+| System prompt and chunk rules | voice assistant prompt plus chunk instructions | Shapes the assistant response and TTS chunking.                                                                                        |
+| Reasoning effort              | `low`                                          | Controls model reasoning behavior where supported.                                                                                     |
+| Verbosity                     | `low`                                          | Controls response density where supported.                                                                                             |
+| Stop sequences                | none                                           | Optional stop strings, up to four.                                                                                                     |
+| JSON mode                     | disabled                                       | Requests JSON object output from compatible providers.                                                                                 |
+| Extra headers                 | none                                           | Additional headers for the provider request.                                                                                           |
+| Timeout                       | `70 s`                                         | Per-request timeout before retry handling.                                                                                             |
+| Max retries                   | `2`                                            | Retry count for transient provider failures.                                                                                           |
+| Requests per second           | `50`                                           | Runtime-side LLM request pacing.                                                                                                       |
+| Extra parameters              | `{}`                                           | Provider-specific JSON merged into the request body.                                                                                   |
 
 The model control has two parts:
 
@@ -118,23 +118,27 @@ streaming.
 
 ## Speech-to-speech
 
-Speech-to-speech keeps the existing agent identity but swaps the Browser Test
-runtime path to OpenAI Realtime over native browser WebRTC.
+Speech-to-speech keeps the existing agent identity but changes live audio
+transport for supported surfaces. Browser Test uses OpenAI Realtime over native
+browser WebRTC. Bound Dot devices keep the existing `/ws` firmware protocol and
+let the runtime bridge Opus audio to OpenAI Realtime server-side.
 
-| Field              | Default          | Purpose                                      |
-| ------------------ | ---------------- | -------------------------------------------- |
-| Provider           | OpenAI Realtime  | Runtime-minted client secrets stay server-side. |
-| Model              | `gpt-realtime-2` | Capable realtime speech-to-speech default.   |
-| Voice              | `marin`          | Default realtime voice.                      |
-| Reasoning effort   | `low`            | Applies to `gpt-realtime-2`.                 |
-| Turn detection     | `semantic_vad`   | Natural turn-taking with model-side VAD.     |
-| Semantic eagerness | `auto`           | Controls semantic VAD response timing.       |
-| Create response    | enabled          | Lets VAD automatically trigger a response.   |
-| Interrupt response | enabled          | Lets user speech interrupt model audio.      |
-| Instructions       | OpenDot realtime prompt | Kept separate from sandwich XML chunk rules. |
+| Field              | Default                 | Purpose                                         |
+| ------------------ | ----------------------- | ----------------------------------------------- |
+| Provider           | OpenAI Realtime         | Runtime-minted client secrets stay server-side. |
+| Model              | `gpt-realtime-2`        | Capable realtime speech-to-speech default.      |
+| Voice              | `marin`                 | Default realtime voice.                         |
+| Reasoning effort   | `low`                   | Applies to `gpt-realtime-2`.                    |
+| Turn detection     | `semantic_vad`          | Natural turn-taking with model-side VAD.        |
+| Semantic eagerness | `auto`                  | Controls semantic VAD response timing.          |
+| Create response    | enabled                 | Lets VAD automatically trigger a response.      |
+| Interrupt response | enabled                 | Lets user speech interrupt model audio.         |
+| Instructions       | OpenDot realtime prompt | Kept separate from sandwich XML chunk rules.    |
 
 `gpt-realtime-mini` is selectable for cheaper repeated testing. `cedar` and
 the other realtime voices are selectable from the same settings surface.
+Speech-to-speech Dot sessions use `OPENAI_API_KEY` inside the runtime and do
+not require Deepgram for the live turn.
 
 ## Stage 4: Text to speech
 

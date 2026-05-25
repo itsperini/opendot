@@ -87,6 +87,12 @@ Bindings are stored as deployment and deployment-device-target records, so a
 device points at a versioned agent and pipeline config rather than browser-only
 state.
 
+The bound agent architecture controls the live `/ws` turn path. Sandwich agents
+use the explicit Deepgram VAD/STT, configured LLM, and TTS stages.
+Speech-to-speech agents keep the same firmware protocol, but the runtime bridges
+device Opus audio to OpenAI Realtime and streams Opus playback back to the
+speaker.
+
 ## Device events
 
 The event log records pairing, runtime checks, device checks, binding attempts,

@@ -30,6 +30,8 @@ Current work should make the local loop reliable and understandable:
 - Test Sandwich microphone turns in Browser Test through runtime `/voice`.
 - Switch Browser Test agents to Speech-to-speech for native browser WebRTC with
   OpenAI Realtime.
+- Bind Speech-to-speech agents to Dot devices through the runtime `/ws`
+  Realtime bridge.
 - Pair Dot devices, claim activation codes, and bind active identity configs.
 - Keep Fastify, Drizzle, PostgreSQL, and runtime token boundaries clear.
 - Run ESP-IDF firmware on the Waveshare ESP32-S3-AUDIO-Board reference target.
@@ -40,17 +42,17 @@ Current work should make the local loop reliable and understandable:
 Next work should make OpenDot easier to extend without hiding the voice-agent
 model:
 
-| Track                                | Next direction                                                                                                                 |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| Voice Pipeline & Providers           | Split provider integrations behind clearer adapter boundaries, improve stage validation, and support more provider categories. |
-| Voice Agents & Harnesses             | Add stronger agent configuration, knowledge/model surfaces, evaluation fixtures, and local model harness categories.           |
-| Platform Control Plane               | Improve Browser Test timing/replay, device status, empty states, and runtime diagnostics.                                      |
-| Platform Backend & Data              | Add request validation, clearer API contracts, safer runtime token/device credential handling, and migration discipline.       |
-| Media Transport                      | Stabilize WebSocket and browser WebRTC paths, document message flows and client-secret exchange, and prepare device/fleet adapters. |
-| Device Communication & Fleet         | Improve current device diagnostics and define future presence, commands, telemetry, and OTA metadata contracts.                |
-| Dot Hardware                         | Convert reference-board learnings into open hardware requirements for enclosure, acoustics, power, PCB, BOM, and fixtures.     |
-| Dot Firmware & Edge                  | Harden provisioning, activation, reconnect behavior, board config, logs, and runtime endpoint setup.                           |
-| Docs, Tooling & Developer Experience | Expand troubleshooting, diagrams, examples, CI checks, and contributor onboarding.                                             |
+| Track                                | Next direction                                                                                                                                       |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Voice Pipeline & Providers           | Split provider integrations behind clearer adapter boundaries, improve stage validation, and support more provider categories.                       |
+| Voice Agents & Harnesses             | Add stronger agent configuration, knowledge/model surfaces, evaluation fixtures, and local model harness categories.                                 |
+| Platform Control Plane               | Improve Browser Test timing/replay, device status, empty states, and runtime diagnostics.                                                            |
+| Platform Backend & Data              | Add request validation, clearer API contracts, safer runtime token/device credential handling, and migration discipline.                             |
+| Media Transport                      | Stabilize WebSocket, browser WebRTC, and device Realtime bridge paths; document message flows, client-secret exchange, and fleet adapter boundaries. |
+| Device Communication & Fleet         | Improve current device diagnostics and define future presence, commands, telemetry, and OTA metadata contracts.                                      |
+| Dot Hardware                         | Convert reference-board learnings into open hardware requirements for enclosure, acoustics, power, PCB, BOM, and fixtures.                           |
+| Dot Firmware & Edge                  | Harden provisioning, activation, reconnect behavior, board config, logs, and runtime endpoint setup.                                                 |
+| Docs, Tooling & Developer Experience | Expand troubleshooting, diagrams, examples, CI checks, and contributor onboarding.                                                                   |
 
 ## Later
 
@@ -58,9 +60,8 @@ Later work should move OpenDot from a local prototype into a platform that can
 operate across cloud, local network, bare-metal, and on-device targets:
 
 - Fully local or self-hosted VAD, STT/ASR, LLM, and TTS options.
-- Expand realtime media beyond the current browser WebRTC test: device realtime
-  bridging, SFU-style fleet paths, and lower-level WebSocket bridges where
-  needed.
+- Expand realtime media beyond the current browser WebRTC and device bridge
+  paths: SFU-style fleet paths and lower-level WebSocket bridges where needed.
 - MQTT-style device presence, desired/reported state, commands, telemetry,
   diagnostics, OTA metadata, and multi-device coordination.
 - Purpose-built open Dot hardware with CAD, PCB, BOM, fixtures, acoustic notes,

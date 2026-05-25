@@ -38,7 +38,8 @@ VAD -> STT -> LLM -> TTS
 ```
 
 The identity also receives normalized Speech-to-speech defaults so it can later
-be switched to the browser Realtime path without changing the identity model.
+be switched to browser Realtime or the Dot device Realtime bridge without
+changing the identity model.
 The new identity becomes active immediately.
 
 ## Agent identities
@@ -77,4 +78,5 @@ See [Database inspection](/database-inspection) to inspect the stored rows and
 ## Next phase
 
 Open [Configuration](/configuration) to tune the active identity's Sandwich VAD,
-STT, LLM, and TTS stages or switch it to Speech-to-speech for Browser Test.
+STT, LLM, and TTS stages or switch it to Speech-to-speech for Browser Test and
+bound Dot device turns.

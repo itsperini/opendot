@@ -37,7 +37,7 @@
 
 Most voice agent stacks are split across hosted dashboards, hidden runtime behavior, provider-specific configuration, and disconnected device firmware. OpenDot is designed as a coherent operating layer for agents that need to run beyond a browser demo:
 
-- **Voice architecture control**: build and tune the explicit VAD, STT, LLM, and TTS Sandwich path, or switch an agent to browser Realtime speech-to-speech testing.
+- **Voice architecture control**: build and tune the explicit VAD, STT, LLM, and TTS Sandwich path, or switch an agent to Realtime speech-to-speech testing in the browser or on a bound Dot device.
 - **Agent configuration**: connect agents to prompts, knowledge, model choices, and runtime presets.
 - **Real hardware binding**: bind voice configs to Dot devices and inspect runtime availability.
 - **Flexible operation**: run sessions in the cloud, local network, or on-device as the stack matures.
@@ -49,7 +49,7 @@ OpenDot is in an early prototype phase. The current implementation focuses on th
 
 1. Create an agent identity in the platform UI.
 2. Configure the default Sandwich pipeline: VAD, STT, LLM, and TTS.
-3. Optionally switch the agent to Speech-to-speech for browser WebRTC testing with OpenAI Realtime.
+3. Optionally switch the agent to Speech-to-speech for browser WebRTC testing or Dot device turns with OpenAI Realtime.
 4. Test microphone turns in the browser against the local runtime.
 5. Pair a Dot device and bind the selected voice configuration.
 
@@ -59,9 +59,10 @@ The starter pipeline currently uses Deepgram and OpenAI-compatible services:
 Deepgram VAD -> Deepgram STT -> OpenAI-compatible LLM -> Deepgram TTS
 ```
 
-The runtime keeps the Sandwich path structured around replaceable stages while
-also minting short-lived OpenAI Realtime client secrets for the current browser
-Speech-to-speech test path. Device realtime bridging remains a later step.
+The runtime keeps the Sandwich path structured around replaceable stages. For
+Speech-to-speech agents, Browser Test uses a short-lived OpenAI Realtime client
+secret and native WebRTC, while bound Dot devices keep the same `/ws` firmware
+path and let the runtime bridge device Opus audio to OpenAI Realtime.
 
 ## Start contributing
 
@@ -178,10 +179,12 @@ connect from **Browser Test**. Sandwich agents use the local runtime WebSocket
 and the VAD -> STT -> LLM -> TTS path. Speech-to-speech agents use the platform
 API and runtime to mint an ephemeral OpenAI Realtime client secret via
 `POST /api/runtime/realtime-browser-sessions` and `/realtime/client-secret`,
-then connect from the browser with native WebRTC. Leave `OPENAI_BASE_URL` blank
-for the Sandwich OpenAI-compatible LLM stage, or set it to an OpenAI-compatible
-provider base URL; the selected LLM Provider API determines whether the Sandwich
-runtime calls `/responses` or `/chat/completions`.
+then connect from the browser with native WebRTC. Bound Dot devices use the
+same saved Speech-to-speech config through the runtime `/ws` bridge, with
+`OPENAI_API_KEY` staying inside the runtime. Leave `OPENAI_BASE_URL` blank for
+the Sandwich OpenAI-compatible LLM stage, or set it to an OpenAI-compatible
+provider base URL; the selected LLM Provider API determines whether the
+Sandwich runtime calls `/responses` or `/chat/completions`.
 
 ## Render Deployment
 
@@ -281,9 +284,9 @@ on real devices. The roadmap is organized by maturity:
   reliable.
 - **Next:** modularize providers, agents, runtime events, backend contracts, and
   device diagnostics.
-- **Later:** open paths for local models, device realtime bridging,
-  SFU-style media, MQTT-style device communication, open Dot hardware, and
-  exploratory edge inference.
+- **Later:** open paths for local models, SFU-style media,
+  MQTT-style device communication, open Dot hardware, and exploratory edge
+  inference.
 
 See [ROADMAP.md](ROADMAP.md) for the concise root roadmap and
 [docs/roadmap.mdx](docs/roadmap.mdx) for the canonical docs roadmap.

@@ -1,6 +1,6 @@
 <svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="voice-turn-flow-title voice-turn-flow-desc">
   <title id="voice-turn-flow-title">OpenDot voice turn flow</title>
-  <desc id="voice-turn-flow-desc">Sandwich browser or device audio moves through VAD, STT, LLM, TTS, and playback. Speech-to-speech Browser Test branches to OpenAI Realtime over WebRTC.</desc>
+  <desc id="voice-turn-flow-desc">Sandwich browser or device audio moves through VAD, STT, LLM, TTS, and playback. Speech-to-speech uses browser WebRTC or a runtime device bridge to OpenAI Realtime.</desc>
   <defs>
     <marker id="arrow" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto" markerUnits="strokeWidth">
       <path d="M0 0L11 5.5L0 11Z" fill="#6d28d9" />
@@ -26,7 +26,7 @@
 
   <rect class="bg" width="1600" height="900" />
   <text class="title" x="80" y="82">Voice turn flow</text>
-  <text class="body" x="80" y="116">Sandwich keeps VAD, STT, LLM, and TTS explicit. Speech-to-speech Browser Test uses a runtime-minted Realtime client secret.</text>
+  <text class="body" x="80" y="116">Sandwich keeps VAD, STT, LLM, and TTS explicit. Speech-to-speech uses browser WebRTC or a runtime /ws device bridge.</text>
 
   <rect class="panel" x="80" y="210" width="240" height="125" rx="8" />
   <text class="label" x="112" y="252">Browser Test</text>
@@ -90,7 +90,7 @@
 
   <rect class="stage" x="790" y="565" width="310" height="120" rx="8" />
   <text class="label" x="822" y="608">OpenAI Realtime</text>
-  <text class="body" x="822" y="638">native browser WebRTC</text>
+  <text class="body" x="822" y="638">WebRTC or /ws bridge</text>
   <text class="mono" x="822" y="662">gpt-realtime-2</text>
 
   <path class="line" d="M695 415H780" />
@@ -102,12 +102,12 @@
   <text class="mono" x="1384" y="516">audio</text>
 
   <path class="line-soft" d="M695 468H745V625H780" />
-  <text class="mono" x="710" y="548">ephemeral secret</text>
+  <text class="mono" x="710" y="548">secret / bridge</text>
   <path class="line" d="M1100 625H1310" />
 
   <path class="line-soft" d="M1320 675V720H650V510" />
   <text class="mono" x="776" y="708">responses, chunks, timing events</text>
 
   <rect class="panel" x="80" y="760" width="1410" height="58" rx="8" />
-  <text class="body" x="112" y="794">Current paths are Sandwich /voice, Dot /ws, and browser WebRTC Realtime. Device realtime bridging remains deferred.</text>
+  <text class="body" x="112" y="794">Current paths are Sandwich /voice and /ws, plus Speech-to-speech browser WebRTC and Dot /ws Realtime bridge.</text>
 </svg>

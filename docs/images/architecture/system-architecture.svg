@@ -29,7 +29,7 @@
 
   <rect class="bg" width="1600" height="920" />
   <text class="title" x="80" y="82">OpenDot current architecture</text>
-  <text class="subtitle" x="80" y="116">The platform owns durable configuration and device binding. The runtime owns live audio sessions and Realtime client-secret exchange.</text>
+  <text class="subtitle" x="80" y="116">The platform owns durable configuration and device binding. The runtime owns live audio sessions, Realtime secrets, and the device bridge.</text>
 
   <rect class="panel" x="80" y="180" width="300" height="166" rx="8" />
   <text class="label" x="112" y="224">Web console</text>
@@ -55,7 +55,7 @@
   <text class="dark-label" x="552" y="602">Voice runtime</text>
   <text class="dark-body" x="552" y="634">Node voice runtime service</text>
   <text class="dark-body" x="552" y="660">/voice, /ws, /realtime secrets</text>
-  <text class="dark-body" x="552" y="686">Sandwich pipeline + Realtime boundary</text>
+  <text class="dark-body" x="552" y="686">Sandwich pipeline + Realtime bridge</text>
   <rect class="chip" x="552" y="705" width="86" height="28" rx="8" />
   <text class="chip-text" x="573" y="724">:8787</text>
 

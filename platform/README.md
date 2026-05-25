@@ -35,7 +35,9 @@ This keeps the product model clear while still matching how Deepgram exposes end
 
 Speech-to-speech agents keep the same identity and saved versioning model, but
 Browser Test connects with native WebRTC through an OpenAI Realtime client
-secret minted by the runtime.
+secret minted by the runtime. Bound Dot devices keep the authenticated `/ws`
+firmware path; the runtime detects the saved Speech-to-speech architecture and
+bridges device Opus audio to OpenAI Realtime server-side.
 
 ## Run Locally
 
@@ -161,6 +163,10 @@ For Speech-to-speech:
 4. Click **Start mic** and speak.
 5. Use **Interrupt**, **Reset**, and **Disconnect** to test turn-taking behavior.
 
+For a bound Dot device, use the same saved Speech-to-speech agent. The firmware
+still connects to `/ws`; the runtime owns the OpenAI Realtime WebSocket,
+`OPENAI_API_KEY`, PCM conversion, and Opus playback.
+
 The browser never receives `OPENAI_API_KEY`. The platform API creates a
 short-lived runtime token at `POST /api/runtime/realtime-browser-sessions`, the
 runtime exchanges it at `/realtime/client-secret` for an OpenAI Realtime client
@@ -262,7 +268,8 @@ active session immediately.
 
 The runtime verifies browser voice-session tokens, realtime browser-session
 tokens, and device credentials with the platform API. Sandwich Browser Test uses
-`/voice`, Dot devices use `/ws`, and Speech-to-speech Browser Test uses
+`/voice`, Sandwich Dot devices use `/ws`, Speech-to-speech Browser Test uses
 `/realtime/client-secret` before the browser connects to OpenAI Realtime with an
-ephemeral client secret. Keep `OPENDOT_RUNTIME_INTERNAL_SECRET` identical on the
-API and runtime services.
+ephemeral client secret, and Speech-to-speech Dot devices use the runtime `/ws`
+Realtime bridge. Keep `OPENDOT_RUNTIME_INTERNAL_SECRET` identical on the API and
+runtime services.

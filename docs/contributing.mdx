@@ -48,8 +48,8 @@ Create a local email/password account, then open **Agent Studio**. Add
 turns. Leave `OPENAI_BASE_URL` blank for OpenAI or set it to an
 OpenAI-compatible provider base URL.
 `OPENAI_BASE_URL` affects the Sandwich LLM stage only; Speech-to-speech Browser
-Test uses the runtime's `OPENAI_API_KEY` for the OpenAI Realtime client-secret
-exchange.
+Test and Speech-to-speech Dot sessions use the runtime's `OPENAI_API_KEY` for
+OpenAI Realtime.
 
 For process-by-process development, install the workspace and run the API,
 frontend, and runtime separately:
@@ -70,17 +70,17 @@ See the [Quickstart](/quickstart) for the full setup flow and
 
 ## Choose an area
 
-| Track                                | Common work                                                                                       | Minimum check                                           |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| Voice Pipeline & Providers           | VAD, STT/ASR, LLM, TTS, realtime APIs, provider adapters, stage contracts                         | Platform checks plus live Browser Test when possible    |
-| Voice Agents & Harnesses             | Prompts, knowledge, tools, local model harnesses, evals, framework integration categories         | Platform checks and docs when behavior changes          |
-| Platform Control Plane               | Agent Studio, Configuration, Browser Test, Dot Device, Settings, runtime diagnostics UX           | `pnpm run lint && pnpm run test && pnpm run build`      |
-| Platform Backend & Data              | Fastify API, auth, Drizzle/Postgres schema, runtime tokens, settings, deployments                 | Platform checks plus migration review when data changes |
-| Media Transport                      | WebSocket audio/data sessions, browser WebRTC Realtime sessions, runtime protocols, future SFU/device adapters | Platform checks plus manual runtime testing             |
-| Device Communication & Fleet         | Device presence, state, commands, telemetry, diagnostics, OTA metadata                            | Platform/runtime checks and device notes when relevant  |
-| Dot Hardware                         | CAD, enclosure, acoustics, PCB, BOM, fixtures, reference constraints                              | Hardware/source review and docs checks                  |
-| Dot Firmware & Edge                  | ESP-IDF drivers, provisioning, wake/audio/display, exploratory MicroPython and inference research | `idf.py build` when ESP-IDF is available                |
-| Docs, Tooling & Developer Experience | Setup docs, diagrams, examples, CI, templates, contributor workflow                               | Formatting and link checks                              |
+| Track                                | Common work                                                                                                                           | Minimum check                                           |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Voice Pipeline & Providers           | VAD, STT/ASR, LLM, TTS, realtime APIs, provider adapters, stage contracts                                                             | Platform checks plus live Browser Test when possible    |
+| Voice Agents & Harnesses             | Prompts, knowledge, tools, local model harnesses, evals, framework integration categories                                             | Platform checks and docs when behavior changes          |
+| Platform Control Plane               | Agent Studio, Configuration, Browser Test, Dot Device, Settings, runtime diagnostics UX                                               | `pnpm run lint && pnpm run test && pnpm run build`      |
+| Platform Backend & Data              | Fastify API, auth, Drizzle/Postgres schema, runtime tokens, settings, deployments                                                     | Platform checks plus migration review when data changes |
+| Media Transport                      | WebSocket audio/data sessions, browser WebRTC Realtime sessions, device Realtime bridge, runtime protocols, future SFU/fleet adapters | Platform checks plus manual runtime testing             |
+| Device Communication & Fleet         | Device presence, state, commands, telemetry, diagnostics, OTA metadata                                                                | Platform/runtime checks and device notes when relevant  |
+| Dot Hardware                         | CAD, enclosure, acoustics, PCB, BOM, fixtures, reference constraints                                                                  | Hardware/source review and docs checks                  |
+| Dot Firmware & Edge                  | ESP-IDF drivers, provisioning, wake/audio/display, exploratory MicroPython and inference research                                     | `idf.py build` when ESP-IDF is available                |
+| Docs, Tooling & Developer Experience | Setup docs, diagrams, examples, CI, templates, contributor workflow                                                                   | Formatting and link checks                              |
 
 See [Contribution areas](/contribution-areas) for the detailed map, project
 briefs, and starting files for each track.
