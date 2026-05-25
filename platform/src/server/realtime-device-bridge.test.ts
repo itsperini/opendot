@@ -332,9 +332,7 @@ describe("Realtime device bridge", () => {
     bridge.startListening();
     bridge.handleAudio(devicePcm16);
 
-    expect(socket.sent.map((event) => event.type)).toContain(
-      "input_audio_buffer.append",
-    );
+    expect(socket.sent.map((event) => event.type)).toContain("input_audio_buffer.append");
   });
 
   it("drops empty device Opus frames before decode", () => {
@@ -383,12 +381,12 @@ describe("Realtime device bridge", () => {
     socket.serverEvent({ type: "response.done" });
     await flushPromises(12);
 
-    expect(
-      deviceJson.some((item) => item.type === "tts" && item.state === "start"),
-    ).toBe(true);
-    expect(
-      deviceJson.some((item) => item.type === "tts" && item.state === "stop"),
-    ).toBe(true);
+    expect(deviceJson.some((item) => item.type === "tts" && item.state === "start")).toBe(
+      true,
+    );
+    expect(deviceJson.some((item) => item.type === "tts" && item.state === "stop")).toBe(
+      true,
+    );
     expect(binaryFrames).toHaveLength(1);
     expect(FakeOpusScript.deleted).toBeGreaterThan(0);
     expect(closeDeviceAfterTurn).toHaveBeenCalledWith(
@@ -436,9 +434,9 @@ describe("Realtime device bridge", () => {
     await flushPromises();
 
     expect(socket.sent.map((event) => event.type)).toContain("response.cancel");
-    expect(
-      deviceJson.some((item) => item.type === "tts" && item.state === "stop"),
-    ).toBe(true);
+    expect(deviceJson.some((item) => item.type === "tts" && item.state === "stop")).toBe(
+      true,
+    );
     expect(closeDeviceAfterTurn).toHaveBeenCalledWith(
       expect.objectContaining({ id: "session-1" }),
       "abort",

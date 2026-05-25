@@ -183,17 +183,14 @@ export function DotDevicePage({
   const [serialError, setSerialError] = useState<string | null>(null);
   const [serialLines, setSerialLines] = useState<SerialLogEntry[]>([]);
   const serialPortRef = useRef<BrowserSerialPort | null>(null);
-  const serialReaderRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(
-    null,
-  );
+  const serialReaderRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
   const serialReadPromiseRef = useRef<Promise<void> | null>(null);
   const serialStopRef = useRef(false);
   const serialBufferRef = useRef("");
   const serialConsoleRef = useRef<HTMLOListElement | null>(null);
   const serialDecoderRef = useRef(new TextDecoder());
   const serialSupported =
-    typeof navigator !== "undefined" &&
-    Boolean((navigator as SerialNavigator).serial);
+    typeof navigator !== "undefined" && Boolean((navigator as SerialNavigator).serial);
 
   useEffect(() => {
     if (selectedAgent) {
@@ -285,27 +282,27 @@ export function DotDevicePage({
       appendSerialEntries([
         {
           level,
-          text:
-            level === "data"
-              ? text
-              : `[${new Date().toLocaleTimeString()}] ${text}`,
+          text: level === "data" ? text : `[${new Date().toLocaleTimeString()}] ${text}`,
         },
       ]);
     },
     [appendSerialEntries],
   );
 
-  const appendSerialChunk = useCallback((chunk: string) => {
-    const normalizedChunk = chunk.replace(/\r/g, "");
-    const lines = `${serialBufferRef.current}${normalizedChunk}`.split("\n");
-    serialBufferRef.current = lines.pop() ?? "";
-    appendSerialEntries(
-      lines.map((line) => ({
-        level: "data",
-        text: line,
-      })),
-    );
-  }, [appendSerialEntries]);
+  const appendSerialChunk = useCallback(
+    (chunk: string) => {
+      const normalizedChunk = chunk.replace(/\r/g, "");
+      const lines = `${serialBufferRef.current}${normalizedChunk}`.split("\n");
+      serialBufferRef.current = lines.pop() ?? "";
+      appendSerialEntries(
+        lines.map((line) => ({
+          level: "data",
+          text: line,
+        })),
+      );
+    },
+    [appendSerialEntries],
+  );
 
   const flushSerialBuffer = useCallback(() => {
     const buffered = serialBufferRef.current;
@@ -317,38 +314,41 @@ export function DotDevicePage({
     appendSerialLine(buffered);
   }, [appendSerialLine]);
 
-  const readSerial = useCallback(async (port: BrowserSerialPort) => {
-    while (port.readable && !serialStopRef.current) {
-      const reader = port.readable.getReader();
-      serialReaderRef.current = reader;
+  const readSerial = useCallback(
+    async (port: BrowserSerialPort) => {
+      while (port.readable && !serialStopRef.current) {
+        const reader = port.readable.getReader();
+        serialReaderRef.current = reader;
 
-      try {
-        while (!serialStopRef.current) {
-          const { done, value } = await reader.read();
+        try {
+          while (!serialStopRef.current) {
+            const { done, value } = await reader.read();
 
-          if (done) {
-            break;
+            if (done) {
+              break;
+            }
+
+            if (value) {
+              appendSerialChunk(serialDecoderRef.current.decode(value, { stream: true }));
+            }
           }
-
-          if (value) {
-            appendSerialChunk(serialDecoderRef.current.decode(value, { stream: true }));
+        } catch (error) {
+          if (!serialStopRef.current) {
+            const message = error instanceof Error ? error.message : String(error);
+            setSerialError(message);
+            appendSerialLine(`Serial read failed: ${message}`, "error");
           }
-        }
-      } catch (error) {
-        if (!serialStopRef.current) {
-          const message = error instanceof Error ? error.message : String(error);
-          setSerialError(message);
-          appendSerialLine(`Serial read failed: ${message}`, "error");
-        }
-      } finally {
-        reader.releaseLock();
+        } finally {
+          reader.releaseLock();
 
-        if (serialReaderRef.current === reader) {
-          serialReaderRef.current = null;
+          if (serialReaderRef.current === reader) {
+            serialReaderRef.current = null;
+          }
         }
       }
-    }
-  }, [appendSerialChunk, appendSerialLine]);
+    },
+    [appendSerialChunk, appendSerialLine],
+  );
 
   const disconnectSerial = useCallback(async () => {
     serialStopRef.current = true;

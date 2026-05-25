@@ -257,11 +257,7 @@ function optionValueSet(options: StageOption[] = []) {
   return new Set(options.map((option) => String(option.value)));
 }
 
-function optionStringValue(
-  options: StageOption[],
-  value: unknown,
-  fallback: string,
-) {
+function optionStringValue(options: StageOption[], value: unknown, fallback: string) {
   const candidate = typeof value === "string" ? value.trim() : "";
   return optionValueSet(options).has(candidate) ? candidate : fallback;
 }
@@ -270,12 +266,7 @@ function booleanValue(value: unknown, fallback: boolean) {
   return typeof value === "boolean" ? value : fallback;
 }
 
-function boundedNumber(
-  value: unknown,
-  fallback: number,
-  min: number,
-  max: number,
-) {
+function boundedNumber(value: unknown, fallback: number, min: number, max: number) {
   const numericValue =
     typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
 
@@ -315,9 +306,7 @@ export function normalizeArchitecture(value: unknown): VoiceArchitecture {
   return value === "speech_to_speech" ? "speech_to_speech" : "sandwich";
 }
 
-export function normalizeRealtimeConfig(
-  value: unknown,
-): RealtimeVoiceAgentConfig {
+export function normalizeRealtimeConfig(value: unknown): RealtimeVoiceAgentConfig {
   const defaults = createDefaultRealtimeConfig();
   const input = objectValue(value);
   const turnInput = objectValue(input.turnDetection);
@@ -334,12 +323,7 @@ export function normalizeRealtimeConfig(
   const turnDetection: RealtimeTurnDetectionConfig = {
     type: turnType,
     eagerness,
-    threshold: boundedNumber(
-      turnInput.threshold,
-      defaults.turnDetection.threshold,
-      0,
-      1,
-    ),
+    threshold: boundedNumber(turnInput.threshold, defaults.turnDetection.threshold, 0, 1),
     prefixPaddingMs: boundedNumber(
       turnInput.prefixPaddingMs,
       defaults.turnDetection.prefixPaddingMs,
@@ -488,10 +472,7 @@ function balancedLegacySettingValue(
     return undefined;
   }
 
-  if (
-    defaultSetting.key === "endpointing" &&
-    String(existingValue) === "900"
-  ) {
+  if (defaultSetting.key === "endpointing" && String(existingValue) === "900") {
     return defaultSetting.value;
   }
 
@@ -503,8 +484,7 @@ function balancedLegacySettingValue(
   }
 
   if (
-    (defaultSetting.key === "reasoning_effort" ||
-      defaultSetting.key === "verbosity") &&
+    (defaultSetting.key === "reasoning_effort" || defaultSetting.key === "verbosity") &&
     String(existingValue) === "default"
   ) {
     return defaultSetting.value;

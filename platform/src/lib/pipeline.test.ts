@@ -109,15 +109,20 @@ describe("pipeline helpers", () => {
     let pipeline = createDefaultPipeline();
     pipeline = updateStageSetting(pipeline, "vad", "endpointing", 900);
     pipeline = updateStageSetting(pipeline, "vad", "utterance_end_ms", 1000);
-    pipeline = updateStageSetting(pipeline, "llm", "system_prompt", [
-      "You are a concise voice assistant. Answer naturally in one or two short spoken paragraphs.",
-      "",
-      "For voice output, format every assistant reply as XML-like TTS chunks.",
-      "Use only this format: <chunk>first spoken chunk</chunk><chunk>next spoken chunk</chunk>.",
-      "Do not write any text outside <chunk> tags.",
-      "Close each chunk as soon as a natural phrase or short sentence is complete so TTS can start immediately.",
-      "Use plain spoken language. Avoid markdown, bullets, code fences, tables, emojis, and XML special characters.",
-    ].join("\n"));
+    pipeline = updateStageSetting(
+      pipeline,
+      "llm",
+      "system_prompt",
+      [
+        "You are a concise voice assistant. Answer naturally in one or two short spoken paragraphs.",
+        "",
+        "For voice output, format every assistant reply as XML-like TTS chunks.",
+        "Use only this format: <chunk>first spoken chunk</chunk><chunk>next spoken chunk</chunk>.",
+        "Do not write any text outside <chunk> tags.",
+        "Close each chunk as soon as a natural phrase or short sentence is complete so TTS can start immediately.",
+        "Use plain spoken language. Avoid markdown, bullets, code fences, tables, emojis, and XML special characters.",
+      ].join("\n"),
+    );
     pipeline = updateStageSetting(pipeline, "llm", "max_output_tokens", "");
     pipeline = updateStageSetting(pipeline, "llm", "reasoning_effort", "default");
     pipeline = updateStageSetting(pipeline, "llm", "verbosity", "default");
@@ -131,10 +136,8 @@ describe("pipeline helpers", () => {
       updatedAt: "2026-05-23T00:00:00.000Z",
       pipeline,
     });
-    const vadSettings = normalized.pipeline.find((stage) => stage.id === "vad")
-      ?.settings;
-    const llmSettings = normalized.pipeline.find((stage) => stage.id === "llm")
-      ?.settings;
+    const vadSettings = normalized.pipeline.find((stage) => stage.id === "vad")?.settings;
+    const llmSettings = normalized.pipeline.find((stage) => stage.id === "llm")?.settings;
 
     expect(vadSettings).toEqual(
       expect.arrayContaining([

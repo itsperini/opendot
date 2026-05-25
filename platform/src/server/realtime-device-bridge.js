@@ -109,8 +109,7 @@ export function encodePcmToOpusFrames(
   OpusScriptImpl = OpusScript,
 ) {
   const input = Buffer.from(pcm || []);
-  const evenPcm =
-    input.length % 2 === 0 ? input : input.subarray(0, input.length - 1);
+  const evenPcm = input.length % 2 === 0 ? input : input.subarray(0, input.length - 1);
   if (!evenPcm.length) {
     return [];
   }
@@ -161,9 +160,7 @@ export function createPcmToOpusFrameEncoder(
         return [];
       }
 
-      pendingPcm = pendingPcm.length
-        ? Buffer.concat([pendingPcm, evenPcm])
-        : evenPcm;
+      pendingPcm = pendingPcm.length ? Buffer.concat([pendingPcm, evenPcm]) : evenPcm;
 
       const frames = [];
       while (pendingPcm.length >= frameBytes) {
@@ -655,7 +652,9 @@ export function createDeviceRealtimeBridge(options) {
         decoder = null;
 
         if (stats.decodeErrors <= 3 || stats.decodeErrors % 25 === 0) {
-          const preview = Buffer.from(frame || []).subarray(0, 8).toString("hex");
+          const preview = Buffer.from(frame || [])
+            .subarray(0, 8)
+            .toString("hex");
           console.error(
             `[device ${session.id}] realtime opus decode failed (${stats.decodeErrors}, len=${frame?.length || 0}, head=${preview}): ${error.message}`,
           );

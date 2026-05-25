@@ -243,8 +243,7 @@ export function ConfigurationPage({
                   <label htmlFor="realtime-eagerness">Semantic eagerness</label>
                   <select
                     disabled={
-                      realtimeDisabled ||
-                      realtime.turnDetection.type !== "semantic_vad"
+                      realtimeDisabled || realtime.turnDetection.type !== "semantic_vad"
                     }
                     id="realtime-eagerness"
                     value={realtime.turnDetection.eagerness}
