@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { StageSetting, VoiceAgent } from "../types.js";
 import {
+  createDefaultRealtimeConfig,
   createDefaultPipeline,
   deepgramListenParams,
+  normalizeRealtimeConfig,
   normalizeVoiceAgent,
   updateStageModel,
   updateStageSetting,
@@ -15,8 +17,21 @@ describe("pipeline helpers", () => {
     expect(pipeline.map((stage) => stage.id)).toEqual(["vad", "stt", "llm", "tts"]);
     expect(pipeline.find((stage) => stage.id === "vad")?.model).toBe("endpointing-vad");
     expect(pipeline.find((stage) => stage.id === "stt")?.model).toBe("nova-3");
-    expect(pipeline.find((stage) => stage.id === "llm")?.model).toBe("gpt-5.1");
+    expect(pipeline.find((stage) => stage.id === "llm")?.model).toBe("gpt-5-mini");
     expect(pipeline.find((stage) => stage.id === "tts")?.model).toBe("aura-2-thalia-en");
+    expect(pipeline.find((stage) => stage.id === "vad")?.settings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "endpointing", value: 300 }),
+        expect.objectContaining({ key: "utterance_end_ms", value: 1000 }),
+      ]),
+    );
+    expect(pipeline.find((stage) => stage.id === "llm")?.settings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "max_output_tokens", value: "512" }),
+        expect.objectContaining({ key: "reasoning_effort", value: "low" }),
+        expect.objectContaining({ key: "verbosity", value: "low" }),
+      ]),
+    );
   });
 
   it("keeps fixed VAD models constrained to known options", () => {
@@ -51,6 +66,8 @@ describe("pipeline helpers", () => {
       id: "agent-1",
       name: "Test Agent",
       description: "Uses chat completions",
+      architecture: "sandwich",
+      realtime: createDefaultRealtimeConfig(),
       status: "draft",
       createdAt: "2026-05-23T00:00:00.000Z",
       updatedAt: "2026-05-23T00:00:00.000Z",
@@ -88,6 +105,58 @@ describe("pipeline helpers", () => {
     });
   });
 
+  it("upgrades persisted old latency defaults when normalizing agents", () => {
+    let pipeline = createDefaultPipeline();
+    pipeline = updateStageSetting(pipeline, "vad", "endpointing", 900);
+    pipeline = updateStageSetting(pipeline, "vad", "utterance_end_ms", 1000);
+    pipeline = updateStageSetting(
+      pipeline,
+      "llm",
+      "system_prompt",
+      [
+        "You are a concise voice assistant. Answer naturally in one or two short spoken paragraphs.",
+        "",
+        "For voice output, format every assistant reply as XML-like TTS chunks.",
+        "Use only this format: <chunk>first spoken chunk</chunk><chunk>next spoken chunk</chunk>.",
+        "Do not write any text outside <chunk> tags.",
+        "Close each chunk as soon as a natural phrase or short sentence is complete so TTS can start immediately.",
+        "Use plain spoken language. Avoid markdown, bullets, code fences, tables, emojis, and XML special characters.",
+      ].join("\n"),
+    );
+    pipeline = updateStageSetting(pipeline, "llm", "max_output_tokens", "");
+    pipeline = updateStageSetting(pipeline, "llm", "reasoning_effort", "default");
+    pipeline = updateStageSetting(pipeline, "llm", "verbosity", "default");
+
+    const normalized = normalizeVoiceAgent({
+      id: "agent-1",
+      name: "Test Agent",
+      description: "Persisted old defaults",
+      status: "draft",
+      createdAt: "2026-05-23T00:00:00.000Z",
+      updatedAt: "2026-05-23T00:00:00.000Z",
+      pipeline,
+    });
+    const vadSettings = normalized.pipeline.find((stage) => stage.id === "vad")?.settings;
+    const llmSettings = normalized.pipeline.find((stage) => stage.id === "llm")?.settings;
+
+    expect(vadSettings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "endpointing", value: 300 }),
+        expect.objectContaining({ key: "utterance_end_ms", value: 1000 }),
+      ]),
+    );
+    expect(llmSettings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "max_output_tokens", value: "512" }),
+        expect.objectContaining({ key: "reasoning_effort", value: "low" }),
+        expect.objectContaining({ key: "verbosity", value: "low" }),
+      ]),
+    );
+    expect(
+      llmSettings?.find((setting) => setting.key === "system_prompt")?.value,
+    ).toContain("Start with the direct answer");
+  });
+
   it("normalizes legacy agents and upgrades plain system prompts with chunk rules", () => {
     const legacyPipeline = createDefaultPipeline();
     const vad = legacyPipeline.find((stage) => stage.id === "vad");
@@ -113,11 +182,11 @@ describe("pipeline helpers", () => {
       },
     ];
 
-    const agent: VoiceAgent = {
+    const agent = {
       id: "agent-1",
       name: "Test Agent",
       description: "Legacy draft",
-      status: "draft",
+      status: "draft" as const,
       createdAt: "2026-05-23T00:00:00.000Z",
       updatedAt: "2026-05-23T00:00:00.000Z",
       pipeline: legacyPipeline,
@@ -136,6 +205,55 @@ describe("pipeline helpers", () => {
     ).toEqual(["interim_results", "speech_final"]);
     expect(normalizedPrompt).toContain("Be concise.");
     expect(normalizedPrompt).toContain("<chunk>");
+    expect(normalized.architecture).toBe("sandwich");
+    expect(normalized.realtime).toMatchObject({
+      provider: "openai",
+      model: "gpt-realtime-2",
+      voice: "marin",
+      reasoningEffort: "low",
+      turnDetection: {
+        type: "semantic_vad",
+        eagerness: "auto",
+        createResponse: true,
+        interruptResponse: true,
+      },
+    });
+  });
+
+  it("normalizes realtime settings for speech-to-speech agents", () => {
+    const realtime = normalizeRealtimeConfig({
+      provider: "unknown",
+      model: "gpt-realtime-mini",
+      voice: "cedar",
+      instructions: "Answer in one spoken sentence.",
+      reasoningEffort: "medium",
+      turnDetection: {
+        type: "server_vad",
+        eagerness: "high",
+        threshold: 2,
+        prefixPaddingMs: "-20",
+        silenceDurationMs: "250",
+        createResponse: false,
+        interruptResponse: false,
+      },
+    });
+
+    expect(realtime).toEqual({
+      provider: "openai",
+      model: "gpt-realtime-mini",
+      voice: "cedar",
+      instructions: "Answer in one spoken sentence.",
+      reasoningEffort: "medium",
+      turnDetection: {
+        type: "server_vad",
+        eagerness: "high",
+        threshold: 1,
+        prefixPaddingMs: 0,
+        silenceDurationMs: 250,
+        createResponse: false,
+        interruptResponse: false,
+      },
+    });
   });
 });
 

@@ -30,13 +30,16 @@ Each identity starts with:
 - **Identity name**: a short label such as `Lobby guide`
 - **Description**: the job the agent should perform
 
-When you click **Create identity**, OpenDot attaches the default four-stage
-pipeline:
+When you click **Create identity**, OpenDot attaches the default Sandwich
+architecture and four-stage pipeline:
 
 ```text
 VAD -> STT -> LLM -> TTS
 ```
 
+The identity also receives normalized Speech-to-speech defaults so it can later
+be switched to browser Realtime or the Dot device Realtime bridge without
+changing the identity model.
 The new identity becomes active immediately.
 
 ## Agent identities
@@ -46,7 +49,7 @@ identity name, description, and last update time. Selecting a row changes:
 
 - which pipeline is edited in [Configuration](/configuration)
 - which identity the console uses when it asks the platform API for a runtime
-  voice-session token in [Browser Test](/browser-test)
+  voice-session or realtime browser-session token in [Browser Test](/browser-test)
 - which voice config can be bound to a device in [Dot Device](/dot-device)
 
 Use the edit icon on a saved identity to update its name or description inline.
@@ -54,22 +57,26 @@ Saving creates a new draft version while preserving the current pipeline.
 
 ## Persistence model
 
-The platform API persists each identity and its default pipeline in PostgreSQL
-as:
+The platform API persists each identity, selected architecture, realtime config,
+and default pipeline in PostgreSQL as:
 
 - `agents`
 - `agent_versions`
 - `pipelines`
 - `pipeline_versions`
 
-Editing an identity or its pipeline writes a new draft version. The current
-prototype is still single-workspace, but the data model is already shaped around
-durable agent and pipeline configuration rather than browser-only state.
+Editing an identity, architecture, realtime settings, or pipeline writes a new
+draft version. Agent-level fields live in `agent_versions.manifest_json`, while
+the explicit Sandwich stage settings remain in `pipeline_versions.manifest_json`.
+The current prototype is still single-workspace, but the data model is already
+shaped around durable agent and pipeline configuration rather than browser-only
+state.
 
 See [Database inspection](/database-inspection) to inspect the stored rows and
 [Platform architecture](/architecture) for the full control-plane flow.
 
 ## Next phase
 
-Open [Configuration](/configuration) to tune the active identity's VAD, STT,
-LLM, and TTS stages.
+Open [Configuration](/configuration) to tune the active identity's Sandwich VAD,
+STT, LLM, and TTS stages or switch it to Speech-to-speech for Browser Test and
+bound Dot device turns.

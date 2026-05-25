@@ -5,8 +5,10 @@ description: Understand the current OpenDot control plane, voice runtime, databa
 
 OpenDot is a modular monolith plus a separate realtime voice runtime. The
 platform console owns configuration and device binding; the runtime owns live
-audio sessions; PostgreSQL stores durable control-plane state; firmware connects
-over OTA/bootstrap and WebSocket paths.
+audio sessions, OpenAI Realtime client-secret exchange, and device Realtime
+bridging; PostgreSQL stores
+durable control-plane state; firmware connects over OTA/bootstrap and WebSocket
+paths.
 
 <Frame caption="OpenDot separates configuration, durable state, runtime sessions, hosted providers, and firmware connections.">
   <img
@@ -23,7 +25,7 @@ over OTA/bootstrap and WebSocket paths.
 | Web console   | React, TypeScript, Vite, TanStack Query                                                          | Agent creation, pipeline tuning, browser testing, device binding, settings      |
 | Platform API  | Fastify, TypeScript, Drizzle                                                                     | Auth, agents, pipelines, devices, deployments, runtime/session tokens           |
 | Database      | PostgreSQL                                                                                       | OpenDot-owned product state and Supabase-compatible auth bridge                 |
-| Voice runtime | Node, WebSocket, Deepgram, OpenAI-compatible LLM calls                                           | Browser and device voice sessions through VAD, STT, LLM, and TTS                |
+| Voice runtime | Node, WebSocket, browser Realtime client-secret exchange, Deepgram, OpenAI-compatible calls      | Sandwich sessions plus browser and device Speech-to-speech runtime paths        |
 | Firmware      | ESP-IDF for [Waveshare ESP32-S3-AUDIO-Board](https://www.waveshare.com/esp32-s3-audio-board.htm) | Wi-Fi provisioning, activation, wake word, audio I/O, display, WebSocket client |
 
 The control boundary is intentional: browser and device clients do not push raw
@@ -52,12 +54,14 @@ sequencing across current, next, and later work, see the [Roadmap](/roadmap).
     migrations.
   </Card>
   <Card title="Voice runtime" icon="radio">
-    Node.js and WebSocket sessions orchestrate VAD, STT, LLM, TTS, browser audio, and
-    device audio.
+    Node.js orchestrates `/voice` and `/ws` WebSocket sessions, the
+    `/realtime/client-secret` boundary for browser Speech-to-speech tests, and the
+    server-side Realtime bridge for Speech-to-speech Dot turns.
   </Card>
   <Card title="Providers" icon="sparkles">
     Deepgram backs the starter VAD, STT, and TTS paths. OpenAI-compatible Responses or
-    Chat Completions calls back the starter LLM stage.
+    Chat Completions calls back the starter LLM stage. OpenAI Realtime backs the
+    Speech-to-speech browser and device paths.
   </Card>
   <Card title="Device firmware" icon="cpu">
     ESP-IDF firmware targets the [Waveshare
@@ -89,23 +93,36 @@ variables or service URLs.
 
 ## Voice turn flow
 
-<Frame caption="A voice turn moves through VAD, STT, LLM, TTS, and playback while the runtime keeps timing visible.">
+<Frame caption="Sandwich turns move through VAD, STT, LLM, and TTS. Speech-to-speech uses browser WebRTC or the runtime device bridge.">
   <img
     src="/images/architecture/voice-turn-flow.svg"
     alt="OpenDot voice turn flow diagram"
   />
 </Frame>
 
-The pipeline remains explicit even when a provider combines lower-level details:
+The default Sandwich pipeline remains explicit even when a provider combines
+lower-level details:
 
 ```text
 audio input -> VAD -> STT -> LLM -> TTS -> audio output
 ```
 
-Browser sessions use a short-lived voice-session token minted by the platform
-API. Device sessions use device credentials created during activation. In both
-cases, the runtime verifies the token with the platform API before accepting the
-WebSocket connection.
+Current media paths are:
+
+- **Sandwich Browser Test:** the platform mints a short-lived voice-session
+  token, then the runtime verifies it before accepting `/voice`.
+- **Dot device:** activated devices use stored device credentials, then the
+  runtime verifies them before accepting `/ws`. Sandwich agents use the
+  Deepgram + LLM + TTS path; Speech-to-speech agents use a server-side OpenAI
+  Realtime WebSocket bridge while firmware keeps sending and receiving Opus.
+- **Speech-to-speech Browser Test:** the platform mints a realtime
+  browser-session token at `POST /api/runtime/realtime-browser-sessions`, the
+  runtime exchanges it at `/realtime/client-secret` for an OpenAI Realtime
+  client secret, and the browser connects with native WebRTC.
+
+`OPENAI_API_KEY` stays inside the runtime. `OPENAI_BASE_URL` only affects the
+Sandwich LLM stage; OpenAI Realtime browser secrets and device bridges call
+OpenAI's Realtime API from the runtime.
 
 See [Configuration](/configuration) for stage settings and
 [Browser Test](/browser-test) for the live test loop.
@@ -122,9 +139,10 @@ See [Configuration](/configuration) for stage settings and
 Firmware reaches the runtime OTA endpoint first. The runtime proxies activation
 requests to the platform API, the platform creates or verifies a device
 activation request, and the user claims the spoken code in **Dot Device**. After
-claiming, the platform stores an active device credential. Future `/ws`
+claiming, the platform stores an active device credential. Authenticated `/ws`
 connections use that credential, and the runtime loads the currently bound agent
-configuration from the platform API.
+configuration from the platform API before choosing Sandwich or
+Speech-to-speech.
 
 See [Dot Device console](/dot-device) for the product flow and the firmware
 README for flashing and LAN setup details. See [Dot device](/device-firmware-hardware)

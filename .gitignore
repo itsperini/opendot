@@ -22,6 +22,7 @@ Thumbs.db
 # Logs
 logs/
 .local-logs/
+.codex/tmp/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -49,13 +50,13 @@ venv/
 .cache/
 
 # ESP-IDF / firmware generated files
-components/
-managed_components/
-tmp/
-releases/
-sdkconfig
-sdkconfig.old
-dependencies.lock
+/dot-device/firmware/components/
+/dot-device/firmware/managed_components/
+/dot-device/firmware/tmp/
+/dot-device/firmware/releases/
+/dot-device/firmware/sdkconfig
+/dot-device/firmware/sdkconfig.old
+/dot-device/firmware/dependencies.lock
 **/main/assets/lang_config.h
 **/main/mmap_generate_emoji.h
 mmap_generate_*.h

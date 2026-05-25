@@ -26,14 +26,14 @@ verification commands.
 
 ## Platform internals
 
-| Surface                 | Key files                                                            | What to check                                                            |
-| ----------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| UI shell and navigation | `platform/src/App.tsx`, `platform/src/pages/**`                      | Page state, selected identity/device behavior, loading/error states      |
-| API client and cache    | `platform/src/lib/platformApi.ts`, `platform/src/lib/queryClient.ts` | Request shape, auth token behavior, TanStack Query invalidation          |
-| Pipeline defaults       | `platform/src/lib/pipeline.ts`, `platform/src/types.ts`              | VAD/STT/LLM/TTS stage settings and normalization                         |
-| Control API             | `platform/src/server/api.ts`                                         | Auth, agents, devices, settings, deployments, runtime token verification |
-| Database                | `platform/src/server/db/schema.ts`, `platform/drizzle/`              | Schema, migrations, indexes, versioned agent/pipeline data               |
-| Runtime                 | `platform/src/server/runtime.js`                                     | Browser `/voice`, device `/ws`, OTA proxy, VAD/STT/LLM/TTS orchestration |
+| Surface                 | Key files                                                            | What to check                                                                      |
+| ----------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| UI shell and navigation | `platform/src/App.tsx`, `platform/src/pages/**`                      | Page state, selected identity/device behavior, loading/error states                |
+| API client and cache    | `platform/src/lib/platformApi.ts`, `platform/src/lib/queryClient.ts` | Request shape, auth token behavior, TanStack Query invalidation                    |
+| Pipeline defaults       | `platform/src/lib/pipeline.ts`, `platform/src/types.ts`              | VAD/STT/LLM/TTS stage settings and normalization                                   |
+| Control API             | `platform/src/server/api.ts`                                         | Auth, agents, devices, settings, deployments, runtime token verification           |
+| Database                | `platform/src/server/db/schema.ts`, `platform/drizzle/`              | Schema, migrations, indexes, versioned agent/pipeline data                         |
+| Runtime                 | `platform/src/server/runtime.js`                                     | Browser `/voice`, device `/ws`, OTA proxy, Sandwich orchestration, Realtime bridge |
 
 The platform architecture direction is captured in
 `platform/platform-architecture.md`. The docs architecture summary is at
@@ -47,6 +47,7 @@ The runtime exposes:
 GET  /health
 POST /ota/
 POST /ota/activate
+POST /realtime/client-secret
 WS   /voice
 WS   /ws
 ```

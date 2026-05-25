@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   claimDeviceActivation,
+  createRealtimeBrowserSession,
   createRuntimeVoiceSession,
   setPlatformAccessTokenProvider,
 } from "./platformApi";
@@ -75,6 +76,36 @@ describe("platform API runtime auth helpers", () => {
         body: JSON.stringify({ code: "123456" }),
         method: "POST",
       }),
+    );
+  });
+
+  it("mints realtime browser sessions with the active user bearer token", async () => {
+    setPlatformAccessTokenProvider(() => "user-session-token");
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          realtimeSession: {
+            token: "od_vt_realtime",
+            clientSecretUrl: "http://localhost:8787/realtime/client-secret",
+            expiresAt: "2026-05-23T14:00:00.000Z",
+          },
+        }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const realtimeSession = await createRealtimeBrowserSession("agent-1");
+
+    expect(realtimeSession.token).toBe("od_vt_realtime");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/runtime/realtime-browser-sessions",
+      expect.objectContaining({
+        body: JSON.stringify({ agentId: "agent-1" }),
+        method: "POST",
+      }),
+    );
+    expect(fetchMock.mock.calls[0]?.[1]?.headers.get("Authorization")).toBe(
+      "Bearer user-session-token",
     );
   });
 });

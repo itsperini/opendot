@@ -19,6 +19,7 @@ import {
   createDotDevice as createPlatformDotDevice,
   claimDeviceActivation as claimPlatformDeviceActivation,
   createUserApiKey as createPlatformApiKey,
+  deleteAgent as deletePlatformAgent,
   deleteDotDevice as deletePlatformDotDevice,
   loadPlatformState,
   revokeUserApiKey as revokePlatformApiKey,
@@ -41,8 +42,10 @@ import type {
   CreateDotDeviceInput,
   DotDevice,
   PipelineStage,
+  RealtimeVoiceAgentConfig,
   StageSettingValue,
   UserSettings,
+  VoiceArchitecture,
   VoiceAgent,
 } from "./types";
 import type { PlatformState } from "./lib/platformApi";
@@ -125,6 +128,24 @@ function withDevice(state: PlatformState, device: DotDevice): PlatformState {
   };
 }
 
+function withoutAgent(state: PlatformState, agentId: string): PlatformState {
+  return {
+    ...state,
+    agents: state.agents.filter((agent) => agent.id !== agentId),
+    devices: state.devices.map((device) =>
+      device.boundAgentId === agentId
+        ? {
+            ...device,
+            boundAgentId: null,
+            boundAgentName: null,
+            boundConfigVersion: null,
+            boundAt: null,
+          }
+        : device,
+    ),
+  };
+}
+
 function pageFromPathname(pathname: string): PageId {
   const route = pageItems.find((item) => item.path === pathname);
   return route?.id ?? "agent-studio";
@@ -186,6 +207,7 @@ export default function App() {
 
   const createAgentMutation = useMutation({ mutationFn: createPlatformAgent });
   const updateAgentMutation = useMutation({ mutationFn: updatePlatformAgent });
+  const deleteAgentMutation = useMutation({ mutationFn: deletePlatformAgent });
   const createDeviceMutation = useMutation({ mutationFn: createPlatformDotDevice });
   const claimDeviceActivationMutation = useMutation({
     mutationFn: claimPlatformDeviceActivation,
@@ -332,6 +354,22 @@ export default function App() {
       });
   }
 
+  async function handleDeleteAgentIdentity(agentId: string) {
+    updatePlatformState((state) => withoutAgent(state, agentId));
+    if (selectedAgentId === agentId) {
+      const nextAgent = normalizedAgents.find((agent) => agent.id !== agentId);
+      setSelectedAgentId(nextAgent?.id ?? null);
+    }
+
+    try {
+      await deleteAgentMutation.mutateAsync(agentId);
+      setPlatformError(null);
+    } catch (error) {
+      reportPlatformError(error);
+      void queryClient.invalidateQueries({ queryKey: platformStateKey });
+    }
+  }
+
   function handleSettingChange(
     stageId: PipelineStage["id"],
     key: string,
@@ -369,6 +407,54 @@ export default function App() {
       ...selectedAgent,
       updatedAt: new Date().toISOString(),
       pipeline: updateStageModel(selectedAgent.pipeline, stageId, model),
+    });
+
+    updatePlatformState((state) => withAgent(state, nextAgent));
+    updateAgentMutation
+      .mutateAsync(nextAgent)
+      .then((savedAgent) => {
+        updatePlatformState((state) => withAgent(state, savedAgent));
+        setPlatformError(null);
+      })
+      .catch((error) => {
+        reportPlatformError(error);
+        void queryClient.invalidateQueries({ queryKey: platformStateKey });
+      });
+  }
+
+  function handleArchitectureChange(architecture: VoiceArchitecture) {
+    if (!selectedAgent) {
+      return;
+    }
+
+    const nextAgent = normalizeVoiceAgent({
+      ...selectedAgent,
+      architecture,
+      updatedAt: new Date().toISOString(),
+    });
+
+    updatePlatformState((state) => withAgent(state, nextAgent));
+    updateAgentMutation
+      .mutateAsync(nextAgent)
+      .then((savedAgent) => {
+        updatePlatformState((state) => withAgent(state, savedAgent));
+        setPlatformError(null);
+      })
+      .catch((error) => {
+        reportPlatformError(error);
+        void queryClient.invalidateQueries({ queryKey: platformStateKey });
+      });
+  }
+
+  function handleRealtimeConfigChange(realtime: RealtimeVoiceAgentConfig) {
+    if (!selectedAgent) {
+      return;
+    }
+
+    const nextAgent = normalizeVoiceAgent({
+      ...selectedAgent,
+      realtime,
+      updatedAt: new Date().toISOString(),
     });
 
     updatePlatformState((state) => withAgent(state, nextAgent));
@@ -592,6 +678,7 @@ export default function App() {
             agents={normalizedAgents}
             selectedAgentId={selectedAgentId}
             onCreateAgent={handleCreateAgent}
+            onDeleteAgent={handleDeleteAgentIdentity}
             onSelectAgent={setSelectedAgentId}
             onUpdateAgent={handleUpdateAgentIdentity}
           />
@@ -602,7 +689,9 @@ export default function App() {
             agent={selectedAgent}
             agents={normalizedAgents}
             selectedAgentId={selectedAgentId}
+            onArchitectureChange={handleArchitectureChange}
             onModelChange={handleModelChange}
+            onRealtimeConfigChange={handleRealtimeConfigChange}
             onSelectAgent={setSelectedAgentId}
             onSettingChange={handleSettingChange}
           />

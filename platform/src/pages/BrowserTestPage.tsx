@@ -1,3 +1,4 @@
+import { RealtimeTestAgentPanel } from "../components/RealtimeTestAgentPanel";
 import { TestAgentPanel } from "../components/TestAgentPanel";
 import { PageHeader } from "../layout/PageHeader";
 import type { VoiceAgent } from "../types";
@@ -27,7 +28,11 @@ export function BrowserTestPage({
       />
 
       <div className="page-body">
-        <TestAgentPanel agent={agent} />
+        {agent?.architecture === "speech_to_speech" ? (
+          <RealtimeTestAgentPanel agent={agent} />
+        ) : (
+          <TestAgentPanel agent={agent} />
+        )}
       </div>
     </section>
   );

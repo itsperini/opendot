@@ -1,9 +1,18 @@
 import "./env.js";
 
 import http from "node:http";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { WebSocket, WebSocketServer } from "ws";
 import OpusScript from "opusscript";
+import {
+  createDeviceRealtimeBridge,
+  deviceRuntimeCredentialStatus,
+  encodePcmToOpusFrames,
+} from "./realtime-device-bridge.js";
+import {
+  normalizeRealtimeConfig,
+  openAIRealtimeClientSecretPayload,
+} from "./realtime-config.js";
 
 const config = {
   host: process.env.RUNTIME_HOST || "0.0.0.0",
@@ -17,13 +26,16 @@ const config = {
   deepgramApiKey: process.env.DEEPGRAM_API_KEY,
   openaiApiKey: process.env.OPENAI_API_KEY,
   openaiBaseUrl: process.env.OPENAI_BASE_URL || "",
-  openaiModel: process.env.OPENAI_MODEL || "gpt-5.1",
+  openaiModel: process.env.OPENAI_MODEL || "gpt-5-mini",
+  openaiMaxOutputTokens: process.env.OPENAI_MAX_OUTPUT_TOKENS || "512",
+  openaiReasoningEffort: process.env.OPENAI_REASONING_EFFORT || "low",
+  openaiVerbosity: process.env.OPENAI_VERBOSITY || "low",
   systemPrompt:
     process.env.OPENDOT_SYSTEM_PROMPT ||
-    "You are a concise voice assistant. Answer naturally in one or two short spoken paragraphs.",
+    "You are a concise voice assistant. Start with the direct answer and reply in one or two short spoken sentences unless asked for detail.",
   sttModel: process.env.DEEPGRAM_STT_MODEL || "nova-3",
   sttLanguage: process.env.DEEPGRAM_STT_LANGUAGE || "en-US",
-  endpointingMs: Number(process.env.DEEPGRAM_ENDPOINTING_MS || 900),
+  endpointingMs: Number(process.env.DEEPGRAM_ENDPOINTING_MS || 300),
   utteranceEndMs: Number(process.env.DEEPGRAM_UTTERANCE_END_MS || 1000),
   ttsModel: process.env.DEEPGRAM_TTS_MODEL || "aura-2-thalia-en",
   ttsEncoding: process.env.DEEPGRAM_TTS_ENCODING || "mp3",
@@ -39,7 +51,7 @@ const ttsChunkBaseInstructions = [
   "For voice output, format every assistant reply as XML-like TTS chunks.",
   "Use only this format: <chunk>first spoken chunk</chunk><chunk>next spoken chunk</chunk>.",
   "Do not write any text outside <chunk> tags.",
-  "Close each chunk as soon as a natural phrase or short sentence is complete so TTS can start immediately.",
+  "Close the first chunk after 6-12 spoken words, then close each later chunk as soon as a natural phrase or short sentence is complete.",
   "Use plain spoken language. Avoid markdown, bullets, code fences, tables, emojis, and XML special characters.",
 ];
 
@@ -51,7 +63,7 @@ function ttsChunkStyleInstruction(runtimeConfig) {
   const style = runtimeConfig?.tts?.chunkStyle || "fast";
   return (
     {
-      fast: "Keep each chunk very short: normally 6-16 words and never more than 120 characters.",
+      fast: "Keep each chunk very short: normally 6-12 words and never more than 100 characters.",
       balanced:
         "Keep each chunk short: normally 8-25 words and never more than 180 characters.",
       relaxed:
@@ -161,11 +173,15 @@ function createDeviceSession(ws, device, request) {
     ws,
     deepgram: null,
     decoder: null,
+    realtimeBridge: null,
     runtimeConfig: device.runtimeConfig,
+    userId: device.userId || null,
     conversation: [],
     finalSegments: [],
     sttConnecting: false,
     sttOpen: false,
+    sttErrorCount: 0,
+    sttRetryAfter: 0,
     listening: false,
     awaitingFinal: false,
     closingAfterTurn: false,
@@ -173,6 +189,7 @@ function createDeviceSession(ws, device, request) {
     pendingPcm: [],
     turnAudioFrames: 0,
     turnAudioBytes: 0,
+    turnTimings: null,
     processing: false,
   };
 }
@@ -358,6 +375,11 @@ function setting(stage, key, fallback) {
   return found?.value ?? fallback;
 }
 
+function settingWithLegacyDefault(stage, key, legacyDefault, fallback) {
+  const value = setting(stage, key, fallback);
+  return String(value) === String(legacyDefault) ? fallback : value;
+}
+
 function stringSetting(stage, key, fallback = "") {
   const value = setting(stage, key, fallback);
   return typeof value === "string" ? value : String(value ?? fallback);
@@ -430,8 +452,12 @@ function normalizeAgentConfig(agent) {
     smart_format: String(selectedFeature(stt, "smart_format", true, "stt_features")),
     interim_results: String(selectedFeature(vad, "interim_results", true)),
     vad_events: String(selectedFeature(vad, "vad_events", true)),
-    endpointing: String(setting(vad, "endpointing", config.endpointingMs)),
-    utterance_end_ms: String(setting(vad, "utterance_end_ms", config.utteranceEndMs)),
+    endpointing: String(
+      settingWithLegacyDefault(vad, "endpointing", 900, config.endpointingMs),
+    ),
+    utterance_end_ms: String(
+      settingWithLegacyDefault(vad, "utterance_end_ms", 1000, config.utteranceEndMs),
+    ),
     encoding: String(setting(stt, "encoding", "linear16")),
     sample_rate: String(setting(stt, "sample_rate", 16000)),
     channels: "1",
@@ -448,6 +474,9 @@ function normalizeAgentConfig(agent) {
   return {
     agentName: agent?.name || "Untitled agent",
     description: agent?.description || "",
+    architecture:
+      agent?.architecture === "speech_to_speech" ? "speech_to_speech" : "sandwich",
+    realtime: normalizeRealtimeConfig(agent?.realtime),
     systemPrompt:
       stringSetting(llm, "system_prompt", "").trim() || defaultPromptInstructions(),
     listen,
@@ -457,9 +486,26 @@ function normalizeAgentConfig(agent) {
       apiKeyName: stringSetting(llm, "api_key_name", "").trim() || "OPENAI_API_KEY",
       baseUrl: stringSetting(llm, "base_url", "").trim() || config.openaiBaseUrl,
       temperature: numberSetting(llm, "temperature", 1),
-      maxOutputTokens: stringSetting(llm, "max_output_tokens", "").trim(),
-      reasoning_effort: String(setting(llm, "reasoning_effort", "default")),
-      verbosity: String(setting(llm, "verbosity", "default")),
+      maxOutputTokens:
+        String(
+          settingWithLegacyDefault(
+            llm,
+            "max_output_tokens",
+            "160",
+            config.openaiMaxOutputTokens,
+          ),
+        ).trim() || config.openaiMaxOutputTokens,
+      reasoning_effort: String(
+        settingWithLegacyDefault(
+          llm,
+          "reasoning_effort",
+          "default",
+          config.openaiReasoningEffort,
+        ),
+      ),
+      verbosity: String(
+        settingWithLegacyDefault(llm, "verbosity", "default", config.openaiVerbosity),
+      ),
       stream: selectedFeature(llm, "stream", true, "response_features"),
       stopSequences: stringListSetting(llm, "stop_sequences", []).slice(0, 4),
       seed: stringSetting(llm, "seed", "").trim(),
@@ -650,6 +696,7 @@ function applyPlatformDeviceAuth(device, auth) {
 
   if (platformDevice) {
     device.platformDeviceId = platformDevice.id;
+    device.userId = auth?.userId || platformDevice.userId || device.userId || null;
     device.name = platformDevice.name || device.name;
     device.model = platformDevice.model || device.model;
     device.serialNumber = platformDevice.serialNumber || device.serialNumber;
@@ -661,6 +708,7 @@ function applyPlatformDeviceAuth(device, auth) {
   }
 
   device.agentSnapshot = agent;
+  device.userId = auth?.userId || device.userId || null;
   device.runtimeConfig = normalizeAgentConfig(agent);
   device.updatedAt = now;
 
@@ -729,6 +777,62 @@ function readJsonBody(req) {
   });
 }
 
+function runtimeHttpError(message, statusCode) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+}
+
+function openAISafetyIdentifier(userId) {
+  return createHash("sha256")
+    .update(`opendot:${String(userId || "anonymous")}`)
+    .digest("hex");
+}
+
+async function createRealtimeClientSecret(body) {
+  const input = body && !Array.isArray(body) && typeof body === "object" ? body : {};
+  const token = String(input.token || "").trim();
+
+  if (!token) {
+    throw runtimeHttpError("Realtime session token is required.", 400);
+  }
+
+  if (!config.openaiApiKey) {
+    throw runtimeHttpError(
+      "Missing OPENAI_API_KEY. Create root .env from .env.example.",
+      500,
+    );
+  }
+
+  const { body: auth } = await callPlatformInternal(
+    "/internal/runtime/voice-sessions/verify",
+    {
+      token,
+    },
+  );
+  const response = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.openaiApiKey}`,
+      "Content-Type": "application/json",
+      "OpenAI-Safety-Identifier": openAISafetyIdentifier(auth.userId),
+    },
+    body: JSON.stringify(openAIRealtimeClientSecretPayload(auth.agent)),
+  });
+  const responseBody = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw runtimeHttpError(
+      responseBody?.error?.message ||
+        responseBody?.message ||
+        `OpenAI Realtime client secret failed with ${response.status}.`,
+      response.status,
+    );
+  }
+
+  return responseBody;
+}
+
 function responseInputMessage(message) {
   return {
     role: message.role,
@@ -776,6 +880,102 @@ function sendTimeline(session, turn, payload) {
   });
 }
 
+const turnTimingLabels = Object.freeze({
+  wake_listen_start: "wake/listen start",
+  stt_connected: "STT connected",
+  speech_started: "speech started",
+  stt_final: "STT final",
+  llm_request_start: "LLM request start",
+  first_llm_delta: "first LLM delta",
+  llm_done: "LLM done",
+  first_tts_audio_ready: "first TTS audio ready",
+  first_audio_sent: "first audio sent",
+  turn_complete: "turn complete",
+});
+
+function createTurnTimings(session, startedAt = Date.now()) {
+  return {
+    sessionId: session.id,
+    kind: session.kind,
+    startedAt,
+    marks: new Map(),
+  };
+}
+
+function elapsedTurnTiming(timings, at = Date.now()) {
+  if (!timings) {
+    return NaN;
+  }
+  return Math.max(0, at - timings.startedAt);
+}
+
+function formatLatencyMs(ms) {
+  return Number.isFinite(ms) ? `${Math.round(ms)}ms` : "n/a";
+}
+
+function markTurnTiming(session, timings, name, at = Date.now()) {
+  if (!timings || timings.marks.has(name)) {
+    return;
+  }
+
+  timings.marks.set(name, at);
+  const label = turnTimingLabels[name] || name;
+  console.log(
+    `[${session.kind} ${session.id}] timing ${label}: ${formatLatencyMs(
+      elapsedTurnTiming(timings, at),
+    )}`,
+  );
+}
+
+function turnTimingSpan(timings, from, to) {
+  const start = timings?.marks.get(from);
+  const end = timings?.marks.get(to);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) {
+    return NaN;
+  }
+  return Math.max(0, end - start);
+}
+
+function logTurnTimingSummary(session, timings, status = "complete") {
+  if (!timings) {
+    return;
+  }
+
+  const parts = [
+    `wake->stt_final=${formatLatencyMs(
+      turnTimingSpan(timings, "wake_listen_start", "stt_final"),
+    )}`,
+    `stt_final->first_llm=${formatLatencyMs(
+      turnTimingSpan(timings, "stt_final", "first_llm_delta"),
+    )}`,
+    `first_llm->first_audio=${formatLatencyMs(
+      turnTimingSpan(timings, "first_llm_delta", "first_audio_sent"),
+    )}`,
+    `wake->first_audio=${formatLatencyMs(
+      turnTimingSpan(timings, "wake_listen_start", "first_audio_sent"),
+    )}`,
+  ];
+  const marks = [
+    "stt_connected",
+    "speech_started",
+    "llm_request_start",
+    "llm_done",
+    "first_tts_audio_ready",
+    "turn_complete",
+  ]
+    .filter((name) => timings.marks.has(name))
+    .map(
+      (name) =>
+        `${name}=${formatLatencyMs(elapsedTurnTiming(timings, timings.marks.get(name)))}`,
+    );
+
+  console.log(
+    `[${session.kind} ${session.id}] latency ${status}: ${parts.join(" ")}${
+      marks.length ? ` marks=${marks.join(",")}` : ""
+    }`,
+  );
+}
+
 const defaultOpenAIBaseUrl = "https://api.openai.com/v1";
 let openaiRateLimitQueue = Promise.resolve();
 let lastOpenAIRequestAt = 0;
@@ -820,6 +1020,18 @@ function usesDefaultOpenAIEndpoint(llmConfig) {
 function hasRequiredLlmCredentials(runtimeConfig) {
   const llmConfig = runtimeConfig?.llm || {};
   return !usesDefaultOpenAIEndpoint(llmConfig) || Boolean(openAIApiKey(llmConfig));
+}
+
+function isSpeechToSpeechAgent(runtimeConfig) {
+  return runtimeConfig?.architecture === "speech_to_speech";
+}
+
+function deviceCredentialStatus(runtimeConfig) {
+  return deviceRuntimeCredentialStatus(runtimeConfig, {
+    openaiApiKey: config.openaiApiKey,
+    deepgramApiKey: config.deepgramApiKey,
+    llmConfigured: hasRequiredLlmCredentials(runtimeConfig),
+  });
 }
 
 function openAIHeaders(llmConfig) {
@@ -1119,6 +1331,48 @@ function openAIStreamDelta(api, event) {
   return event.type === "response.output_text.delta" && event.delta ? event.delta : "";
 }
 
+function openAIStreamCompletedText(api, event) {
+  if (api !== "responses" || event.type !== "response.completed" || !event.response) {
+    return "";
+  }
+
+  return openAICompletionText(api, event.response);
+}
+
+function openAIStreamIncompleteReason(event) {
+  return (
+    event.response?.incomplete_details?.reason || event.incomplete_details?.reason || ""
+  );
+}
+
+function openAIStreamErrorMessage(event) {
+  if (event.type === "response.failed") {
+    return (
+      event.response?.error?.message ||
+      event.error?.message ||
+      "OpenAI-compatible response failed."
+    );
+  }
+  if (event.type === "error" || event.error) {
+    return event.error?.message || event.message || "OpenAI-compatible stream error.";
+  }
+  return "";
+}
+
+function assertVisibleOpenAIText(answer, incompleteReason = "") {
+  if (cleanAssistantText(answer)) {
+    return;
+  }
+
+  if (incompleteReason) {
+    throw new Error(
+      `OpenAI-compatible response ended before visible text (${incompleteReason}). Increase max output tokens or use a non-reasoning/low-latency model.`,
+    );
+  }
+
+  throw new Error("OpenAI-compatible response returned no visible text.");
+}
+
 async function askOpenAIStream(
   session,
   turn,
@@ -1128,6 +1382,7 @@ async function askOpenAIStream(
   const stream = session.runtimeConfig.llm.stream;
   const llmApi = session.runtimeConfig.llm.api;
   const requestStartedAt = Date.now();
+  markTurnTiming(session, turn.timings, "llm_request_start", requestStartedAt);
   const requestStartMs = elapsedMs(turn, requestStartedAt);
   const response = await fetchOpenAIResponse(session.runtimeConfig, session.conversation);
 
@@ -1149,6 +1404,12 @@ async function askOpenAIStream(
     const responseReadStartMs = requestEndMs;
     const body = await response.json();
     const answer = openAICompletionText(llmApi, body);
+    const llmDoneAt = Date.now();
+    if (cleanAssistantText(answer)) {
+      markTurnTiming(session, turn.timings, "first_llm_delta", llmDoneAt);
+    }
+    markTurnTiming(session, turn.timings, "llm_done", llmDoneAt);
+    assertVisibleOpenAIText(answer, body?.incomplete_details?.reason || "");
 
     const chunks = parseAssistantChunks(answer);
     sendJson(session.client, {
@@ -1186,7 +1447,39 @@ async function askOpenAIStream(
   let answer = "";
   let sawFirstDelta = false;
   let firstDeltaMs = null;
+  let incompleteReason = "";
   const chunkParser = createChunkParser();
+
+  async function appendVisibleDelta(delta) {
+    answer += delta;
+    sendJson(session.client, {
+      type: "assistant_xml_delta",
+      turnId: turn.id,
+      text: delta,
+    });
+
+    if (!sawFirstDelta) {
+      sawFirstDelta = true;
+      firstDeltaMs = elapsedMs(turn);
+      markTurnTiming(session, turn.timings, "first_llm_delta");
+      sendTimeline(session, turn, {
+        spanId: "llm-first-token",
+        stage: "llm_first_delta",
+        label: "First token",
+        startMs: firstDeltaMs,
+        endMs: firstDeltaMs,
+      });
+    }
+
+    for (const chunk of chunkParser.push(delta)) {
+      sendJson(session.client, {
+        type: "assistant_delta",
+        turnId: turn.id,
+        text: `${chunk} `,
+      });
+      await onChunk(chunk);
+    }
+  }
 
   while (true) {
     const { done, value } = await reader.read();
@@ -1212,41 +1505,29 @@ async function askOpenAIStream(
         const event = JSON.parse(dataLine);
         const delta = openAIStreamDelta(llmApi, event);
         if (delta) {
-          answer += delta;
-          sendJson(session.client, {
-            type: "assistant_xml_delta",
-            turnId: turn.id,
-            text: delta,
-          });
-
-          if (!sawFirstDelta) {
-            sawFirstDelta = true;
-            firstDeltaMs = elapsedMs(turn);
-            sendTimeline(session, turn, {
-              spanId: "llm-first-token",
-              stage: "llm_first_delta",
-              label: "First token",
-              startMs: firstDeltaMs,
-              endMs: firstDeltaMs,
-            });
+          await appendVisibleDelta(delta);
+        } else {
+          const completedText = openAIStreamCompletedText(llmApi, event);
+          if (completedText && !answer) {
+            await appendVisibleDelta(completedText);
           }
 
-          for (const chunk of chunkParser.push(delta)) {
-            sendJson(session.client, {
-              type: "assistant_delta",
-              turnId: turn.id,
-              text: `${chunk} `,
-            });
-            await onChunk(chunk);
+          const errorMessage = openAIStreamErrorMessage(event);
+          if (errorMessage) {
+            throw new Error(errorMessage);
           }
-        } else if (event.type === "error" || event.error) {
-          throw new Error(
-            event.error?.message || event.message || "OpenAI-compatible stream error.",
-          );
+
+          const reason = openAIStreamIncompleteReason(event);
+          if (reason) {
+            incompleteReason = reason;
+          }
         }
       }
     }
   }
+
+  markTurnTiming(session, turn.timings, "llm_done");
+  assertVisibleOpenAIText(answer, incompleteReason);
 
   sendJson(session.client, {
     type: "assistant_xml_text",
@@ -1360,6 +1641,8 @@ function createBrowserTtsStreamer(session, turn) {
   let inputDone = false;
   let notifyPlayback = null;
   const streamPcm = shouldStreamBrowserPcm(session.runtimeConfig);
+  let firstAudioReady = false;
+  let firstAudioSent = false;
 
   function notify() {
     if (notifyPlayback) {
@@ -1378,6 +1661,10 @@ function createBrowserTtsStreamer(session, turn) {
     return (async () => {
       const startMs = elapsedMs(turn);
       const result = await synthesizeSpeechAudio(session, text, { turn, chunkIndex });
+      if (!firstAudioReady) {
+        firstAudioReady = true;
+        markTurnTiming(session, turn.timings, "first_tts_audio_ready");
+      }
       sendTimeline(session, turn, {
         spanId: `tts-chunk-${chunkIndex}`,
         stage: "tts_chunk",
@@ -1423,6 +1710,10 @@ function createBrowserTtsStreamer(session, turn) {
         streamedPcm: result.streamedPcm,
         audioBase64: result.audio.toString("base64"),
       });
+      if (!firstAudioSent) {
+        firstAudioSent = true;
+        markTurnTiming(session, turn.timings, "first_audio_sent");
+      }
 
       stats.chunks += 1;
       stats.bytes += result.bytes;
@@ -1474,6 +1765,8 @@ async function handleTurn(session, transcript) {
     id: randomUUID(),
     startedAt: Date.now(),
   };
+  turn.timings = createTurnTimings(session, turn.startedAt);
+  markTurnTiming(session, turn.timings, "stt_final", turn.startedAt);
   const ttsStreamer = createBrowserTtsStreamer(session, turn);
   let ttsFinished = false;
 
@@ -1492,14 +1785,11 @@ async function handleTurn(session, transcript) {
       endMs: 0,
     });
 
-    let answer = await askOpenAIStream(session, turn, cleanTranscript, {
+    const answer = await askOpenAIStream(session, turn, cleanTranscript, {
       onChunk: async (chunk) => {
         ttsStreamer.enqueue(chunk);
       },
     });
-    if (!answer) {
-      answer = "Sorry, I missed that.";
-    }
     if (ttsStreamer.queuedCount === 0) {
       ttsStreamer.enqueue(answer);
     }
@@ -1509,11 +1799,15 @@ async function handleTurn(session, transcript) {
 
     await ttsStreamer.finish();
     ttsFinished = true;
+    markTurnTiming(session, turn.timings, "turn_complete");
+    logTurnTimingSummary(session, turn.timings);
     sendJson(session.client, { type: "assistant_end", turnId: turn.id });
   } catch (error) {
     if (!ttsFinished) {
       await ttsStreamer.finish().catch(() => {});
     }
+    markTurnTiming(session, turn.timings, "turn_complete");
+    logTurnTimingSummary(session, turn.timings, "error");
     sendJson(session.client, {
       type: "error",
       message: error.message || String(error),
@@ -1598,10 +1892,11 @@ function createDeepgramConnection(session) {
   return dg;
 }
 
-async function askOpenAIDeviceResponse(session, onTextDelta = () => {}) {
+async function askOpenAIDeviceResponse(session, timings, onTextDelta = () => {}) {
   const runtimeConfig = session.runtimeConfig;
   const stream = runtimeConfig.llm.stream;
   const llmApi = runtimeConfig.llm.api;
+  markTurnTiming(session, timings, "llm_request_start");
   const response = await fetchOpenAIResponse(runtimeConfig, session.conversation);
 
   if (!response.ok) {
@@ -1611,6 +1906,12 @@ async function askOpenAIDeviceResponse(session, onTextDelta = () => {}) {
   if (!stream) {
     const body = await response.json();
     const answer = openAICompletionText(llmApi, body).trim();
+    const doneAt = Date.now();
+    if (cleanAssistantText(answer)) {
+      markTurnTiming(session, timings, "first_llm_delta", doneAt);
+    }
+    markTurnTiming(session, timings, "llm_done", doneAt);
+    assertVisibleOpenAIText(answer, body?.incomplete_details?.reason || "");
     if (answer) {
       await onTextDelta(answer);
     }
@@ -1625,6 +1926,17 @@ async function askOpenAIDeviceResponse(session, onTextDelta = () => {}) {
   const decoder = new TextDecoder();
   let buffer = "";
   let answer = "";
+  let sawFirstDelta = false;
+  let incompleteReason = "";
+
+  async function appendVisibleDelta(delta) {
+    answer += delta;
+    if (!sawFirstDelta) {
+      sawFirstDelta = true;
+      markTurnTiming(session, timings, "first_llm_delta");
+    }
+    await onTextDelta(delta);
+  }
 
   while (true) {
     const { done, value } = await reader.read();
@@ -1650,17 +1962,29 @@ async function askOpenAIDeviceResponse(session, onTextDelta = () => {}) {
         const event = JSON.parse(dataLine);
         const delta = openAIStreamDelta(llmApi, event);
         if (delta) {
-          answer += delta;
-          await onTextDelta(delta);
-        } else if (event.type === "error" || event.error) {
-          throw new Error(
-            event.error?.message || event.message || "OpenAI-compatible stream error.",
-          );
+          await appendVisibleDelta(delta);
+        } else {
+          const completedText = openAIStreamCompletedText(llmApi, event);
+          if (completedText && !answer) {
+            await appendVisibleDelta(completedText);
+          }
+
+          const errorMessage = openAIStreamErrorMessage(event);
+          if (errorMessage) {
+            throw new Error(errorMessage);
+          }
+
+          const reason = openAIStreamIncompleteReason(event);
+          if (reason) {
+            incompleteReason = reason;
+          }
         }
       }
     }
   }
 
+  markTurnTiming(session, timings, "llm_done");
+  assertVisibleOpenAIText(answer, incompleteReason);
   return answer.trim();
 }
 
@@ -1671,11 +1995,19 @@ function sendDeviceJson(session, payload) {
   });
 }
 
+function closeDeviceRealtimeBridge(session, reason = "closed") {
+  const bridge = session.realtimeBridge;
+  session.realtimeBridge = null;
+  bridge?.close(reason);
+}
+
 function resetDeviceTurnAudio(session) {
   session.pendingPcm = [];
   session.finalSegments = [];
   session.turnAudioFrames = 0;
   session.turnAudioBytes = 0;
+  session.sttErrorCount = 0;
+  session.sttRetryAfter = 0;
 }
 
 function closeDeviceStt(session) {
@@ -1708,6 +2040,7 @@ function finalizeDeviceStt(session) {
 function closeDeviceAfterTurn(session, reason = "turn_complete") {
   session.listening = false;
   closeDeviceStt(session);
+  closeDeviceRealtimeBridge(session, reason);
 
   if (!session.runtimeConfig.turn.closeDeviceAfterTurn || !session.transport.isOpen()) {
     setDeviceState(session, "ready", "Turn complete.");
@@ -1752,8 +2085,11 @@ function createDeviceSttConnection(session) {
   dg.on("open", () => {
     session.sttConnecting = false;
     session.sttOpen = true;
+    session.sttErrorCount = 0;
+    session.sttRetryAfter = 0;
     if (session.awaitingFinal && !session.processing && !session.closingAfterTurn) {
       console.log(`[device ${session.id}] Deepgram STT connected for finalization`);
+      markTurnTiming(session, session.turnTimings, "stt_connected");
       setDeviceState(session, "stt_finalize", "Deepgram STT connected.");
       flushPendingPcm(session, dg);
       dg.send(JSON.stringify({ type: "Finalize" }));
@@ -1764,6 +2100,7 @@ function createDeviceSttConnection(session) {
       return;
     }
     console.log(`[device ${session.id}] Deepgram STT connected`);
+    markTurnTiming(session, session.turnTimings, "stt_connected");
     setDeviceState(session, "listening", "Deepgram STT connected.");
     flushPendingPcm(session, dg);
   });
@@ -1775,6 +2112,7 @@ function createDeviceSttConnection(session) {
     }
 
     if (data.type === "SpeechStarted") {
+      markTurnTiming(session, session.turnTimings, "speech_started");
       setDeviceState(session, "speech_started", "Deepgram VAD detected speech.");
       return;
     }
@@ -1797,6 +2135,7 @@ function createDeviceSttConnection(session) {
 
     if (data.speech_final) {
       const text = (session.finalSegments.join(" ") || transcript || "").trim();
+      markTurnTiming(session, session.turnTimings, "stt_final");
       session.finalSegments = [];
       session.listening = false;
       session.awaitingFinal = false;
@@ -1808,6 +2147,8 @@ function createDeviceSttConnection(session) {
           "ignored_transcript",
           text ? `Ignored short transcript: ${text}` : "Ignored empty transcript.",
         );
+        markTurnTiming(session, session.turnTimings, "turn_complete");
+        logTurnTimingSummary(session, session.turnTimings, "ignored");
         closeDeviceAfterTurn(session, "ignored_transcript");
         return;
       }
@@ -1842,8 +2183,21 @@ function createDeviceSttConnection(session) {
 
   dg.on("error", (error) => {
     session.sttConnecting = false;
+    session.sttErrorCount += 1;
+    session.sttRetryAfter = Date.now() + Math.min(250 * 2 ** session.sttErrorCount, 2000);
     console.error(`[device ${session.id}] Deepgram STT error: ${error.message}`);
     setDeviceState(session, "error", `Deepgram STT error: ${error.message}`);
+    if (session.sttErrorCount >= 3 && !session.processing && !session.closingAfterTurn) {
+      sendDeviceJson(session, {
+        type: "alert",
+        status: "Error",
+        message: "Speech recognition failed to start.",
+        emotion: "sad",
+      });
+      markTurnTiming(session, session.turnTimings, "turn_complete");
+      logTurnTimingSummary(session, session.turnTimings, "stt_error");
+      closeDeviceAfterTurn(session, "stt_error");
+    }
   });
 
   return dg;
@@ -1867,26 +2221,12 @@ async function synthesizeDevicePcm(session, text) {
   return Buffer.from(await response.arrayBuffer());
 }
 
-function encodePcmToOpusFrames(pcm, sampleRate = 24000, frameDurationMs = 60) {
-  const encoder = new OpusScript(sampleRate, 1, OpusScript.Application.AUDIO);
-  const frameSamples = (sampleRate / 1000) * frameDurationMs;
-  const frameBytes = frameSamples * 2;
-  const frames = [];
-
-  for (let offset = 0; offset < pcm.length; offset += frameBytes) {
-    const frame = Buffer.alloc(frameBytes);
-    pcm.copy(frame, 0, offset, Math.min(offset + frameBytes, pcm.length));
-    frames.push(Buffer.from(encoder.encode(frame, frameSamples)));
-  }
-
-  return frames;
-}
-
-function createDeviceTtsStreamer(session, turnStartedAt) {
+function createDeviceTtsStreamer(session, timings) {
   const items = [];
   let inputDone = false;
   let notifyPlayback = null;
   let started = false;
+  let firstAudioReady = false;
   let firstAudioSent = false;
 
   function notify() {
@@ -1940,10 +2280,11 @@ function createDeviceTtsStreamer(session, turnStartedAt) {
           }
           if (!firstAudioSent) {
             firstAudioSent = true;
+            markTurnTiming(session, timings, "first_audio_sent");
             setDeviceState(
               session,
               "speaking",
-              `First TTS audio in ${Date.now() - turnStartedAt}ms.`,
+              `First TTS audio in ${elapsedTurnTiming(timings)}ms.`,
             );
           }
           session.transport.sendBinary(frame, { binary: true });
@@ -1976,6 +2317,10 @@ function createDeviceTtsStreamer(session, turnStartedAt) {
         const startedAt = Date.now();
         const pcm = await synthesizeDevicePcm(session, cleanText);
         const frames = encodePcmToOpusFrames(pcm, 24000, 60);
+        if (!firstAudioReady) {
+          firstAudioReady = true;
+          markTurnTiming(session, timings, "first_tts_audio_ready");
+        }
         setDeviceState(
           session,
           "tts_chunk_ready",
@@ -2012,9 +2357,11 @@ async function handleDeviceTurn(session, transcript) {
   session.processing = true;
   session.listening = false;
   session.awaitingFinal = false;
-  const turnStartedAt = Date.now();
+  const timings = session.turnTimings || createTurnTimings(session);
+  session.turnTimings = timings;
+  markTurnTiming(session, timings, "stt_final");
   const chunkParser = createChunkParser();
-  const ttsStreamer = createDeviceTtsStreamer(session, turnStartedAt);
+  const ttsStreamer = createDeviceTtsStreamer(session, timings);
   let ttsFinished = false;
   let closeReason = "turn_complete";
   console.log(`[device ${session.id}] user: ${cleanTranscript}`);
@@ -2022,7 +2369,7 @@ async function handleDeviceTurn(session, transcript) {
 
   try {
     session.conversation.push({ role: "user", content: cleanTranscript });
-    const rawAnswer = await askOpenAIDeviceResponse(session, async (delta) => {
+    const rawAnswer = await askOpenAIDeviceResponse(session, timings, async (delta) => {
       for (const chunk of chunkParser.push(delta)) {
         ttsStreamer.enqueue(chunk);
       }
@@ -2032,10 +2379,7 @@ async function handleDeviceTurn(session, transcript) {
       ttsStreamer.enqueue(chunk);
     }
 
-    let answer = cleanAssistantText(rawAnswer);
-    if (!answer) {
-      answer = "Sorry, I missed that.";
-    }
+    const answer = cleanAssistantText(rawAnswer);
     if (ttsStreamer.queuedCount === 0) {
       ttsStreamer.enqueue(answer);
     }
@@ -2051,6 +2395,8 @@ async function handleDeviceTurn(session, transcript) {
       "turn_complete",
       `TTS complete: ${ttsStats.chunks} chunks, ${ttsStats.opusFrames} Opus frames.`,
     );
+    markTurnTiming(session, timings, "turn_complete");
+    logTurnTimingSummary(session, timings);
   } catch (error) {
     closeReason = "error";
     if (!ttsFinished) {
@@ -2064,6 +2410,8 @@ async function handleDeviceTurn(session, transcript) {
       message: error.message,
       emotion: "sad",
     });
+    markTurnTiming(session, timings, "turn_complete");
+    logTurnTimingSummary(session, timings, "error");
   } finally {
     session.processing = false;
     if (session.transport.isOpen()) {
@@ -2076,6 +2424,9 @@ function startDeviceStt(session) {
   if (session.processing || session.closingAfterTurn) {
     return;
   }
+  if (Date.now() < session.sttRetryAfter) {
+    return;
+  }
   if (
     session.sttConnecting ||
     (session.deepgram &&
@@ -2085,6 +2436,46 @@ function startDeviceStt(session) {
     return;
   }
   session.deepgram = createDeviceSttConnection(session);
+}
+
+function ensureDeviceRealtimeBridge(session) {
+  if (!session.realtimeBridge) {
+    session.realtimeBridge = createDeviceRealtimeBridge({
+      session,
+      apiKey: config.openaiApiKey,
+      safetyIdentifier: openAISafetyIdentifier(session.userId || session.deviceId),
+      sendDeviceJson,
+      setDeviceState,
+      markTurnTiming,
+      logTurnTimingSummary,
+      closeDeviceAfterTurn,
+    });
+  }
+  return session.realtimeBridge;
+}
+
+function preconnectDeviceRealtimeTurn(session) {
+  if (session.processing || session.closingAfterTurn) {
+    return;
+  }
+  closeDeviceStt(session);
+  ensureDeviceRealtimeBridge(session).preconnect();
+}
+
+function startDeviceRealtimeTurn(session) {
+  if (session.processing || session.closingAfterTurn) {
+    return;
+  }
+  closeDeviceStt(session);
+  ensureDeviceRealtimeBridge(session).startListening();
+}
+
+function finalizeDeviceRealtimeTurn(session) {
+  if (!session.realtimeBridge) {
+    return;
+  }
+  session.processing = true;
+  session.realtimeBridge.stopListening();
 }
 
 function handleDeviceJson(session, message) {
@@ -2120,25 +2511,50 @@ function handleDeviceJson(session, message) {
         );
         return;
       }
-      session.listening = true;
+      const speechToSpeech = isSpeechToSpeechAgent(session.runtimeConfig);
+      session.listening = speechToSpeech ? message.state === "start" : true;
       session.awaitingFinal = false;
       resetDeviceTurnAudio(session);
+      if (
+        !session.turnTimings ||
+        session.turnTimings.marks.has("stt_final") ||
+        session.turnTimings.marks.has("turn_complete")
+      ) {
+        session.turnTimings = createTurnTimings(session);
+      }
+      markTurnTiming(session, session.turnTimings, "wake_listen_start");
       setDeviceState(
         session,
         message.state === "detect" ? "wake_detected" : "listening",
         message.text ? `Wake detected: ${message.text}` : `Listen ${message.state}.`,
       );
-      startDeviceStt(session);
+      if (speechToSpeech) {
+        if (message.state === "detect") {
+          preconnectDeviceRealtimeTurn(session);
+        } else {
+          startDeviceRealtimeTurn(session);
+        }
+      } else {
+        startDeviceStt(session);
+      }
     } else if (message.state === "stop") {
       session.listening = false;
       setDeviceState(session, "processing", "Listen stop.");
-      finalizeDeviceStt(session);
+      if (isSpeechToSpeechAgent(session.runtimeConfig)) {
+        finalizeDeviceRealtimeTurn(session);
+      } else {
+        finalizeDeviceStt(session);
+      }
     }
     return;
   }
 
   if (message.type === "abort") {
     console.log(`[device ${session.id}] abort ${message.reason || ""}`);
+    if (isSpeechToSpeechAgent(session.runtimeConfig) && session.realtimeBridge) {
+      session.realtimeBridge.abort(message.reason || "abort");
+      return;
+    }
     setDeviceState(session, "ready", `Abort: ${message.reason || "no reason"}.`);
     return;
   }
@@ -2155,13 +2571,20 @@ function handleDeviceAudio(session, frame) {
     return;
   }
 
+  if (isSpeechToSpeechAgent(session.runtimeConfig)) {
+    startDeviceRealtimeTurn(session);
+    session.realtimeBridge?.handleAudio(frame);
+    return;
+  }
+
   startDeviceStt(session);
   if (!session.decoder) {
     session.decoder = new OpusScript(16000, 1, OpusScript.Application.AUDIO);
   }
 
   try {
-    const pcm = Buffer.from(session.decoder.decode(frame));
+    const deviceFrameSamples = (16000 / 1000) * 60;
+    const pcm = Buffer.from(session.decoder.decode(frame, deviceFrameSamples));
     session.turnAudioFrames += 1;
     session.turnAudioBytes += frame.length;
 
@@ -2220,6 +2643,20 @@ const server = http.createServer((req, res) => {
       deviceWebSocketEndpoint: "/ws",
       deviceCount: deviceRegistry.size,
     });
+    return;
+  }
+
+  if (url.pathname === "/realtime/client-secret" && req.method === "POST") {
+    readJsonBody(req)
+      .then(createRealtimeClientSecret)
+      .then((body) => {
+        writeJson(res, 201, body);
+      })
+      .catch((error) => {
+        writeJson(res, error.statusCode || 502, {
+          error: error.message || String(error),
+        });
+      });
     return;
   }
 
@@ -2407,19 +2844,16 @@ wss.on("connection", (client, _request, auth) => {
 });
 
 deviceWss.on("connection", (ws, request, auth) => {
-  if (!config.deepgramApiKey) {
-    ws.close(1011, "Missing API keys");
-    return;
-  }
-
   const device = getOrCreateDevice(
     request.headers["device-id"] || request.headers["client-id"],
     request,
   );
   applyPlatformDeviceAuth(device, auth);
 
-  if (!hasRequiredLlmCredentials(device.runtimeConfig)) {
-    ws.close(1011, "Missing API keys");
+  const credentialStatus = deviceCredentialStatus(device.runtimeConfig);
+  if (!credentialStatus.ok) {
+    logDeviceEvent(device, credentialStatus.message);
+    ws.close(1011, credentialStatus.message);
     return;
   }
 
@@ -2460,8 +2894,10 @@ deviceWss.on("connection", (ws, request, auth) => {
       session.closeTimer = null;
     }
     session.listening = false;
+    session.processing = false;
     session.closingAfterTurn = false;
     closeDeviceStt(session);
+    closeDeviceRealtimeBridge(session, "device disconnected");
     if (device.session === session) {
       device.session = null;
       device.availability = "offline";

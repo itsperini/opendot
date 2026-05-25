@@ -38,7 +38,10 @@ SUPABASE_JWT_SECRET=
 DEEPGRAM_API_KEY=...
 OPENAI_API_KEY=...
 OPENAI_BASE_URL=
-OPENAI_MODEL=gpt-5.1
+OPENAI_MODEL=gpt-5-mini
+OPENAI_MAX_OUTPUT_TOKENS=512
+OPENAI_REASONING_EFFORT=low
+OPENAI_VERBOSITY=low
 VITE_SUPABASE_URL=https://<project-ref>.supabase.co
 VITE_SUPABASE_ANON_KEY=<supabase anon key>
 VITE_PLATFORM_API_URL=https://<opendot-api>.onrender.com/api
@@ -52,6 +55,10 @@ PLATFORM_API_INTERNAL_URL=https://<opendot-api>.onrender.com/api
 
 Leave `SUPABASE_JWT_SECRET` empty unless the Supabase project still uses legacy
 HS256 JWT signing.
+
+`OPENAI_BASE_URL` applies to the Sandwich LLM stage only. Speech-to-speech
+Browser Test and Speech-to-speech Dot sessions use the runtime's
+`OPENAI_API_KEY` against OpenAI's Realtime API.
 
 ## Auth posture
 
@@ -69,9 +76,13 @@ controls are present in the UI but are not wired yet.
 
 ## Runtime exposure
 
-The runtime verifies browser voice-session tokens and device credentials with
-the platform API before accepting `/voice` or `/ws` connections. Use the same
-`OPENDOT_RUNTIME_INTERNAL_SECRET` on `opendot-api` and `opendot-runtime`.
+The runtime verifies browser voice-session tokens, realtime browser-session
+tokens, and device credentials with the platform API. Sandwich Browser Test uses
+`/voice`, Sandwich Dot devices use `/ws`, Speech-to-speech Browser Test uses
+`/realtime/client-secret` before the browser connects to OpenAI Realtime with an
+ephemeral client secret, and Speech-to-speech Dot devices use the runtime `/ws`
+Realtime bridge. Use the same `OPENDOT_RUNTIME_INTERNAL_SECRET` on `opendot-api`
+and `opendot-runtime`.
 
 For public previews, keep provider-key quotas tight and point
 `OPENDOT_RUNTIME_PUBLIC_HTTP_URL` / `OPENDOT_RUNTIME_PUBLIC_WS_URL` at the

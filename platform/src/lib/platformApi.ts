@@ -6,6 +6,7 @@ import type {
   CreateDotDeviceInput,
   DeviceActivationClaimInput,
   DotDevice,
+  RealtimeBrowserSession,
   RuntimeVoiceSession,
   UserApiKey,
   UserSettings,
@@ -111,6 +112,12 @@ export async function updateAgent(agent: VoiceAgent) {
   return body.agent;
 }
 
+export async function deleteAgent(agentId: string) {
+  await requestJson<{ ok: true }>(`/agents/${encodeURIComponent(agentId)}`, {
+    method: "DELETE",
+  });
+}
+
 export async function createDotDevice(input: CreateDotDeviceInput) {
   const body = await requestJson<{ device: DotDevice }>("/dot-devices", {
     body: JSON.stringify(input),
@@ -153,6 +160,17 @@ export async function createRuntimeVoiceSession(agentId: string) {
     },
   );
   return body.voiceSession;
+}
+
+export async function createRealtimeBrowserSession(agentId: string) {
+  const body = await requestJson<{ realtimeSession: RealtimeBrowserSession }>(
+    "/runtime/realtime-browser-sessions",
+    {
+      body: JSON.stringify({ agentId }),
+      method: "POST",
+    },
+  );
+  return body.realtimeSession;
 }
 
 export async function updateUserSettings(settings: UserSettings) {

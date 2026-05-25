@@ -26,17 +26,17 @@ for setup, pull request expectations, and the checks maintainers expect.
 
 ## Contribution Tracks
 
-| Track                                | Good contributions                                                                                | Minimum checks                                                 |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| Voice Pipeline & Providers           | VAD, STT/ASR, LLM, TTS, realtime APIs, provider adapters, modular stage contracts                 | Platform checks plus live Browser Test when possible           |
-| Voice Agents & Harnesses             | Prompts, knowledge, tools, local model harnesses, evals, framework integration categories         | Platform checks and docs when behavior changes                 |
-| Platform Control Plane               | Agent Studio, Configuration, Browser Test, Dot Device, Settings, runtime diagnostics UX           | `pnpm run lint && pnpm run test && pnpm run build`             |
-| Platform Backend & Data              | Fastify API, auth, Drizzle/Postgres schema, runtime tokens, settings, deployments, API contracts  | Platform checks plus migration review when data changes        |
-| Media Transport                      | WebSocket audio/data sessions, runtime session protocols, future WebRTC/SFU-style adapters        | Platform checks plus manual runtime testing                    |
-| Device Communication & Fleet         | Device presence, desired/reported state, commands, telemetry, diagnostics, OTA metadata           | Platform/runtime checks and device notes when relevant         |
-| Dot Hardware                         | CAD, enclosure, acoustics, PCB, BOM, fixtures, manufacturability, reference constraints           | Hardware/source review and docs checks                         |
-| Dot Firmware & Edge                  | ESP-IDF drivers, provisioning, wake/audio/display, exploratory MicroPython and inference research | `idf.py build` when ESP-IDF is available                       |
-| Docs, Tooling & Developer Experience | Setup docs, diagrams, examples, CI, templates, contributor workflow                               | `pnpm run format:check -- docs` and link checks when available |
+| Track                                | Good contributions                                                                                                                    | Minimum checks                                                 |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Voice Pipeline & Providers           | VAD, STT/ASR, LLM, TTS, realtime APIs, provider adapters, modular stage contracts                                                     | Platform checks plus live Browser Test when possible           |
+| Voice Agents & Harnesses             | Prompts, knowledge, tools, local model harnesses, evals, framework integration categories                                             | Platform checks and docs when behavior changes                 |
+| Platform Control Plane               | Agent Studio, Configuration, Browser Test, Dot Device, Settings, runtime diagnostics UX                                               | `pnpm run lint && pnpm run test && pnpm run build`             |
+| Platform Backend & Data              | Fastify API, auth, Drizzle/Postgres schema, runtime tokens, settings, deployments, API contracts                                      | Platform checks plus migration review when data changes        |
+| Media Transport                      | WebSocket audio/data sessions, browser WebRTC Realtime sessions, device Realtime bridge, runtime protocols, future SFU/fleet adapters | Platform checks plus manual runtime testing                    |
+| Device Communication & Fleet         | Device presence, desired/reported state, commands, telemetry, diagnostics, OTA metadata                                               | Platform/runtime checks and device notes when relevant         |
+| Dot Hardware                         | CAD, enclosure, acoustics, PCB, BOM, fixtures, manufacturability, reference constraints                                               | Hardware/source review and docs checks                         |
+| Dot Firmware & Edge                  | ESP-IDF drivers, provisioning, wake/audio/display, exploratory MicroPython and inference research                                     | `idf.py build` when ESP-IDF is available                       |
+| Docs, Tooling & Developer Experience | Setup docs, diagrams, examples, CI, templates, contributor workflow                                                                   | `pnpm run format:check -- docs` and link checks when available |
 
 MicroPython runtime work and on-device inference are exploratory later tracks,
 not current firmware architecture. Keep proposals honest about memory, latency,
@@ -70,6 +70,10 @@ DEEPGRAM_API_KEY=...
 OPENAI_API_KEY=...
 ```
 
+`OPENAI_BASE_URL` affects the Sandwich LLM stage only. Speech-to-speech Browser
+Test and Speech-to-speech Dot sessions use the runtime's `OPENAI_API_KEY` for
+OpenAI Realtime.
+
 For the fastest full-stack local run, Docker Compose is also available:
 
 ```bash
@@ -90,7 +94,7 @@ Open the console at `http://localhost:5173`.
   architecture changes.
 - Include screenshots or short recordings for visible UI changes.
 - Describe browser, runtime, firmware, or device testing when touching audio,
-  WebSocket, activation, provisioning, firmware, or hardware behavior.
+  WebSocket, WebRTC, activation, provisioning, firmware, or hardware behavior.
 - Keep secrets out of commits. Use `.env` locally and keep `.env.example` safe.
 
 Examples:

@@ -196,9 +196,7 @@ function buildSwimlaneTimeline(events: TimelineEvent[]): SwimlaneTimeline | null
     const isMilestone = durationMs === 0;
     const rawLeftPercent = (startMs / axisMaxMs) * 100;
     const rawWidthPercent = (durationMs / axisMaxMs) * 100;
-    const widthPercent = isMilestone
-      ? 0
-      : Math.min(Math.max(rawWidthPercent, 2.2), 100);
+    const widthPercent = isMilestone ? 0 : Math.min(Math.max(rawWidthPercent, 2.2), 100);
     const leftPercent = isMilestone
       ? Math.min(rawLeftPercent, 100)
       : Math.min(rawLeftPercent, 100 - widthPercent);
@@ -238,7 +236,7 @@ function timelineTiming(event: TimelineEvent) {
   const explicitEnd = finiteNumber(event.endMs);
   const elapsed = finiteNumber(event.elapsedMs);
   const rawEnd = explicitEnd ?? elapsed ?? explicitStart ?? 0;
-  const rawStart = explicitStart ?? (explicitEnd !== null ? rawEnd : elapsed ?? rawEnd);
+  const rawStart = explicitStart ?? (explicitEnd !== null ? rawEnd : (elapsed ?? rawEnd));
   const startMs = Math.max(0, Math.min(rawStart, rawEnd));
   const endMs = Math.max(startMs, Math.max(rawStart, rawEnd));
 
@@ -487,7 +485,9 @@ export function TestAgentPanel({ agent }: TestAgentPanelProps) {
       appendLog(setLog, `Assistant: ${payload.text}`);
     } else if (payload.type === "assistant_pcm_delta") {
       setPcmStreaming(true);
-      playPcmDelta(payload.pcmBase64, Number(payload.sampleRate || 24000)).catch(() => undefined);
+      playPcmDelta(payload.pcmBase64, Number(payload.sampleRate || 24000)).catch(
+        () => undefined,
+      );
     } else if (payload.type === "assistant_audio") {
       const binary = Uint8Array.from(atob(payload.audioBase64), (char) =>
         char.charCodeAt(0),
@@ -632,7 +632,11 @@ export function TestAgentPanel({ agent }: TestAgentPanelProps) {
       return;
     }
 
-    const samples = new Int16Array(pcmBytes.buffer, pcmBytes.byteOffset, pcmBytes.byteLength / 2);
+    const samples = new Int16Array(
+      pcmBytes.buffer,
+      pcmBytes.byteOffset,
+      pcmBytes.byteLength / 2,
+    );
     let audioContext = ttsPlaybackContextRef.current;
     if (!audioContext || audioContext.state === "closed") {
       audioContext = new AudioContext();
@@ -744,13 +748,21 @@ export function TestAgentPanel({ agent }: TestAgentPanelProps) {
       </div>
 
       <div className="test-actions">
-        <button type="button" onClick={connectRuntime} disabled={!agent || status === "connecting"}>
+        <button
+          type="button"
+          onClick={connectRuntime}
+          disabled={!agent || status === "connecting"}
+        >
           <Cable size={16} />
           Connect
         </button>
         <button
           type="button"
-          onClick={recording ? stopMic : () => startMic().catch((error) => appendLog(setLog, error.message))}
+          onClick={
+            recording
+              ? stopMic
+              : () => startMic().catch((error) => appendLog(setLog, error.message))
+          }
           disabled={!canUseMic}
         >
           {recording ? <Square size={16} /> : <Mic size={16} />}
@@ -777,7 +789,9 @@ export function TestAgentPanel({ agent }: TestAgentPanelProps) {
         <div className="test-card transcript-card">
           <span>Live transcript</span>
           <p className="interim-text">{interim || "Interim speech appears here."}</p>
-          <p className="final-text">{finalTranscript || "Final user turn appears here."}</p>
+          <p className="final-text">
+            {finalTranscript || "Final user turn appears here."}
+          </p>
         </div>
 
         <div className="test-card assistant-card">
@@ -794,7 +808,10 @@ export function TestAgentPanel({ agent }: TestAgentPanelProps) {
             </label>
           </div>
           {showChunks ? (
-            <div className="assistant-chunked-output" aria-label="Assistant response chunks">
+            <div
+              className="assistant-chunked-output"
+              aria-label="Assistant response chunks"
+            >
               {assistantChunks.length > 0 ? (
                 assistantChunks.map((chunk, index) => {
                   const audioChunk = audioChunks.find((item) => item.index === index + 1);
@@ -818,8 +835,10 @@ export function TestAgentPanel({ agent }: TestAgentPanelProps) {
                             <Play size={14} />
                           </button>
                           <span>
-                            {audioChunk.streamedPcm ? "PCM stream saved as WAV" : audioChunk.mimeType} •{" "}
-                            {formatBytes(audioChunk.bytes)}
+                            {audioChunk.streamedPcm
+                              ? "PCM stream saved as WAV"
+                              : audioChunk.mimeType}{" "}
+                            • {formatBytes(audioChunk.bytes)}
                           </span>
                           <audio src={audioChunk.url} controls preload="metadata" />
                         </div>
@@ -828,11 +847,15 @@ export function TestAgentPanel({ agent }: TestAgentPanelProps) {
                   );
                 })
               ) : (
-                <span className="assistant-chunk-placeholder">The agent response streams here.</span>
+                <span className="assistant-chunk-placeholder">
+                  The agent response streams here.
+                </span>
               )}
             </div>
           ) : (
-            <p className="assistant-response-text">{assistantText || "The agent response streams here."}</p>
+            <p className="assistant-response-text">
+              {assistantText || "The agent response streams here."}
+            </p>
           )}
           {audioUrl ? (
             <audio
@@ -856,10 +879,14 @@ export function TestAgentPanel({ agent }: TestAgentPanelProps) {
           <div>
             <span>Audio pipeline</span>
             <strong>
-              {swimlaneTimeline ? `${formatMs(swimlaneTimeline.totalMs)} total` : "Waiting for timing"}
+              {swimlaneTimeline
+                ? `${formatMs(swimlaneTimeline.totalMs)} total`
+                : "Waiting for timing"}
             </strong>
           </div>
-          {swimlaneTimeline ? <small>Turn {shortTurnId(swimlaneTimeline.turnId)}</small> : null}
+          {swimlaneTimeline ? (
+            <small>Turn {shortTurnId(swimlaneTimeline.turnId)}</small>
+          ) : null}
         </div>
 
         {!swimlaneTimeline ? (
@@ -952,7 +979,11 @@ function downsampleToInt16(input: Float32Array, inputRate: number, outputRate: n
     let sum = 0;
     let count = 0;
 
-    for (let index = inputOffset; index < nextInputOffset && index < input.length; index += 1) {
+    for (
+      let index = inputOffset;
+      index < nextInputOffset && index < input.length;
+      index += 1
+    ) {
       sum += input[index];
       count += 1;
     }

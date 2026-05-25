@@ -40,8 +40,36 @@ export function isLocalAuthEnabled() {
 
 function getBearerToken(authorization: string | string[] | undefined) {
   const header = Array.isArray(authorization) ? authorization[0] : authorization;
-  const match = header?.match(/^Bearer\s+(.+)$/i);
-  return match?.[1] ?? null;
+
+  if (typeof header !== "string") {
+    return null;
+  }
+
+  const scheme = "bearer";
+  if (
+    header.length <= scheme.length ||
+    header.slice(0, scheme.length).toLowerCase() !== scheme
+  ) {
+    return null;
+  }
+
+  let tokenStart = scheme.length;
+  if (!isAuthHeaderWhitespace(header.charCodeAt(tokenStart))) {
+    return null;
+  }
+
+  while (
+    tokenStart < header.length &&
+    isAuthHeaderWhitespace(header.charCodeAt(tokenStart))
+  ) {
+    tokenStart += 1;
+  }
+
+  return tokenStart < header.length ? header.slice(tokenStart) : null;
+}
+
+function isAuthHeaderWhitespace(code: number) {
+  return code === 0x20 || code === 0x09;
 }
 
 function normalizeSupabaseUrl(value: string | undefined) {

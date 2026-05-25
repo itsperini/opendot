@@ -1,10 +1,11 @@
 import { FormEvent, useState } from "react";
-import { Bot, Check, Clock3, PencilLine, X } from "lucide-react";
+import { Bot, Check, Clock3, PencilLine, Trash2, X } from "lucide-react";
 import type { CreateAgentInput, VoiceAgent } from "../types";
 
 type AgentListProps = {
   agents: VoiceAgent[];
   selectedAgentId: string | null;
+  onDelete: (agentId: string) => void;
   onSelect: (agentId: string) => void;
   onUpdate: (agentId: string, input: CreateAgentInput) => void;
 };
@@ -21,6 +22,7 @@ function formatTime(value: string) {
 export function AgentList({
   agents,
   selectedAgentId,
+  onDelete,
   onSelect,
   onUpdate,
 }: AgentListProps) {
@@ -52,6 +54,18 @@ export function AgentList({
 
     onUpdate(agentId, { name, description });
     cancelEditing();
+  }
+
+  function requestDelete(agent: VoiceAgent) {
+    const confirmed = window.confirm(`Delete "${agent.name}"?`);
+    if (!confirmed) {
+      return;
+    }
+
+    if (editingAgentId === agent.id) {
+      cancelEditing();
+    }
+    onDelete(agent.id);
   }
 
   return (
@@ -98,14 +112,26 @@ export function AgentList({
                   </span>
                 </button>
 
-                <button
-                  aria-label={`Edit ${agent.name}`}
-                  className="icon-button quiet agent-row-edit"
-                  type="button"
-                  onClick={() => (editing ? cancelEditing() : startEditing(agent))}
-                >
-                  {editing ? <X size={15} /> : <PencilLine size={15} />}
-                </button>
+                <div className="agent-row-actions">
+                  <button
+                    aria-label={`Edit ${agent.name}`}
+                    className="icon-button quiet agent-row-edit"
+                    title={editing ? "Cancel edit" : "Edit identity"}
+                    type="button"
+                    onClick={() => (editing ? cancelEditing() : startEditing(agent))}
+                  >
+                    {editing ? <X size={15} /> : <PencilLine size={15} />}
+                  </button>
+                  <button
+                    aria-label={`Delete ${agent.name}`}
+                    className="icon-button quiet danger agent-row-delete"
+                    title="Delete identity"
+                    type="button"
+                    onClick={() => requestDelete(agent)}
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
 
                 {editing ? (
                   <form
@@ -132,7 +158,11 @@ export function AgentList({
                       />
                     </label>
                     <div className="agent-edit-actions">
-                      <button className="secondary-action" type="button" onClick={cancelEditing}>
+                      <button
+                        className="secondary-action"
+                        type="button"
+                        onClick={cancelEditing}
+                      >
                         <X size={15} />
                         Cancel
                       </button>

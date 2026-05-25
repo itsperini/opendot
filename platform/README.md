@@ -10,7 +10,8 @@ The current implementation focuses on the first creation flow:
 
 - Create an agent identity with a name and description.
 - Attach a default voice pipeline with four explicit stages: VAD, STT, LLM, and TTS.
-- Edit first-pass pipeline, model, and runtime settings in the browser.
+- Switch an agent to OpenAI Realtime speech-to-speech when direct audio-in/audio-out testing is needed.
+- Edit first-pass pipeline, model, realtime, and runtime settings in the browser.
 - Test live sessions against the local voice runtime.
 - Persist identities, settings, devices, and SDK key metadata in PostgreSQL.
 
@@ -31,6 +32,12 @@ Deepgram VAD is represented as its own stage, but it maps to Deepgram live strea
 - `speech_final`
 
 This keeps the product model clear while still matching how Deepgram exposes end-of-speech behavior in the live listen API.
+
+Speech-to-speech agents keep the same identity and saved versioning model, but
+Browser Test connects with native WebRTC through an OpenAI Realtime client
+secret minted by the runtime. Bound Dot devices keep the authenticated `/ws`
+firmware path; the runtime detects the saved Speech-to-speech architecture and
+bridges device Opus audio to OpenAI Realtime server-side.
 
 ## Run Locally
 
@@ -132,10 +139,13 @@ Add real keys to the root `.env` before starting the runtime:
 DEEPGRAM_API_KEY=...
 OPENAI_API_KEY=...
 OPENAI_BASE_URL=
-OPENAI_MODEL=gpt-5.1
+OPENAI_MODEL=gpt-5-mini
+OPENAI_MAX_OUTPUT_TOKENS=512
+OPENAI_REASONING_EFFORT=low
+OPENAI_VERBOSITY=low
 ```
 
-Then:
+For the Sandwich architecture:
 
 1. Open the frontend URL, usually `http://localhost:5173`.
 2. Create or select an agent identity.
@@ -144,6 +154,24 @@ Then:
 5. Click **Start mic** and speak.
 6. Stop speaking and wait for Deepgram endpointing / utterance end to commit the turn.
 7. The assistant text streams back and the generated TTS audio chunks play in the browser.
+
+For Speech-to-speech:
+
+1. Open **Configuration** for the active agent.
+2. Switch to **Speech-to-speech Architecture** and adjust the OpenAI Realtime settings.
+3. Open **Browser Test** and click **Connect**.
+4. Click **Start mic** and speak.
+5. Use **Interrupt**, **Reset**, and **Disconnect** to test turn-taking behavior.
+
+For a bound Dot device, use the same saved Speech-to-speech agent. The firmware
+still connects to `/ws`; the runtime owns the OpenAI Realtime WebSocket,
+`OPENAI_API_KEY`, PCM conversion, and Opus playback.
+
+The browser never receives `OPENAI_API_KEY`. The platform API creates a
+short-lived runtime token at `POST /api/runtime/realtime-browser-sessions`, the
+runtime exchanges it at `/realtime/client-secret` for an OpenAI Realtime client
+secret with its own `OPENAI_API_KEY`, and the browser uses that short-lived
+client secret for the WebRTC call.
 
 The runtime instructs the voice agent to emit XML-like TTS chunks:
 
@@ -175,10 +203,11 @@ If endpointing is too eager or too slow, tune:
 - STT `language`
 - STT `sample_rate`
 
-For less sensitive device turns, the local defaults are:
+For balanced lower-latency device turns, the local defaults are:
 
 ```bash
-DEEPGRAM_ENDPOINTING_MS=900
+DEEPGRAM_ENDPOINTING_MS=300
+DEEPGRAM_UTTERANCE_END_MS=1000
 MIN_TRANSCRIPT_CHARS=2
 CLOSE_DEVICE_AFTER_TURN=true
 CLOSE_DEVICE_AFTER_TURN_DELAY_MS=300
@@ -226,7 +255,10 @@ PLATFORM_API_INTERNAL_URL=https://<opendot-api>.onrender.com/api
 DEEPGRAM_API_KEY=...
 OPENAI_API_KEY=...
 OPENAI_BASE_URL=
-OPENAI_MODEL=gpt-5.1
+OPENAI_MODEL=gpt-5-mini
+OPENAI_MAX_OUTPUT_TOKENS=512
+OPENAI_REASONING_EFFORT=low
+OPENAI_VERBOSITY=low
 ```
 
 `PLATFORM_AUTH_REQUIRED` is `true` in the Blueprint, and local password auth is
@@ -234,6 +266,10 @@ disabled there so Supabase owns Render authentication. Disable email
 confirmations in Supabase Auth for this preview if signup should create an
 active session immediately.
 
-The runtime verifies browser voice-session tokens and device credentials with
-the platform API before accepting `/voice` or `/ws` connections. Keep
-`OPENDOT_RUNTIME_INTERNAL_SECRET` identical on the API and runtime services.
+The runtime verifies browser voice-session tokens, realtime browser-session
+tokens, and device credentials with the platform API. Sandwich Browser Test uses
+`/voice`, Sandwich Dot devices use `/ws`, Speech-to-speech Browser Test uses
+`/realtime/client-secret` before the browser connects to OpenAI Realtime with an
+ephemeral client secret, and Speech-to-speech Dot devices use the runtime `/ws`
+Realtime bridge. Keep `OPENDOT_RUNTIME_INTERNAL_SECRET` identical on the API and
+runtime services.
