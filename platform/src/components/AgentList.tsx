@@ -158,7 +158,11 @@ export function AgentList({
                       />
                     </label>
                     <div className="agent-edit-actions">
-                      <button className="secondary-action" type="button" onClick={cancelEditing}>
+                      <button
+                        className="secondary-action"
+                        type="button"
+                        onClick={cancelEditing}
+                      >
                         <X size={15} />
                         Cancel
                       </button>

@@ -1,15 +1,12 @@
 import { useState } from "react";
-import {
-  Activity,
-  Brain,
-  ChevronDown,
-  Mic,
-  Plus,
-  Radio,
-  X,
-  Volume2,
-} from "lucide-react";
-import type { PipelineStage, StageOption, StageSetting, StageSettingValue, VoiceAgent } from "../types";
+import { Activity, Brain, ChevronDown, Mic, Plus, Radio, X, Volume2 } from "lucide-react";
+import type {
+  PipelineStage,
+  StageOption,
+  StageSetting,
+  StageSettingValue,
+  VoiceAgent,
+} from "../types";
 
 type PipelineBuilderProps = {
   agent: VoiceAgent | null;
@@ -37,7 +34,10 @@ const stageRoles = {
 };
 
 function optionLabel(options: StageOption[] | undefined, value: string | number) {
-  return options?.find((option) => String(option.value) === String(value))?.label ?? String(value);
+  return (
+    options?.find((option) => String(option.value) === String(value))?.label ??
+    String(value)
+  );
 }
 
 function selectedValues(value: StageSettingValue) {
@@ -354,7 +354,9 @@ export function PipelineBuilder({
 }: PipelineBuilderProps) {
   if (!agent) {
     return (
-      <section className={`empty-workspace ${embedded ? "embedded-empty-workspace" : "panel"}`}>
+      <section
+        className={`empty-workspace ${embedded ? "embedded-empty-workspace" : "panel"}`}
+      >
         <Radio size={30} />
         <h2>No agent identity selected</h2>
         <p>Create an agent identity to configure its voice pipeline.</p>
@@ -421,7 +423,10 @@ export function PipelineBuilder({
                             }
                           >
                             {setting.options?.map((option) => (
-                              <option key={String(option.value)} value={String(option.value)}>
+                              <option
+                                key={String(option.value)}
+                                value={String(option.value)}
+                              >
                                 {option.label}
                               </option>
                             ))}
