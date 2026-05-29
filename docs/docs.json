@@ -95,6 +95,12 @@
         "icon": "git-pull-request",
         "expanded": false,
         "pages": ["contributing", "contribution-areas", "roadmap", "repo-map"]
+      },
+      {
+        "group": "Changelog",
+        "icon": "history",
+        "expanded": false,
+        "pages": ["changelog/overview"]
       }
     ]
   },
